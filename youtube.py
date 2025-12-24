@@ -32,6 +32,12 @@ class YouTubeDownloader:
         self._temp_dir = settings.TEMP_DIR
         self._temp_dir.mkdir(parents=True, exist_ok=True)
 
+        # A full, modern User-Agent and Accept-Language header are less likely to be flagged.
+        modern_headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept-Language': 'en-US,en;q=0.9'
+        }
+
         common_opts = {
             'quiet': True,
             'no_warnings': True,
@@ -39,7 +45,7 @@ class YouTubeDownloader:
             'retries': 3,
             'fragment_retries': 3,
             "geo_bypass": True,
-            "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+            "http_headers": modern_headers, # Use a full header set
         }
 
         # --- Cookie Configuration (Priority: Browser > File) ---
