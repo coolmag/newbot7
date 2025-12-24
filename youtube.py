@@ -5,6 +5,7 @@ import logging
 import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Literal
+import os
 
 import yt_dlp
 from config import Settings
@@ -164,8 +165,6 @@ class YouTubeDownloader:
                     except OSError: pass
                 return DownloadResult(success=False, error=str(e)[:200])
 
-    # This method is now redundant as the main download method is robust enough
-    # and the retry logic is better handled by the caller (RadioSession)
     async def download_with_retry(self, query_or_id: str, max_retries: int = 1) -> DownloadResult:
         logger.info(f"[Downloader] Starting download/search for '{query_or_id}'.")
         try:
@@ -180,4 +179,3 @@ class YouTubeDownloader:
         except Exception as e:
             logger.error(f"Unhandled exception in download_with_retry for '{query_or_id}': {e}", exc_info=True)
             return DownloadResult(success=False, error="An unexpected error occurred")
-
