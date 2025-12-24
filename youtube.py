@@ -167,22 +167,21 @@ class YouTubeDownloader:
                     success=False,
                     error="File not found after download"
                 )
-            
-            # Умный поиск файла: сначала ищем .mp3, потом .m4a, потом берем любой.
-            # Это гарантирует лучшую совместимость с плеером Telegram.
+
+            # Умный поиск файла: сначала ищем .mp3, потом .m4a, потом другие аудио.
             found_file = None
-            preferred_exts = ['.mp3', '.m4a']
+            preferred_exts = ['.mp3', '.m4a', '.webm', '.ogg', '.opus']
             for ext in preferred_exts:
-                for file in files:
-                    if file.endswith(ext):
-                        found_file = file
+                for file_path in files:
+                    if file_path.endswith(ext):
+                        found_file = file_path
                         break
                 if found_file:
                     break
             
             if not found_file:
-                found_file = files[0]
-                logger.warning(f"[Download] No .mp3 or .m4a found for {video_id}. Using first available file: {found_file}")
+                logger.error(f"[Download] No valid audio file found for {video_id}. Found: {files}. This can happen with expired cookies.")
+                return DownloadResult(success=False, error="Downloaded file is not a valid audio format.")
 
             # Создаем TrackInfo
             track_info = TrackInfo(
@@ -196,12 +195,12 @@ class YouTubeDownloader:
             )
             
             # Проверяем размер файла
-            file_size = os.path.getsize(mp3_file)
-            logger.info(f"[Download] File downloaded: {mp3_file}, size: {file_size} bytes")
+            file_size = os.path.getsize(found_file)
+            logger.info(f"[Download] File downloaded: {found_file}, size: {file_size} bytes")
             
             return DownloadResult(
                 success=True,
-                file_path=Path(mp3_file), # Converted to Path object
+                file_path=Path(found_file),
                 track_info=track_info
             )
             
