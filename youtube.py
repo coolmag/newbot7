@@ -82,61 +82,70 @@ class YouTubeDownloader:
         self,
         query: str,
         limit: int = 30,
-        search_mode: Literal['track', 'artist', 'genre'] = 'genre', # Used Literal directly
+        search_mode: Literal['track', 'artist', 'genre'] = 'genre',
         min_duration: Optional[int] = None,
         max_duration: Optional[int] = None,
     ) -> List[TrackInfo]:
-        """Search for tracks on YouTube."""
-        logger.info(f"[Search] Запуск поиска для: '{query}' (режим: {search_mode})")
-        
-        ydl_opts = self._search_opts.copy()
-        if search_mode == 'genre':
-            # Для жанров ищем "official audio" для лучшего качества
-            query += " official audio"
+        """Search for tracks on YouTube with enhanced multilingual support."""
+        logger.info(f"[Search] Starting for: '{query}' (mode: {search_mode})")
         
         try:
+            is_russian = self._is_russian_query(query)
+            enhanced_query = self._enhance_search_query(query, is_russian, search_mode)
+            
             loop = asyncio.get_event_loop()
-            search_url = f"ytsearch{limit}:{query}"
+            search_url = f"ytsearch{limit}:{enhanced_query}"
             
             def extract():
-                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                with yt_dlp.YoutubeDL(self._search_opts) as ydl:
                     return ydl.extract_info(search_url, download=False)
             
             info = await loop.run_in_executor(None, extract)
             
-            if not info or 'entries' not in info:
-                logger.warning(f"[Search] Поиск для '{query}' не вернул результатов")
-                return []
-            
+            if not info or not info.get('entries'):
+                logger.warning(f"[Search] No results for '{enhanced_query}'. Trying without enhancements.")
+                search_url = f"ytsearch{limit}:{query}"
+                info = await loop.run_in_executor(None, extract)
+                if not info or not info.get('entries'):
+                    logger.warning(f"[Search] Still no results for plain query '{query}'")
+                    return []
+
             tracks = []
-            for entry in info['entries']:
-                if not entry:
-                    continue
+            for entry in info.get('entries', []):
+                if not entry: continue
                 
-                # Фильтрация по длительности
                 duration = entry.get('duration') or 0
-                if min_duration and duration < min_duration:
-                    continue
-                if max_duration and duration > max_duration:
+                if (min_duration and duration < min_duration) or \
+                   (max_duration and duration > max_duration):
                     continue
                 
-                track = TrackInfo(
-                    title=entry.get('title', 'Unknown'),
-                    artist=entry.get('uploader', 'Unknown'),
-                    duration=duration,
-                    source=Source.YOUTUBE.value,
-                    identifier=entry.get('id'),
-                    view_count=entry.get('view_count'),
-                    like_count=entry.get('like_count'),
-                )
-                tracks.append(track)
+                # Skip live streams which have no duration
+                if entry.get('is_live'):
+                    continue
+
+                tracks.append(TrackInfo.from_yt_info(entry))
             
-            logger.info(f"[Search] Найдено и отфильтровано: {len(tracks)} треков.")
+            logger.info(f"[Search] Found and filtered: {len(tracks)} tracks for '{query}'.")
             return tracks
             
         except Exception as e:
-            logger.error(f"[Search] Ошибка поиска для '{query}': {e}", exc_info=True)
+            logger.error(f"[Search] Critical error for '{query}': {e}", exc_info=True)
             return []
+
+    def _is_russian_query(self, query: str) -> bool:
+        """Checks if the query contains Cyrillic characters."""
+        return bool(re.search('[а-яА-ЯёЁ]', query))
+
+    def _enhance_search_query(self, query: str, is_russian: bool, search_mode: str) -> str:
+        """Enhances the search query based on language and mode."""
+        if search_mode != 'genre':
+            return query
+        
+        if is_russian:
+            return f'{query} сборник'
+        else:
+            return f'{query} playlist'
+
 
     async def download(self, video_id: str) -> DownloadResult:
         """
