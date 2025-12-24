@@ -1,5 +1,6 @@
 from enum import Enum
 from typing import Optional
+from pathlib import Path # Added Path import
 
 from pydantic import BaseModel, ConfigDict, Field # Added ConfigDict, Field
 
@@ -9,13 +10,17 @@ class Source(str, Enum):
     YOUTUBE_MUSIC = "YouTube Music"
     INTERNET_ARCHIVE = "Internet Archive"
 
-class DownloadResult(BaseModel):
+class StreamInfo(BaseModel):
+    """Содержит прямую ссылку на аудиопоток и метаданные трека."""
+    stream_url: str
+    track_info: "TrackInfo"
+
+class StreamInfoResult(BaseModel):
     """
-    Результат операции загрузки. Содержит либо информацию о треке, либо ошибку.
+    Результат операции по получению информации о потоке.
     """
     success: bool
-    file_path: Optional[str] = None
-    track_info: Optional["TrackInfo"] = None
+    stream_info: Optional[StreamInfo] = None
     error: Optional[str] = None
 
 class TrackInfo(BaseModel): # Changed from @dataclass(frozen=True)
@@ -72,3 +77,9 @@ class VoteCallback:
 class GenreCallback:
     """Callbacks related to admin genre selection."""
     PREFIX = "genre:"
+
+class DownloadResult(BaseModel):
+    success: bool
+    file_path: Optional[Path] = None
+    track_info: Optional[TrackInfo] = None
+    error: Optional[str] = None

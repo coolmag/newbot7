@@ -3,8 +3,8 @@ from pathlib import Path
 from typing import List, Dict, Any
 from functools import lru_cache
 
-from pydantic import Field, model_validator, field_validator # Updated Pydantic imports
-from pydantic_settings import BaseSettings, SettingsConfigDict # New import for BaseSettings
+from pydantic import Field, model_validator, field_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     # --- Basic Settings from .env ---
@@ -13,6 +13,10 @@ class Settings(BaseSettings):
     BASE_URL: str
     ADMIN_IDS: str = ""
     COOKIES_CONTENT: str = ""
+
+    # --- YouTube Authentication (Priority: BROWSER > COOKIES_FILE) ---
+    YT_COOKIES_BROWSER: str = ""
+    YT_COOKIES_BROWSER_PROFILE: str = ""
 
     # --- Fields Populated by Validators ---
     ADMIN_ID_LIST: List[int] = []
@@ -24,78 +28,67 @@ class Settings(BaseSettings):
     CACHE_DB_PATH: Path = BASE_DIR / "cache.db"
     LOG_FILE_PATH: Path = BASE_DIR / "bot.log"
     COOKIES_FILE: Path = BASE_DIR / "cookies.txt"
+    TEMP_DIR: Path = BASE_DIR / "temp_audio"
 
     # --- App Logic Settings ---
     LOG_LEVEL: str = "INFO"
-    MAX_QUERY_LENGTH: int = 150
-    DOWNLOAD_TIMEOUT_S: int = 120
-    MAX_RETRIES: int = 5
-    RETRY_DELAY_S: float = 5.0
-    MAX_RESULTS: int = 30
-    
-    # 🆕 Новые настройки для улучшенной стабильности
-    MAX_CONCURRENT_DOWNLOADS: int = 10  # Увеличен с 3
-    MAX_CONCURRENT_SEARCHES: int = 5    # Новая настройка
-    SEARCH_TIMEOUT_S: int = 20          # Таймаут для поиска
-    DOWNLOAD_RETRY_ATTEMPTS: int = 2    # Количество повторов
-    KEEP_ALIVE_INTERVAL_S: int = 240    # Интервал keep-alive
-    
-    # --- Cache Settings ---
     CACHE_TTL_DAYS: int = 7
-    
+    MAX_RESULTS: int = 30
+    DOWNLOAD_RETRY_ATTEMPTS: int = 2
+
     # --- Media Constraints ---
-    RADIO_MAX_DURATION_S: int = 900 # Currently unused, consider removing or adapting
-    RADIO_MIN_DURATION_S: int = 30 # Currently unused, consider removing or adapting
+    TRACK_MIN_DURATION_S: int = 60
+    TRACK_MAX_DURATION_S: int = 900  # 15 minutes
+    GENRE_MIN_DURATION_S: int = 600 # 10 minutes
+    GENRE_MAX_DURATION_S: int = 18000 # 5 hours
+    PLAY_MAX_FILE_SIZE_MB: int = 50
 
-    PLAY_MAX_SONG_DURATION_S: int = 900 # Max duration for individual songs (e.g., /play command)
-    PLAY_MIN_SONG_DURATION_S: int = 60 # Min duration for individual songs
-
-    PLAY_MAX_GENRE_DURATION_S: int = 900 # Max duration for genre mixes/compilations
-    PLAY_MIN_GENRE_DURATION_S: int = 60 # Min duration for genre mixes/compilations
-    
-    PLAY_MAX_FILE_SIZE_MB: int = 25
-
-    @field_validator("ADMIN_ID_LIST", mode="before") # Updated to field_validator
+    @field_validator("ADMIN_ID_LIST", mode="before")
     @classmethod
-    def _assemble_admin_ids(cls, v, info) -> List[int]: # Signature changed for Pydantic v2
-        """Parses the ADMIN_IDS string from environment into a list of integers."""
-        admin_ids_str = info.data.get("ADMIN_IDS", "") # Access via info.data
+    def _assemble_admin_ids(cls, v, info) -> List[int]:
+        admin_ids_str = info.data.get("ADMIN_IDS", "")
         if not admin_ids_str:
             return []
         try:
             return [int(i.strip()) for i in admin_ids_str.split(",") if i.strip()]
         except ValueError as e:
-            raise ValueError(f"Invalid ADMIN_IDS format. Could not parse '{admin_ids_str}'. Must be a comma-separated list of numbers.") from e
+            raise ValueError(f"Invalid ADMIN_IDS format. Could not parse '{admin_ids_str}'.") from e
 
-    @model_validator(mode='after') # Updated to model_validator
-    def _load_genre_data(self) -> "Settings": # Signature changed for Pydantic v2
-        """Loads genre data from genres.json, failing fast if the file is missing or invalid."""
-        base_dir = self.BASE_DIR # Access via self
+    @model_validator(mode='after')
+    def _load_genre_data(self) -> "Settings":
+        base_dir = self.BASE_DIR
         if not base_dir:
-            # This should not happen if BASE_DIR has its default value
             raise ValueError("BASE_DIR is not set, cannot locate genres.json")
 
         genres_path = base_dir / "genres.json"
         if not genres_path.is_file():
-            raise FileNotFoundError(
-                f"Critical file not found: {genres_path}. "
-                "The application cannot start without genre definitions."
-            )
+            raise FileNotFoundError(f"Critical file not found: {genres_path}.")
         
         try:
             with open(genres_path, "r", encoding="utf-8") as f:
-                self.GENRE_DATA = json.load(f) # Update self.GENRE_DATA
+                self.GENRE_DATA = json.load(f)
         except json.JSONDecodeError as e:
             raise ValueError(f"Error decoding JSON from {genres_path}: {e}") from e
         
         return self
 
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore") # New way to define Config
+    @model_validator(mode='after')
+    def _create_cookies_file(self) -> "Settings":
+        """
+        If COOKIES_CONTENT env var is provided, write its content to the cookies file.
+        This is the recommended way to use cookies on ephemeral filesystems like Railway.
+        """
+        if self.COOKIES_CONTENT:
+            try:
+                self.COOKIES_FILE.write_text(self.COOKIES_CONTENT)
+                # logger is not available here, use print
+                print("Successfully created cookies.txt from environment variable.")
+            except Exception as e:
+                print(f"Error: Could not write to cookies file {self.COOKIES_FILE}: {e}")
+        return self
+
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
 @lru_cache()
 def get_settings() -> Settings:
-    """
-    Provides a cached, validated Settings object.
-    The lru_cache ensures the Settings class is instantiated only once.
-    """
     return Settings()

@@ -4,10 +4,10 @@ from telegram.ext import Application
 from telegram import Bot
 
 from config import get_settings, Settings
-from cache import CacheService
+from database import DatabaseService
 from youtube import YouTubeDownloader
 from radio import RadioManager
-from radio_voting import GenreVotingService # Import the new service
+from radio_voting import GenreVotingService
 
 # By using lru_cache, we ensure that each of these functions is executed only once,
 # creating a single instance of each service (singleton pattern).
@@ -18,16 +18,15 @@ def get_settings_dep() -> Settings:
     return get_settings()
 
 @lru_cache()
-def get_cache_service_dep() -> CacheService:
-    """Dependency to get the CacheService."""
-    return CacheService(settings=get_settings_dep())
+def get_database_service_dep() -> DatabaseService:
+    """Dependency to get the DatabaseService."""
+    return DatabaseService(settings=get_settings_dep())
 
 @lru_cache()
 def get_downloader_dep() -> YouTubeDownloader:
     """Dependency to get the YouTubeDownloader."""
     return YouTubeDownloader(
         settings=get_settings_dep(), 
-        cache_service=get_cache_service_dep()
     )
 
 @lru_cache()
