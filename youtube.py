@@ -67,14 +67,14 @@ class YouTubeDownloader:
         
         self._download_opts = {
             **common_opts,
-            'format': 'bestaudio/best',
+                "format": "bestaudio[ext=m4a]/bestaudio/best", # Prefer M4A for Telegram compatibility
             'outtmpl': str(self._temp_dir / '%(id)s.%(ext)s'),
-            'postprocessors': [{
-                'key': 'FFmpegExtractAudio',
-                'preferredcodec': 'mp3',
-                'preferredquality': '192',
-            }],
-            'max_filesize': self._settings.PLAY_MAX_FILE_SIZE_MB * 1024 * 1024,
+                "writeinfojson": False,
+                "max_filesize": self._settings.MAX_FILE_SIZE_MB * 1024 * 1024,
+                "prefer_ffmpeg": True,
+                "keepvideo": False,
+                "nooverwrites": True,  # Не перезаписывать существующие файлы
+            })            'max_filesize': self._settings.PLAY_MAX_FILE_SIZE_MB * 1024 * 1024,
             'socket_timeout': 30,
         }
 
