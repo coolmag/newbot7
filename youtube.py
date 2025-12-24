@@ -218,19 +218,45 @@ class YouTubeDownloader:
             )
 
     async def download_with_retry(self, query_or_id: str, max_retries: int = 3) -> DownloadResult:
-        """Download with retry logic."""
-        for attempt in range(max_retries):
-            try:
-                # Проверяем, является ли query ID видео
-                video_id = None
-                if re.match(r'^[a-zA-Z0-9_-]{11}$', query_or_id):
-                    video_id = query_or_id
+        """
+        Finds a video ID from a query if necessary, then attempts to download 
+        the resolved video ID with a retry loop.
+        """
+        logger.info(f"[Downloader] Starting download/search for '{query_or_id}'.")
+        video_id = None
+        try:
+            # --- Step 1: Resolve query_or_id to a concrete video_id ---
+            if re.match(r'^[a-zA-Z0-9_-]{11}$', query_or_id):
+                video_id = query_or_id
+                logger.info(f"[Downloader] Provided query is already a video ID: {video_id}")
+            else:
+                logger.info(f"[Downloader] Provided query is a search term. Searching for best match...")
+                tracks = await self.search(query_or_id, limit=1, search_mode='track')
+                if not tracks:
+                    return DownloadResult(success=False, error=f"No tracks found for search query: '{query_or_id}'")
+                video_id = tracks[0].identifier
+                logger.info(f"[Downloader] Search found best match: {video_id} for query '{query_or_id}'")
+
+            if not video_id:
+                return DownloadResult(success=False, error="Could not determine a video ID to download.")
+
+            # --- Step 2: Attempt to download the video_id with retries ---
+            for attempt in range(max_retries):
+                logger.info(f"[Downloader] Attempt {attempt + 1}/{max_retries} to download {video_id}.")
+                result = await self.download(video_id)
+                
+                if result.success:
+                    logger.info(f"[Downloader] Successfully downloaded {video_id}.")
+                    return result
                 else:
-                    # Если это запрос, сначала ищем
-                    tracks = await self.search(query_or_id, limit=1)
-                    if not tracks:
-                        return DownloadResult(
-                            success=False,
-                            error="No tracks found"
-                        )
-                    video_id = tracks[0].identifier
+                    logger.warning(f"[Downloader] Attempt {attempt + 1} failed for {video_id}: {result.error}")
+                    if attempt < max_retries - 1:
+                        sleep_time = 2 * (attempt + 1)
+                        logger.info(f"[Downloader] Retrying in {sleep_time} seconds...")
+                        await asyncio.sleep(sleep_time)
+
+            return DownloadResult(success=False, error=f"Failed to download {video_id} after {max_retries} attempts.")
+
+        except Exception as e:
+            logger.error(f"[Downloader] Unhandled exception in download_with_retry for '{query_or_id}': {e}", exc_info=True)
+            return DownloadResult(success=False, error=f"An unexpected error occurred: {e}")
