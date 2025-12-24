@@ -108,7 +108,7 @@ class YouTubeDownloader:
                     continue
                 
                 # Фильтрация по длительности
-                duration = entry.get('duration', 0)
+                duration = entry.get('duration') or 0
                 if min_duration and duration < min_duration:
                     continue
                 if max_duration and duration > max_duration:
