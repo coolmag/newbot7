@@ -168,21 +168,19 @@ class YouTubeDownloader:
                     error="File not found after download"
                 )
             
-            # Находим MP3 файл
+            # Находим MP3 файл, но если его нет, берем любой другой аудиофайл
             mp3_file = None
+            any_audio_file = files[0] # Fallback to the first file found
+
             for file in files:
                 if file.endswith('.mp3'):
                     mp3_file = file
                     break
             
             if not mp3_file:
-                # If no MP3, fail
-                logger.error(f"[Download] No MP3 file found for {video_id} after download.")
-                return DownloadResult(
-                    success=False,
-                    error="No MP3 file found after conversion."
-                )
-            
+                logger.warning(f"[Download] No MP3 file found for {video_id}. Using first available file: {any_audio_file}")
+                mp3_file = any_audio_file
+
             # Создаем TrackInfo
             track_info = TrackInfo(
                 title=info.get('title', 'Unknown'),
