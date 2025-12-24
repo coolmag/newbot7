@@ -6,10 +6,47 @@
     <title>Solar Radio</title>
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <link rel="apple-touch-icon" href="favicon.svg">
-    <link rel="stylesheet" href="style.css?v=4.2">
+    <link rel="stylesheet" href="style.css?v=6.0">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="js/telegram-web-app.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fuse.js@7.1.0/dist/fuse.min.js"></script>
     <style>
+        /* Genre Card Animations & Effects */
+        .genre-card {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.4s ease, transform 0.4s ease, box-shadow 0.3s ease;
+            position: relative; /* Needed for pseudo-element */
+            overflow: hidden; /* Hide overflow from spotlight */
+        }
+        .genre-card.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .genre-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(255,255,255,0.15), transparent 40%);
+            opacity: 0;
+            transition: opacity 0.4s ease;
+            z-index: 1;
+        }
+        .genre-card:hover {
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            transform: translateY(-5px);
+        }
+        .genre-card:hover::before {
+            opacity: 1;
+        }
+        .genre-card > * {
+            position: relative;
+            z-index: 2; /* Ensure content is above the spotlight */
+        }
+
         /* Vinyl Player Styles */
         .vinyl-player {
             position: relative;
@@ -17,39 +54,6 @@
             height: 280px;
             margin: 2rem auto;
         }
-
-        /* Sun rays container */
-        .sun-rays {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            animation: rotate 20s linear infinite;
-        }
-
-        .sun-rays.playing {
-            animation: rotate 8s linear infinite;
-        }
-
-        @keyframes rotate {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-        }
-
-        /* Individual sun ray */
-        .sun-ray {
-            position: absolute;
-            width: 8px;
-            height: 80px;
-            background: linear-gradient(to bottom, #FFD93D, transparent);
-            border-radius: 4px;
-            left: 50%;
-            top: 0;
-            transform-origin: 50% 140px;
-            opacity: 0.6;
-            transition: height 0.1s ease;
-        }
-
-        /* Vinyl record container */
         .vinyl-container {
             position: absolute;
             width: 200px;
@@ -58,8 +62,6 @@
             left: 50%;
             transform: translate(-50%, -50%);
         }
-
-        /* Vinyl record */
         .vinyl-record {
             width: 100%;
             height: 100%;
@@ -69,31 +71,20 @@
             box-shadow: 0 8px 32px rgba(0,0,0,0.4);
             transition: transform 0.3s ease;
         }
-
         .vinyl-record.playing {
             animation: spin 3s linear infinite;
         }
-
         @keyframes spin {
             from { transform: rotate(0deg); }
             to { transform: rotate(360deg); }
         }
-
-        /* Vinyl grooves */
         .vinyl-grooves {
             position: absolute;
             width: 100%;
             height: 100%;
             border-radius: 50%;
-            background: repeating-radial-gradient(
-                circle at 50% 50%,
-                transparent 0px,
-                rgba(255,255,255,0.03) 1px,
-                transparent 2px
-            );
+            background: repeating-radial-gradient(circle at 50% 50%, transparent 0px, rgba(255,255,255,0.03) 1px, transparent 2px);
         }
-
-        /* Center label */
         .vinyl-label {
             position: absolute;
             width: 80px;
@@ -108,7 +99,6 @@
             justify-content: center;
             box-shadow: 0 4px 16px rgba(255, 157, 0, 0.4);
         }
-
         .vinyl-label-text {
             color: #000;
             font-size: 11px;
@@ -116,8 +106,6 @@
             text-align: center;
             line-height: 1.2;
         }
-
-        /* Center hole */
         .vinyl-hole {
             position: absolute;
             width: 16px;
@@ -129,8 +117,6 @@
             background: #000;
             box-shadow: inset 0 2px 4px rgba(0,0,0,0.8);
         }
-
-        /* Tonearm */
         .tonearm {
             position: absolute;
             width: 4px;
@@ -142,8 +128,8 @@
             transform-origin: 50% 0%;
             transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
             box-shadow: 2px 2px 8px rgba(0,0,0,0.3);
+            z-index: 10;
         }
-
         .tonearm::before {
             content: '';
             position: absolute;
@@ -155,7 +141,6 @@
             left: -4px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.4);
         }
-
         .tonearm::after {
             content: '';
             position: absolute;
@@ -167,39 +152,26 @@
             left: -2px;
             box-shadow: 0 0 8px rgba(255, 68, 68, 0.6);
         }
-
         .tonearm.playing {
             transform: rotate(25deg);
         }
-
-        /* Visualizer glow */
         .vinyl-glow {
+            --glow-opacity: 0;
+            --glow-scale: 1;
             position: absolute;
             width: 100%;
             height: 100%;
             border-radius: 50%;
-            box-shadow: 0 0 40px rgba(255, 157, 0, 0.3);
-            opacity: 0;
-            transition: opacity 0.3s ease;
-        }
-
-        .vinyl-glow.active {
-            opacity: 1;
-            animation: pulse 2s ease-in-out infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% { box-shadow: 0 0 40px rgba(255, 157, 0, 0.3); }
-            50% { box-shadow: 0 0 80px rgba(255, 157, 0, 0.6); }
+            box-shadow: 0 0 80px rgba(255, 157, 0, 0.6);
+            opacity: var(--glow-opacity);
+            transform: scale(var(--glow-scale));
+            transition: opacity 0.1s linear, transform 0.1s linear;
         }
     </style>
 </head>
 <body>
-
-    <!-- MAIN PLAYER SCREEN -->
     <div class="screen screen-player active" id="screen-player">
         <div class="player-container">
-            <!-- Header -->
             <div class="header">
                 <span class="material-icons-round header-btn" id="btn-genres">apps</span>
                 <div class="live-badge">
@@ -208,15 +180,7 @@
                 </div>
                 <span class="material-icons-round header-btn" id="btn-playlist">queue_music</span>
             </div>
-
-            <!-- Vinyl Player Visualizer -->
             <div class="vinyl-player">
-                <!-- Sun rays -->
-                <div class="sun-rays" id="sun-rays">
-                    <!-- Rays will be generated by JS -->
-                </div>
-
-                <!-- Vinyl Record -->
                 <div class="vinyl-container">
                     <div class="vinyl-glow" id="vinyl-glow"></div>
                     <div class="vinyl-record" id="vinyl-record">
@@ -227,18 +191,12 @@
                         <div class="vinyl-hole"></div>
                     </div>
                 </div>
-
-                <!-- Tonearm -->
                 <div class="tonearm" id="tonearm"></div>
             </div>
-
-            <!-- Track Info -->
             <div class="track-info">
                 <div class="title" id="track-title">Select a genre</div>
                 <div class="artist" id="track-artist">Tap 🎵 to browse</div>
             </div>
-
-            <!-- Progress Bar with Seek -->
             <div class="progress-section">
                 <div class="progress-bar" id="progress-container">
                     <div class="progress-buffered" id="progress-buffered"></div>
@@ -250,31 +208,23 @@
                     <span id="dur-time">0:00</span>
                 </div>
             </div>
-
-            <!-- Controls -->
             <div class="controls">
                 <button class="ctrl-btn ctrl-btn-small" id="btn-rewind">
                     <span class="material-icons-round">replay_10</span>
                 </button>
-                
                 <button class="ctrl-btn" id="btn-prev">
                     <span class="material-icons-round">skip_previous</span>
                 </button>
-                
                 <button class="ctrl-btn ctrl-btn-main" id="btn-play-pause">
                     <span class="material-icons-round" id="icon-play">play_arrow</span>
                 </button>
-                
                 <button class="ctrl-btn" id="btn-next">
                     <span class="material-icons-round">skip_next</span>
                 </button>
-                
                 <button class="ctrl-btn ctrl-btn-small" id="btn-forward">
                     <span class="material-icons-round">forward_10</span>
                 </button>
             </div>
-
-            <!-- Volume / Speed -->
             <div class="extra-controls">
                 <div class="speed-control">
                     <span class="material-icons-round">speed</span>
@@ -290,8 +240,6 @@
             </div>
         </div>
     </div>
-
-    <!-- GENRE PICKER DRAWER -->
     <div class="drawer genre-drawer" id="screen-genres">
         <div class="drawer-handle"></div>
         <div class="drawer-header">
@@ -304,30 +252,24 @@
                 <span class="material-icons-round">search</span>
                 <input type="text" id="genre-search" placeholder="Search genres, artists, or tracks...">
             </div>
-
             <div class="section">
                 <div class="section-title">🔥 Trending Now</div>
                 <div class="chips-row" id="trending-chips"></div>
             </div>
-
             <div class="section">
                 <div class="section-title">📅 By Decade</div>
                 <div class="chips-row" id="decade-chips"></div>
             </div>
-
             <div class="section">
                 <div class="section-title">😊 By Mood</div>
                 <div class="chips-row" id="mood-chips"></div>
             </div>
-
             <div class="section">
                 <div class="section-title">🎵 All Genres</div>
                 <div class="genre-grid" id="genre-grid"></div>
             </div>
         </div>
     </div>
-
-    <!-- SUBGENRE DRAWER -->
     <div class="drawer" id="subgenre-drawer">
         <div class="drawer-handle"></div>
         <div class="drawer-header">
@@ -336,8 +278,6 @@
         </div>
         <div class="subgenre-list" id="subgenre-list"></div>
     </div>
-
-    <!-- PLAYLIST DRAWER -->
     <div class="drawer" id="playlist-drawer">
         <div class="drawer-handle"></div>
         <div class="drawer-header">
@@ -348,10 +288,8 @@
             Loading...
         </div>
     </div>
-
     <div class="overlay" id="overlay"></div>
-
     <audio id="audio-player" crossorigin="anonymous" playsinline></audio>
-    <script type="module" src="js/main.js?v=4.3"></script>
+    <script type="module" src="js/main.js?v=6.0"></script>
 </body>
 </html>
