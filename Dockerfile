@@ -6,7 +6,6 @@ WORKDIR /app
 
 # Install system dependencies required by FFmpeg and other tools
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    ffmpeg \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
 

@@ -25,7 +25,8 @@ from config import Settings
 from keyboards import get_track_search_keyboard, get_genre_voting_keyboard
 from youtube import YouTubeDownloader
 from radio_voting import GenreVotingService
-from models import TrackInfo, DownloadResult # Removed StreamInfoResult, StreamInfo
+from models import TrackInfo, DownloadResult
+from cache_service import CacheService # Added import
 
 logger = logging.getLogger("handlers")
 
@@ -71,7 +72,7 @@ def _get_style_search_query(settings: Settings, main_genre_key: str, subgenre_ke
     subgenre = main_genre.get("subgenres", {}).get(subgenre_key, {})
     return subgenre.get("search", subgenre.get("name", "lofi beats"))
 
-def setup_handlers(app: Application, radio: RadioManager, settings: Settings, downloader: YouTubeDownloader, voting_service: GenreVotingService) -> None: 
+def setup_handlers(app: Application, radio: RadioManager, settings: Settings, downloader: YouTubeDownloader, voting_service: GenreVotingService, cache_service: CacheService) -> None: 
     
     # --- Command Handlers (Refactored) ---
     async def start_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -89,7 +90,6 @@ def setup_handlers(app: Application, radio: RadioManager, settings: Settings, do
 
     async def play_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Handles the /play command to search, download, and send a single track."""
-        # Stop any active radio session first
         await radio.stop(update.effective_chat.id)
         
         query = " ".join(context.args)
@@ -106,6 +106,7 @@ def setup_handlers(app: Application, radio: RadioManager, settings: Settings, do
             parse_mode=ParseMode.MARKDOWN
         )
         
+        download_result = None # Ensure it's defined
         try:
             download_result = await downloader.download_with_retry(query)
             
@@ -116,30 +117,20 @@ def setup_handlers(app: Application, radio: RadioManager, settings: Settings, do
             file_size = download_result.file_path.stat().st_size
             if file_size == 0:
                 await search_msg.edit_text("❌ Скачанный файл пуст.")
-                # Clean up empty file
                 try: os.unlink(download_result.file_path)
                 except: pass
                 return
             
             logger.info(f"[{update.effective_chat.id}] Sending audio: {download_result.file_path}, size: {file_size} bytes")
             
-            # Assuming cache service is available through dependencies or passed
-            # You might need to adjust how cache_service is accessed if it's not a direct dependency of handlers
-            # For now, let's assume direct access to cache_service through radio (if it wraps it) or create a new dependency.
-            # As per context, cache_service is not directly passed to setup_handlers.
-            # Let's mock these for now or add cache_service to setup_handlers params if needed.
-            # For this example, I'll temporarily remove cache calls from play_cmd to avoid another dependency change.
-            # If ratings/favs are needed for /play, cache_service must be passed into setup_handlers and PlayHandler.
-            
-            # Placeholder for actual values
-            # is_in_favs = False # await cache_service.is_in_favorites(update.effective_user.id, download_result.track_info.identifier)
-            # likes, dislikes = 0, 0 # await cache_service.get_ratings(download_result.track_info.identifier)
+            is_in_favs = await cache_service.is_in_favorites(update.effective_user.id, download_result.track_info.identifier)
+            likes, dislikes = await cache_service.get_ratings(download_result.track_info.identifier)
             
             caption = (
                 f"🎵 **{download_result.track_info.title}**\n"
                 f"👤 **{download_result.track_info.artist}**\n"
-                f"⏱️ {download_result.track_info.duration // 60}:{download_result.track_info.duration % 60:02d}\n"
-                # f"❤️ {likes}  💔 {dislikes}" # Re-add if cache_service is integrated
+                f"⏱️ {download_result.track_info.format_duration()}\n"
+                f"❤️ {likes}  💔 {dislikes}"
             )
             
             with open(download_result.file_path, 'rb') as audio_file:
@@ -151,7 +142,7 @@ def setup_handlers(app: Application, radio: RadioManager, settings: Settings, do
                     duration=download_result.track_info.duration,
                     caption=caption,
                     parse_mode=ParseMode.MARKDOWN,
-                    # reply_markup=get_track_control_keyboard(download_result.track_info.identifier, is_in_favs), # Re-add if cache_service is integrated
+                    reply_markup=get_track_search_keyboard(download_result.track_info.identifier, is_in_favs),
                     filename=f"{download_result.track_info.artist} - {download_result.track_info.title}.mp3"
                 )
             
@@ -161,7 +152,6 @@ def setup_handlers(app: Application, radio: RadioManager, settings: Settings, do
             logger.error(f"Ошибка при обработке команды /play: {e}", exc_info=True)
             await search_msg.edit_text(f"❌ Ошибка: {str(e)}")
         finally:
-            # Clean up the downloaded temporary file
             if download_result and download_result.file_path and download_result.file_path.is_file():
                 try:
                     os.unlink(download_result.file_path)
