@@ -140,9 +140,22 @@ class RadioManager:
         return {"sessions": data}
 
     async def start(self, chat_id: int, query: str, chat_type: str, search_mode: SearchMode, message_id: Optional[int] = None, display_name: Optional[str] = None):
+        """
+        Acknowledges the request immediately and starts the radio session in the background.
+        This non-blocking approach is crucial for environments with health checks.
+        """
+        # The actual radio logic is moved to a background task.
+        asyncio.create_task(self._start_radio_background(
+            chat_id, query, chat_type, search_mode, message_id, display_name
+        ))
+
+    async def _start_radio_background(
+        self, chat_id: int, query: str, chat_type: str, search_mode: SearchMode, 
+        message_id: Optional[int] = None, display_name: Optional[str] = None
+    ):
+        """The actual implementation of starting a radio session."""
         lock = self._get_lock(chat_id)
         async with lock:
-            # Stop any existing session for this chat before starting a new one.
             await self._stop_internal(chat_id)
             
             if query == "random" and search_mode == "genre":
@@ -167,7 +180,8 @@ class RadioManager:
 
             task = asyncio.create_task(self._radio_loop(session))
             self._session_tasks[chat_id] = task
-            logger.info(f"[{chat_id}] Радио запущено: '{session.query}' (режим: {session.search_mode})")
+            logger.info(f"[{chat_id}] Radio background task started for: '{session.query}' (mode: {session.search_mode})")
+
 
     async def _stop_internal(self, chat_id: int):
         """Internal stop method that doesn't acquire a lock, assuming it's already held."""

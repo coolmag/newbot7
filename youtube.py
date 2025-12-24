@@ -139,89 +139,86 @@ class YouTubeDownloader:
             return []
 
     async def download(self, video_id: str) -> DownloadResult:
-        """Download and convert video to MP3 for Telegram."""
-        logger.info(f"[Download] Starting download for {video_id} to {self._temp_dir}")
+        """
+        Supervising download method that applies a timeout to the internal download logic.
+        This prevents the entire application from hanging on a stalled yt-dlp process.
+        """
+        try:
+            return await asyncio.wait_for(
+                self._download_internal(video_id),
+                timeout=120.0  # 2-minute timeout for the entire download process
+            )
+        except asyncio.TimeoutError:
+            logger.error(f"[Download] Global timeout for {video_id} after 120 seconds.")
+            # Clean up any partial junk files that might have been created
+            for junk_file in glob.glob(str(self._temp_dir / f"{video_id}.*")):
+                try: os.unlink(junk_file)
+                except OSError: pass
+            return DownloadResult(success=False, error="Download process timed out (120s)")
+        except Exception as e:
+            logger.error(f"[Download] Unexpected wrapper error for {video_id}: {e}", exc_info=True)
+            return DownloadResult(success=False, error=f"Unexpected error: {e}")
+
+    async def _download_internal(self, video_id: str) -> DownloadResult:
+        """
+        The core internal download logic, designed to be called by the supervising `download` method.
+        """
+        logger.info(f"[Download] Starting internal download for {video_id} to {self._temp_dir}")
         
         try:
             loop = asyncio.get_event_loop()
-            ydl_opts = self._download_opts.copy()
             
-            def download_sync(): # Renamed to avoid confusion with async
-                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                    # Сначала получаем метаданные
+            def download_sync():
+                with yt_dlp.YoutubeDL(self._download_opts) as ydl:
                     info = ydl.extract_info(video_id, download=False)
-                    
-                    # Скачиваем и конвертируем
+                    if not info:
+                        raise DownloadError(f"Could not extract video info for {video_id}")
                     ydl.download([video_id])
-                    
                     return info
             
-            info = await loop.run_in_executor(None, download_sync) # Used renamed function
+            info = await loop.run_in_executor(None, download_sync)
             
-            if not info:
-                return DownloadResult(
-                    success=False,
-                    error="Could not get video info"
-                )
-            
-            # Ищем созданный файл
             pattern = str(self._temp_dir / f"{video_id}.*")
             files = glob.glob(pattern)
             
             if not files:
-                return DownloadResult(
-                    success=False,
-                    error="File not found after download"
-                )
+                return DownloadResult(success=False, error="File not found on disk after download.")
 
-            # Умный поиск файла: сначала ищем .mp3, потом .m4a, потом другие аудио.
             found_file = None
-            preferred_exts = ['.mp3', '.m4a', '.webm', '.ogg', '.opus']
+            preferred_exts = ['.mp3', '.m4a']
             for ext in preferred_exts:
                 for file_path in files:
                     if file_path.endswith(ext):
                         found_file = file_path
                         break
-                if found_file:
-                    break
+                if found_file: break
             
             if not found_file:
-                logger.error(f"[Download] No valid audio file found for {video_id}. Found: {files}. This can happen with expired cookies.")
+                first_file = files[0]
+                logger.error(f"[Download] No valid audio file (.mp3, .m4a) found. Found: {first_file}. Check cookies.")
+                try: os.unlink(first_file)
+                except OSError: pass
                 return DownloadResult(success=False, error="Downloaded file is not a valid audio format.")
 
-            # Создаем TrackInfo
-            track_info = TrackInfo(
-                title=info.get('title', 'Unknown'),
-                artist=info.get('uploader', 'Unknown'),
-                duration=info.get('duration', 0),
-                source=Source.YOUTUBE.value,
-                identifier=video_id,
-                view_count=info.get('view_count'),
-                like_count=info.get('like_count'),
-            )
-            
-            # Проверяем размер файла
+            track_info = TrackInfo.from_yt_info(info)
             file_size = os.path.getsize(found_file)
-            logger.info(f"[Download] File downloaded: {found_file}, size: {file_size} bytes")
             
-            return DownloadResult(
-                success=True,
-                file_path=Path(found_file),
-                track_info=track_info
-            )
+            if file_size == 0:
+                logger.error(f"[Download] Downloaded file {found_file} is empty.")
+                try: os.unlink(found_file)
+                except OSError: pass
+                return DownloadResult(success=False, error="Downloaded file is empty.")
+
+            logger.info(f"[Download] Successfully prepared file: {found_file}, size: {file_size} bytes")
+            return DownloadResult(success=True, file_path=Path(found_file), track_info=track_info)
             
-        except yt_dlp.utils.DownloadError as e:
-            logger.error(f"[Download] Download error for {video_id}: {e}")
-            return DownloadResult(
-                success=False,
-                error=str(e)
-            )
         except Exception as e:
-            logger.error(f"[Download] Unexpected error for {video_id}: {e}", exc_info=True)
-            return DownloadResult(
-                success=False,
-                error=f"Download error: {str(e)}"
-            )
+            err_msg = str(e)
+            logger.error(f"[Download] Internal download process failed for {video_id}: {err_msg}", exc_info=True)
+            for junk_file in glob.glob(str(self._temp_dir / f"{video_id}.*")):
+                try: os.unlink(junk_file)
+                except OSError: pass
+            return DownloadResult(success=False, error=f"Download failed: {err_msg[:200]}")
 
     async def download_with_retry(self, query_or_id: str, max_retries: int = 3) -> DownloadResult:
         """
