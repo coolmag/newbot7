@@ -168,18 +168,21 @@ class YouTubeDownloader:
                     error="File not found after download"
                 )
             
-            # Находим MP3 файл, но если его нет, берем любой другой аудиофайл
-            mp3_file = None
-            any_audio_file = files[0] # Fallback to the first file found
-
-            for file in files:
-                if file.endswith('.mp3'):
-                    mp3_file = file
+            # Умный поиск файла: сначала ищем .mp3, потом .m4a, потом берем любой.
+            # Это гарантирует лучшую совместимость с плеером Telegram.
+            found_file = None
+            preferred_exts = ['.mp3', '.m4a']
+            for ext in preferred_exts:
+                for file in files:
+                    if file.endswith(ext):
+                        found_file = file
+                        break
+                if found_file:
                     break
             
-            if not mp3_file:
-                logger.warning(f"[Download] No MP3 file found for {video_id}. Using first available file: {any_audio_file}")
-                mp3_file = any_audio_file
+            if not found_file:
+                found_file = files[0]
+                logger.warning(f"[Download] No .mp3 or .m4a found for {video_id}. Using first available file: {found_file}")
 
             # Создаем TrackInfo
             track_info = TrackInfo(
