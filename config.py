@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     # --- YouTube Authentication (Priority: BROWSER > COOKIES_FILE) ---
     YT_COOKIES_BROWSER: str = ""
     YT_COOKIES_BROWSER_PROFILE: str = ""
+    PROXY_URL: Optional[str] = None
 
     # --- Fields Populated by Validators ---
     ADMIN_ID_LIST: List[int] = []

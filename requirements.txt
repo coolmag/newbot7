@@ -1,15 +1,10 @@
-fastapi==0.115.6
-uvicorn[standard]==0.32.1
-python-telegram-bot==21.9
-aiohttp==3.11.11
+fastapi==0.110.0
+uvicorn[standard]==0.29.0
+python-telegram-bot==21.3
+yt-dlp>=2024.04.09
 aiosqlite==0.20.0
-yt-dlp==2023.11.16 # Updated to specific version as per user's suggestion
-pydantic>=2.0.0
-pydantic-settings>=2.0.0
-httpx>=0.27.0
-python-dotenv==1.0.0 # Added python-dotenv
-psutil>=5.9.0
-pytest>=8.0.0
-pytest-asyncio==0.23.7
-trio>=0.25.0
-aioboto3
+pydantic==2.7.1
+pydantic-settings==2.2.1
+httpx==0.27.0
+psutil==5.9.8
+nest-asyncio==1.6.0

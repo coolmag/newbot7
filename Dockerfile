@@ -1,31 +1,29 @@
-# 1. Базовый образ
-FROM public.ecr.aws/docker/library/python:3.11-slim
+# Use an official Python runtime as a parent image
+FROM python:3.11-slim
 
-# Устанавливаем рабочую директорию
+# Set the working directory in the container
 WORKDIR /app
 
-# 2. Установка системных зависимостей, включая ffmpeg
-# -yq означает "да" на все запросы и тихий режим
-RUN apt-get update && apt-get install -yq --no-install-recommends \
+# Install system dependencies required by FFmpeg and other tools
+RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
-    wget \
-    && apt-get clean \
+    build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-
-# 3. Копирование файлов проекта
+# Copy the requirements file into the container
 COPY requirements.txt .
 
-# 4. Установка Python зависимостей
-# --no-cache-dir чтобы не хранить кэш и уменьшить размер образа
+# Install Python dependencies
+# We upgrade pip and yt-dlp first to ensure we have the latest versions
+RUN pip install --no-cache-dir --upgrade pip yt-dlp
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Копируем остальной код приложения
+# Copy the rest of the application's code into the container
 COPY . .
 
-# Создаем директории
-RUN mkdir -p downloads temp_audio
+# Create a non-root user to run the application
+RUN useradd --create-home appuser
+USER appuser
 
-# 5. Указываем команду для запуска приложения
-# Замените 8080 на $PORT, если Railway требует этого, но обычно uvicorn работает и так.
+# Command to run the application
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]
