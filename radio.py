@@ -53,12 +53,18 @@ class RadioSession:
 
     async def _fill_playlist(self):
         try:
-            tracks = await self.downloader.search(self._query, search_mode=self._search_mode, limit=30)
+            tracks = await self.downloader.search(
+                self.query,
+                search_mode=self.search_mode,
+                limit=30
+            )
             new_tracks = [t for t in tracks if t.identifier not in self.played_ids]
             if new_tracks:
                 random.shuffle(new_tracks)
                 self.playlist.extend(new_tracks)
                 logger.info(f"[{self.chat_id}] Added {len(new_tracks)} new tracks.")
+            else:
+                logger.warning(f"[{self.chat_id}] No new tracks found for '{self.query}'.")
         except Exception as e:
             logger.error(f"[{self.chat_id}] Error filling playlist: {e}", exc_info=True)
 
