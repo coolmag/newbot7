@@ -66,10 +66,12 @@ async def lifespan(app: FastAPI):
     ])
     await tg_app.start()
     
-    webhook_url = f"{settings.WEBHOOK_URL.rstrip('/')}/telegram"
+    webhook_url = settings.WEBHOOK_URL
     await tg_app.bot.set_webhook(url=webhook_url)
     
     logger.info(f"✅ Bot started. Webhook: {webhook_url}")
+    
+    # --- App is running ---
     yield
     
     # --- Shutdown ---
