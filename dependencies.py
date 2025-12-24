@@ -38,11 +38,13 @@ def get_genre_voting_service_dep() -> GenreVotingService:
         settings=get_settings_dep()
     )
 
-@lru_cache
+@lru_cache()
 def get_radio_manager_dep() -> RadioManager:
+    """Dependency to get the RadioManager."""
     return RadioManager(
         bot=get_telegram_bot_dep(),
         settings=get_settings_dep(),
         downloader=get_downloader_dep(),
+        cache=get_cache_service_dep(),
         voting_service=get_genre_voting_service_dep()
     )
