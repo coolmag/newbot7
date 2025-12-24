@@ -3,10 +3,10 @@ import asyncio
 import logging
 import random
 import time
-import os # Re-added os import
+import os
 from collections import deque
 from pathlib import Path
-from typing import Optional, Set, Dict, Deque
+from typing import Optional, Set, Dict, Deque, Literal
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 
@@ -16,11 +16,14 @@ from telegram.error import TelegramError, BadRequest
 
 from config import Settings
 from models import TrackInfo, DownloadResult
-from youtube import YouTubeDownloader, SearchMode # Import SearchMode
+from youtube import YouTubeDownloader
 from keyboards import get_dashboard_keyboard, get_track_keyboard
 from radio_voting import GenreVotingService
 
 logger = logging.getLogger("radio")
+
+# Define the search mode type directly, consistent with youtube.py
+SearchMode = Literal['track', 'artist', 'genre']
 
 class PlayerAnimator:
     """Creates a textual animation for the player."""
