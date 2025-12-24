@@ -17,19 +17,21 @@ export function formatTime(seconds) {
  * Relies on the Telegram WebApp API.
  */
 export const haptic = {
-    isSupported: window.Telegram.WebApp.isVersionAtLeast('6.1'),
+    // Check for support at the time of the call, not on module load, to avoid race conditions.
+    isSupported: () => window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.isVersionAtLeast('6.1'),
+    
     impact: (style = 'medium') => {
-        if (haptic.isSupported) {
+        if (haptic.isSupported()) {
             window.Telegram.WebApp.HapticFeedback.impactOccurred(style);
         }
     },
     notification: (type = 'success') => {
-        if (haptic.isSupported) {
+        if (haptic.isSupported()) {
             window.Telegram.WebApp.HapticFeedback.notificationOccurred(type);
         }
     },
     selection: () => {
-        if (haptic.isSupported) {
+        if (haptic.isSupported()) {
             window.Telegram.WebApp.HapticFeedback.selectionChanged();
         }
     }

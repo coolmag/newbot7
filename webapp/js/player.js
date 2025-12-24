@@ -2,6 +2,7 @@
 
 import store from './store.js';
 import * as elements from './elements.js';
+import { visualizer } from './visualizer.js'; // Import the new visualizer
 
 let audioLoadTimeout = null;
 
@@ -18,8 +19,6 @@ function cleanupAudioListeners() {
 }
 
 // --- Audio Event Handlers ---
-// These functions are called by the audio element's events.
-// Their only job is to update the central store.
 
 function handleCanPlay() {
     console.log('[Player] Event: canplay');
@@ -32,34 +31,30 @@ function handleError(e) {
     console.error("[Player] Event: error", e);
     clearTimeout(audioLoadTimeout);
     store.isAudioLoading = false;
-    // We could add an error message to the store here
+    visualizer.setPlaying(false); // Stop visuals on error
     setTimeout(playNext, 1500); // Try the next track after a short delay
 }
 
 function handleLoadedMetadata() {
     console.log('[Player] Event: loadedmetadata');
     clearTimeout(audioLoadTimeout);
-    // The renderer will handle updating the duration from the audio element
 }
 
 function handleTimeUpdate() {
-    // This event fires rapidly. Instead of setting state here and causing
-    // too many re-renders, we let the renderer read directly from the
-    // audio element's properties inside a requestAnimationFrame loop.
-    // This is a performance optimization.
+    // This is handled by the renderer's RAF loop for performance
 }
 
 function handlePlay() {
     store.isPlaying = true;
+    visualizer.setPlaying(true); // Sync visualizer
 }
 
 function handlePause() {
     store.isPlaying = false;
+    visualizer.setPlaying(false); // Sync visualizer
 }
 
 // --- Player Control Functions ---
-// These functions are called by user actions (e.g., button clicks).
-// They control the player logic and update the state.
 
 export function playTrack(index) {
     if (store.isAudioLoading || index < 0 || index >= store.playlist.length) {
@@ -67,6 +62,7 @@ export function playTrack(index) {
             console.log('[Player] Playlist finished.');
             store.isPlaying = false;
             store.currentTrackIndex = -1;
+            visualizer.setPlaying(false); // Stop visuals at end of playlist
         }
         return;
     }
@@ -78,13 +74,13 @@ export function playTrack(index) {
     const audio = elements.audio;
     
     audio.pause();
-    cleanupAudioListeners(); // Important: remove old listeners first
+    visualizer.setPlaying(false); // Stop visuals while loading new track
+    cleanupAudioListeners();
 
     const audioUrl = track.url || `/audio/${track.identifier}`; 
     console.log('[Player] Setting audio src:', audioUrl);
     audio.src = audioUrl;
     
-    // Set a timeout to prevent getting stuck on a bad track
     clearTimeout(audioLoadTimeout);
     audioLoadTimeout = setTimeout(() => {
         if (store.isAudioLoading) {
@@ -93,7 +89,6 @@ export function playTrack(index) {
         }
     }, 10000); 
 
-    // Add new listeners
     audio.addEventListener('canplay', handleCanPlay);
     audio.addEventListener('error', handleError);
     audio.addEventListener('loadedmetadata', handleLoadedMetadata);
@@ -127,7 +122,6 @@ export async function safePlay() {
         console.error("Playback error:", err.name, err.message);
         store.isPlaying = false; // Ensure state is correct on error
         if (err.name === 'NotAllowedError') {
-            // The renderer should display a message based on this state
             console.log("Playback was prevented by browser autoplay policy.");
         }
     }
