@@ -4,7 +4,7 @@ import logging
 import asyncio
 import os # Added os import
 from pathlib import Path # Added Path import
-from typing import Optional
+from typing import Optional, Literal
 
 from telegram import (
     Update,
@@ -23,11 +23,14 @@ from telegram.error import BadRequest
 from radio import RadioManager
 from config import Settings
 from keyboards import get_track_search_keyboard, get_genre_voting_keyboard
-from youtube import YouTubeDownloader, SearchMode # Import SearchMode
+from youtube import YouTubeDownloader
 from radio_voting import GenreVotingService
 from models import TrackInfo, DownloadResult # Removed StreamInfoResult, StreamInfo
 
 logger = logging.getLogger("handlers")
+
+# Define the search mode type directly to match other modules
+SearchMode = Literal['track', 'artist', 'genre']
 
 # --- Helper Functions for Genre Keyboards (No changes needed) ---
 def _generate_main_genres_keyboard(settings: Settings) -> InlineKeyboardMarkup:

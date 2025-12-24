@@ -311,36 +311,6 @@ async def get_player_playlist(
         raise HTTPException(status_code=500, detail=f"Internal error: {e}")
 
 
-@app.get("/stream/{video_id}")
-async def stream_audio(
-    video_id: str,
-    downloader: YouTubeDownloader = Depends(get_downloader_dep)
-):
-    """
-    Gets a direct stream URL from yt-dlp and proxies the audio stream.
-    This avoids storing any files on disk.
-    """
-    stream_result = await downloader.get_stream_info(video_id)
-    if not stream_result.success:
-        raise HTTPException(status_code=404, detail=stream_result.error)
-
-    stream_url = stream_result.stream_info.stream_url
-
-    async def stream_generator():
-        """Yields chunks of the audio stream."""
-        async with httpx.AsyncClient() as client:
-            async with client.stream("GET", stream_url) as response:
-                if response.status_code != 200:
-                    logger.error(f"Upstream audio source returned status {response.status_code}")
-                    raise HTTPException(status_code=502, detail="Upstream audio source failed.")
-                
-                async for chunk in response.aiter_bytes():
-                    yield chunk
-
-    # yt-dlp usually provides 'audio/mp4' for bestaudio
-    return StreamingResponse(stream_generator(), media_type="audio/mp4")
-
-
 # --- Telegram Webhook ---
 
 @app.post("/telegram")
