@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from functools import lru_cache
 
 from pydantic import Field, model_validator, field_validator
