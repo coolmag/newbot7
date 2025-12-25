@@ -1,39 +1,64 @@
 from functools import lru_cache
-from typing import TYPE_CHECKING
+from typing import Optional
 
-from telegram.ext import Application
-from config import get_settings, Settings
+from telegram import Bot
+
+from config import Settings, get_settings
 from cache_service import CacheService
 from youtube import YouTubeDownloader
 from radio import RadioManager
 
-if TYPE_CHECKING:
-    from telegram import Bot
+# Синглтоны
+_cache_service: Optional[CacheService] = None
+_downloader: Optional[YouTubeDownloader] = None
+_radio_manager: Optional[RadioManager] = None
+_bot: Optional[Bot] = None
 
-@lru_cache()
 def get_settings_dep() -> Settings:
+    """Получение настроек"""
     return get_settings()
 
-@lru_cache()
 def get_cache_service_dep() -> CacheService:
-    return CacheService(settings=get_settings_dep())
+    """Получение сервиса кэширования"""
+    global _cache_service
+    if _cache_service is None:
+        settings = get_settings_dep()
+        _cache_service = CacheService(settings.CACHE_DB_PATH)
+    return _cache_service
 
-@lru_cache()
 def get_downloader_dep() -> YouTubeDownloader:
-    return YouTubeDownloader(
-        settings=get_settings_dep(),
-        cache_service=get_cache_service_dep()
-    )
+    """Получение YouTube загрузчика"""
+    global _downloader
+    if _downloader is None:
+        settings = get_settings_dep()
+        cache = get_cache_service_dep()
+        _downloader = YouTubeDownloader(settings, cache)
+    return _downloader
 
-@lru_cache()
-def get_telegram_bot_dep() -> "Bot":
-    return Application.builder().token(get_settings_dep().BOT_TOKEN).build().bot
+def get_bot_dep(token: Optional[str] = None) -> Bot:
+    """Получение Telegram бота"""
+    global _bot
+    if _bot is None:
+        if token is None:
+            settings = get_settings_dep()
+            token = settings.BOT_TOKEN
+        _bot = Bot(token=token)
+    return _bot
 
-@lru_cache()
 def get_radio_manager_dep() -> RadioManager:
-    return RadioManager(
-        bot=get_telegram_bot_dep(),
-        settings=get_settings_dep(),
-        downloader=get_downloader_dep(),
-        cache=get_cache_service_dep()
-    )
+    """Получение менеджера радио"""
+    global _radio_manager
+    if _radio_manager is None:
+        settings = get_settings_dep()
+        bot = get_bot_dep()
+        downloader = get_downloader_dep()
+        _radio_manager = RadioManager(bot, settings, downloader)
+    return _radio_manager
+
+def reset_dependencies():
+    """Сброс всех зависимостей (для тестирования)"""
+    global _cache_service, _downloader, _radio_manager, _bot
+    _cache_service = None
+    _downloader = None
+    _radio_manager = None
+    _bot = None

@@ -10,7 +10,6 @@ from telegram.constants import ParseMode
 from config import Settings
 from models import TrackInfo, DownloadResult
 from youtube import YouTubeDownloader, SearchMode
-from cache_service import CacheService
 
 logger = logging.getLogger("radio")
 
@@ -32,16 +31,22 @@ class RadioSession:
     skip_event: asyncio.Event = field(default_factory=asyncio.Event)
     
     async def start(self):
-        if self.is_running: return
+        if self.is_running:
+            return
         self.is_running = True
         self.current_task = asyncio.create_task(self._radio_loop())
-        logger.info(f"[{self.chat_id}] Radio session task created for query: '{self.query}'")
+        logger.info(f"[{self.chat_id}] Radio session started for query: '{self.query}'")
 
     async def stop(self):
-        if not self.is_running: return
+        if not self.is_running:
+            return
         self.is_running = False
         if self.current_task:
             self.current_task.cancel()
+            try:
+                await self.current_task
+            except asyncio.CancelledError:
+                pass
         logger.info(f"[{self.chat_id}] Radio session stopped.")
 
     async def skip(self):
@@ -50,7 +55,11 @@ class RadioSession:
     async def _fill_playlist(self):
         logger.info(f"[{self.chat_id}] Filling playlist for '{self.query}'...")
         try:
-            tracks = await self.downloader.search(self.query, search_mode=self.search_mode, limit=50)
+            tracks = await self.downloader.search(
+                self.query, 
+                search_mode=self.search_mode, 
+                limit=50
+            )
             new_tracks = [t for t in tracks if t.identifier not in self.played_ids]
             if new_tracks:
                 random.shuffle(new_tracks)
@@ -63,88 +72,148 @@ class RadioSession:
 
     async def _radio_loop(self):
         error_count = 0
+        max_errors = 5
+        
         while self.is_running:
             try:
-                if len(self.playlist) < 10:
+                # Заполняем плейлист если мало треков
+                if len(self.playlist) < 5:
                     await self._fill_playlist()
                 
                 if not self.playlist:
                     logger.warning(f"[{self.chat_id}] Playlist is empty. Stopping radio.")
-                    await self.bot.send_message(self.chat_id, f"❌ Не удалось найти музыку по запросу '{self.query}'. Радио остановлено.")
+                    await self.bot.send_message(
+                        self.chat_id, 
+                        f"❌ Не удалось найти музыку по запросу '{self.query}'. Радио остановлено."
+                    )
                     break
                 
                 track = self.playlist.pop(0)
                 self.played_ids.add(track.identifier)
-                if len(self.played_ids) > 500: self.played_ids.clear()
+                
+                # Очищаем историю если слишком большая
+                if len(self.played_ids) > 500:
+                    self.played_ids.clear()
 
-                await self._play_track(track)
+                success = await self._play_track(track)
                 
-                try:
-                    await asyncio.wait_for(self.skip_event.wait(), timeout=90.0)
-                    self.skip_event.clear()
-                    logger.info(f"[{self.chat_id}] Track skipped by user.")
-                except asyncio.TimeoutError:
-                    pass # Normal 90-second rotation
+                if success:
+                    error_count = 0
+                    # Ждём пропуск или таймаут
+                    try:
+                        await asyncio.wait_for(self.skip_event.wait(), timeout=90.0)
+                        self.skip_event.clear()
+                        logger.info(f"[{self.chat_id}] Track skipped by user.")
+                    except asyncio.TimeoutError:
+                        pass  # Нормальная ротация через 90 сек
+                else:
+                    error_count += 1
+                    if error_count >= max_errors:
+                        await self.bot.send_message(
+                            self.chat_id, 
+                            "⚠️ Радио остановлено из-за множественных ошибок загрузки."
+                        )
+                        break
+                    await asyncio.sleep(2)  # Небольшая пауза перед следующей попыткой
                 
-                error_count = 0 
             except asyncio.CancelledError:
+                logger.info(f"[{self.chat_id}] Radio loop cancelled.")
                 break
             except Exception as e:
                 logger.error(f"[{self.chat_id}] Unhandled error in radio loop: {e}", exc_info=True)
                 error_count += 1
-                if error_count >= 3:
-                    await self.bot.send_message(self.chat_id, "⚠️ Радио остановлено из-за множественных ошибок.")
+                if error_count >= max_errors:
+                    try:
+                        await self.bot.send_message(
+                            self.chat_id, 
+                            "⚠️ Радио остановлено из-за множественных ошибок."
+                        )
+                    except:
+                        pass
                     break
                 await asyncio.sleep(5)
+        
         self.is_running = False
         logger.info(f"[{self.chat_id}] Radio loop finished.")
 
-    async def _play_track(self, track: TrackInfo):
+    async def _play_track(self, track: TrackInfo) -> bool:
+        """Воспроизведение трека. Возвращает True при успехе."""
         result = None
         try:
-            logger.info(f"[{self.chat_id}] Processing track: {track.title}")
+            logger.info(f"[{self.chat_id}] Processing track: {track.title} - {track.artist}")
             result = await self.downloader.download(track.identifier)
+            
             if not result or not result.success:
-                logger.error(f"[{self.chat_id}] Download failed: {result.error if result else 'Unknown error'}")
-                return
+                error_msg = result.error if result else 'Unknown error'
+                logger.error(f"[{self.chat_id}] Download failed: {error_msg}")
+                return False
 
+            if not result.file_path or not result.file_path.exists():
+                logger.error(f"[{self.chat_id}] Downloaded file not found")
+                return False
+
+            # Отправляем аудио
             with open(result.file_path, 'rb') as audio_file:
                 await self.bot.send_audio(
-                    chat_id=self._chat_id, audio=audio_file, title=track.title,
-                    performer=track.artist, duration=track.duration
+                    chat_id=self.chat_id,  # ИСПРАВЛЕНО: было self._chat_id
+                    audio=audio_file,
+                    title=track.title,
+                    performer=track.artist,
+                    duration=track.duration
                 )
+            
+            logger.info(f"[{self.chat_id}] Successfully sent: {track.title}")
+            return True
+            
         except Exception as e:
             logger.error(f"[{self.chat_id}] Failed to play track {track.identifier}: {e}", exc_info=True)
+            return False
         finally:
+            # Очистка файла
             if result and result.file_path and result.file_path.exists():
                 try:
                     result.file_path.unlink()
                 except OSError as e:
-                    logger.error(f"[{self.chat_id}] Failed to clean up file {result.file_path}: {e}")
+                    logger.warning(f"[{self.chat_id}] Failed to clean up file: {e}")
+
 
 class RadioManager:
-    def __init__(self, bot: Bot, settings: Settings, downloader: YouTubeDownloader, cache: CacheService):
+    def __init__(self, bot: Bot, settings: Settings, downloader: YouTubeDownloader):
         self._bot = bot
         self._settings = settings
         self._downloader = downloader
-        self._cache = cache
         self._sessions: Dict[int, RadioSession] = {}
         self._locks: Dict[int, asyncio.Lock] = {}
 
-    async def start(self, chat_id: int, query: str, search_mode: SearchMode, display_name: Optional[str] = None):
+    def _get_lock(self, chat_id: int) -> asyncio.Lock:
+        if chat_id not in self._locks:
+            self._locks[chat_id] = asyncio.Lock()
+        return self._locks[chat_id]
+
+    async def start(self, chat_id: int, query: str, search_mode: SearchMode = 'genre', display_name: Optional[str] = None):
         async with self._get_lock(chat_id):
+            # Останавливаем предыдущую сессию
             if chat_id in self._sessions:
                 await self._sessions[chat_id].stop()
             
+            # Обработка случайного жанра
             if query == "random":
                 query, display_name = self._get_random_style_query()
             
-            await self._bot.send_message(chat_id, f"🎧 Запускаю радио: **{display_name or query}**...", parse_mode=ParseMode.MARKDOWN)
+            await self._bot.send_message(
+                chat_id, 
+                f"🎧 Запускаю радио: **{display_name or query}**...", 
+                parse_mode=ParseMode.MARKDOWN
+            )
 
             session = RadioSession(
-                chat_id=chat_id, bot=self._bot, downloader=self._downloader,
-                cache=self._cache, settings=self._settings, query=query, 
-                search_mode=search_mode, display_name=display_name or query
+                chat_id=chat_id,
+                bot=self._bot,
+                downloader=self._downloader,
+                settings=self._settings,
+                query=query,
+                search_mode=search_mode,
+                display_name=display_name or query
             )
             self._sessions[chat_id] = session
             await session.start()
@@ -153,26 +222,41 @@ class RadioManager:
         async with self._get_lock(chat_id):
             if session := self._sessions.pop(chat_id, None):
                 await session.stop()
+                await self._bot.send_message(chat_id, "⏹️ Радио остановлено.")
 
     async def skip(self, chat_id: int):
         if session := self._sessions.get(chat_id):
             await session.skip()
+            await self._bot.send_message(chat_id, "⏭️ Пропускаю трек...")
 
     async def stop_all(self):
+        """Остановка всех сессий (для graceful shutdown)"""
         for chat_id in list(self._sessions.keys()):
-            await self.stop(chat_id)
+            try:
+                await self.stop(chat_id)
+            except Exception as e:
+                logger.error(f"Error stopping session {chat_id}: {e}")
 
-    def _get_lock(self, chat_id: int) -> asyncio.Lock:
-        if chat_id not in self._locks:
-            self._locks[chat_id] = asyncio.Lock()
-        return self._locks[chat_id]
-            
+    def is_playing(self, chat_id: int) -> bool:
+        """Проверка, играет ли радио в чате"""
+        session = self._sessions.get(chat_id)
+        return session is not None and session.is_running
+
     def _get_random_style_query(self) -> tuple[str, str]:
+        """Получение случайного жанра для радио"""
         try:
             genres_data = self._settings.GENRE_DATA
+            if not genres_data:
+                return "lofi beats", "Lo-Fi"
+            
             base_genre_key = random.choice(list(genres_data.keys()))
             main_genre = genres_data.get(base_genre_key, {})
             display_name = main_genre.get("name", base_genre_key)
-            return display_name, display_name
-        except Exception:
+            
+            # Формируем поисковый запрос
+            search_query = main_genre.get("query", display_name)
+            
+            return search_query, display_name
+        except Exception as e:
+            logger.error(f"Error getting random genre: {e}")
             return "lofi beats", "Lo-Fi"
