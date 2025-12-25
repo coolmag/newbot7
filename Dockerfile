@@ -5,6 +5,8 @@ WORKDIR /app
 # Устанавливаем FFmpeg и другие зависимости
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
+    nodejs \
+    npm \
     && rm -rf /var/lib/apt/lists/*
 
 # Копируем requirements
