@@ -50,41 +50,31 @@ class YouTubeDownloader:
     def _get_dl_opts(self, mode: str = "info") -> Dict[str, Any]:
         opts: Dict[str, Any] = {
             "quiet": True,
-            "no_warnings": True,
+            "no_warnings": False, # Включите для отладки
             "noplaylist": True,
-            # ИЗМЕНЕНО: Более гибкий выбор формата
-            # 'bestaudio' часто требует ffmpeg для склейки, 
-            # 'ba/b' выберет лучший доступный поток, если специфический недоступен
             "format": "bestaudio/best",
-            
-            # ДОБАВЛЕНО: Предпочитать m4a, он чаще доступен напрямую без склейки
-            "preferredquality": "192",
-            
             "logger": SilentLogger(),
-            "geo_bypass": True,
             
-            # ИЗМЕНЕНО: YouTube блокирует чистый 'web'. 
-            # Добавляем 'ios' или 'android' — они стабильнее для аудио
+            # Ключевой момент: меняем клиент на мобильный, он реже требует куки
             "extractor_args": {
                 "youtube": {
-                    "player_client": ["ios", "mediaconnect", "web_creator"],
-                    "player_skip": ["configs"],
+                    "player_client": ["android", "ios"],
                 }
             },
+            
+            # Эмуляция реального устройства
+            "user_agent": "com.google.android.youtube/19.29.37 (Linux; U; Android 11; en_US; Pixel 5) gzip",
             
             "postprocessors": [{
                 'key': 'FFmpegExtractAudio',
                 'preferredcodec': 'mp3',
-                'preferredquality': '192',
             }],
             "outtmpl": str(self._settings.DOWNLOADS_DIR / "%(id)s.%(ext)s"),
         }
-
+        
         if mode == "info":
             opts["skip_download"] = True
-            # Для поиска лучше использовать flat extract, чтобы не грузить лишние данные
-            opts["extract_flat"] = "in_playlist"
-        
+            
         return opts
 
     async def search(self, query: str, search_mode: SearchMode = 'genre', limit: int = 30) -> List[TrackInfo]:
