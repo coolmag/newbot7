@@ -64,7 +64,7 @@ class YouTubeDownloader:
             "geo_bypass_country": "US",
             
             # ВАЖНО: Формат без m3u8 - прямые файлы
-            "format": "bestaudio[ext=m4a][filesize<50M]/bestaudio[ext=webm][filesize<50M]/bestaudio[filesize<50M]/best[height<=480][filesize<50M]",
+            "format": "bestaudio[ext=m4a]/bestaudio[ext=webm]/bestaudio[ext=opus]/bestaudio/best[filesize<50M]/best[height<=480][filesize<50M]",
             
             "outtmpl": str(self._settings.DOWNLOADS_DIR / "%(id)s.%(ext)s"),
             
@@ -111,14 +111,14 @@ class YouTubeDownloader:
                 ]
             
             for sq in search_queries:
-                tracks = await self._do_search(sq)
+                tracks = await self._execute_search_query(sq, search_mode)
                 if tracks:
                     return tracks
             
             return []
 
-    async def _do_search(self, search_query: str) -> List[TrackInfo]:
-        """Выполняет поиск"""
+    async def _execute_search_query(self, search_query: str, search_mode: SearchMode) -> List[TrackInfo]:
+        """Выполняет поиск по одному запросу с учётом режима поиска"""
         try:
             opts = self._get_dl_opts("info")
             opts["extract_flat"] = "in_playlist"
@@ -146,8 +146,14 @@ class YouTubeDownloader:
                 return []
             
             tracks = []
-            min_dur = self._settings.RADIO_MIN_DURATION_S
-            max_dur = self._settings.RADIO_MAX_DURATION_S
+            
+            # Определяем лимиты длительности в зависимости от режима поиска
+            if search_mode == 'genre':
+                min_dur = self._settings.GENRE_SEARCH_MIN_DURATION_S
+                max_dur = self._settings.GENRE_SEARCH_MAX_DURATION_S
+            else:
+                min_dur = self._settings.RADIO_MIN_DURATION_S
+                max_dur = self._settings.RADIO_MAX_DURATION_S
             
             for entry in entries:
                 if not entry:
@@ -157,14 +163,14 @@ class YouTubeDownloader:
                 if track:
                     tracks.append(track)
             
-            logger.info(f"[Search] Found {len(tracks)} tracks")
+            logger.info(f"[Search] Found {len(tracks)} tracks for query '{search_query}' (mode: {search_mode})")
             return tracks
             
         except asyncio.TimeoutError:
-            logger.warning("[Search] Timeout")
+            logger.warning(f"[Search] Timeout for '{search_query}'")
             return []
         except Exception as e:
-            logger.error(f"[Search] Error: {e}")
+            logger.error(f"[Search] Error for '{search_query}': {e}", exc_info=True)
             return []
 
     def _parse_entry(self, entry: dict, min_dur: int, max_dur: int) -> Optional[TrackInfo]:
