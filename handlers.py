@@ -182,12 +182,12 @@ def setup_handlers(app: Application, radio: RadioManager, settings: Settings, do
         elif callback.action == CallbackAction.GENRE:
             if callback.value == "main_menu":
                 await query.edit_message_text(
-                    "👇 Выбери категорию:"
+                    "👇 Выбери категорию:",
                     reply_markup=_generate_main_genres_keyboard(settings)
                 )
             else: 
                 await query.edit_message_text(
-                    "🎶 Выбери поджанр:"
+                    "🎶 Выбери поджанр:",
                     reply_markup=_generate_subgenres_keyboard(settings, callback.value)
                 )
 
