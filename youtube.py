@@ -48,52 +48,42 @@ class YouTubeDownloader:
         logger.info("YouTubeDownloader initialized")
 
     def _get_dl_opts(self, mode: str = "info") -> Dict[str, Any]:
-        """Опции для yt-dlp"""
         opts: Dict[str, Any] = {
             "quiet": True,
-            "no_progress": True,
             "no_warnings": True,
             "noplaylist": True,
-            "socket_timeout": 30,
-            "source_address": "0.0.0.0",
-            "logger": SilentLogger(),
-            "retries": 5,
-            "fragment_retries": 5,
-            "ignoreerrors": True,
-            "geo_bypass": True,
-            "geo_bypass_country": "US",
-            
+            # ИЗМЕНЕНО: Более гибкий выбор формата
+            # 'bestaudio' часто требует ffmpeg для склейки, 
+            # 'ba/b' выберет лучший доступный поток, если специфический недоступен
             "format": "bestaudio/best",
-            "extractaudio": True,
-            "postprocessors": [{
-                'key': 'FFmpegExtractAudio',
-                'preferredcodec': 'mp3',
-            }],
             
-            "outtmpl": str(self._settings.DOWNLOADS_DIR / "%(id)s.%(ext)s"),
+            # ДОБАВЛЕНО: Предпочитать m4a, он чаще доступен напрямую без склейки
+            "preferredquality": "192",
             
-            # Используем web клиент без cookies
+            "logger": SilentLogger(),
+            "geo_bypass": True,
+            
+            # ИЗМЕНЕНО: YouTube блокирует чистый 'web'. 
+            # Добавляем 'ios' или 'android' — они стабильнее для аудио
             "extractor_args": {
                 "youtube": {
-                    "player_client": ["web", "mweb"],
-                    "player_skip": ["webpage", "configs"],
+                    "player_client": ["ios", "mediaconnect", "web_creator"],
+                    "player_skip": ["configs"],
                 }
             },
             
-            # Заголовки браузера
-            "http_headers": {
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-                "Accept-Language": "en-US,en;q=0.9",
-            },
+            "postprocessors": [{
+                'key': 'FFmpegExtractAudio',
+                'preferredcodec': 'mp3',
+                'preferredquality': '192',
+            }],
+            "outtmpl": str(self._settings.DOWNLOADS_DIR / "%(id)s.%(ext)s"),
         }
-        
-        # НЕ используем cookies!
-        # Proxy если есть
-        if self._settings.PROXY_URL:
-            opts['proxy'] = self._settings.PROXY_URL
-        
+
         if mode == "info":
             opts["skip_download"] = True
+            # Для поиска лучше использовать flat extract, чтобы не грузить лишние данные
+            opts["extract_flat"] = "in_playlist"
         
         return opts
 
