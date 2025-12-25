@@ -64,7 +64,7 @@ class YouTubeDownloader:
             "geo_bypass_country": "US",
             
             # ВАЖНО: Формат без m3u8 - прямые файлы
-            "format": "bestaudio[ext=m4a]/bestaudio[ext=webm]/bestaudio[ext=opus]/bestaudio/best[filesize<50M]/best[height<=480][filesize<50M]",
+            "format": "bestaudio/best",
             
             "outtmpl": str(self._settings.DOWNLOADS_DIR / "%(id)s.%(ext)s"),
             
