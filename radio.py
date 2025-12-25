@@ -266,7 +266,7 @@ class RadioSession:
                             "Попробуйте позже или выберите другой жанр.",
                             ParseMode.MARKDOWN
                         )
-                        await self._update_status(stop_text, ParseMode.MARKDOWN)
+                        await self._update_status(stop_text[0], stop_text[1])
                         break
                     
                     await asyncio.sleep(2)

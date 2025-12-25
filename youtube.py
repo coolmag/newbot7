@@ -83,16 +83,10 @@ class YouTubeDownloader:
             logger.info(f"[Search] Query: '{query}' | Mode: {search_mode}")
             
             # Формируем поисковые запросы
+            search_queries = [f"ytsearch{limit}:{query}"]
             if search_mode == 'genre':
-                search_queries = [
-                    f"ytsearch{limit}:{query} songs",
-                    f"ytsearch{limit}:{query} music",
-                    f"ytsearch{limit}:{query} audio",
-                ]
-            else:
-                search_queries = [
-                    f"ytsearch{limit}:{query}",
-                ]
+                search_queries.append(f"ytsearch{limit}:{query} music")
+                search_queries.append(f"ytsearch{limit}:{query} songs")
             
             for sq in search_queries:
                 tracks = await self._execute_search_query(sq, search_mode)
@@ -182,9 +176,9 @@ class YouTubeDownloader:
         # Пропускаем стримы
         if 'live' in title.lower() and duration == 0:
             return None
-        if '24/7' in title:
+        if '24/7' in title.lower():
             return None
-        if any(word in title.lower() for word in ['full album', 'playlist', 'best songs of', 'mix']):
+        if any(word in title.lower() for word in ['full album', 'playlist', 'best songs of', 'mix', 'live', 'concert', 'full show', '1080p']):
             return None
         
         artist = (
