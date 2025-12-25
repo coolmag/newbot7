@@ -64,15 +64,7 @@ class Settings(BaseSettings):
             raise ValueError(f"Error decoding JSON from {genres_path}: {e}") from e
         return self
 
-    @model_validator(mode='after')
-    def _create_cookies_file(self) -> "Settings":
-        if self.COOKIES_CONTENT:
-            try:
-                self.COOKIES_FILE.write_text(self.COOKIES_CONTENT)
-                print("Successfully created cookies.txt from environment variable.")
-            except Exception as e:
-                print(f"[ERROR] Could not write to cookies file {self.COOKIES_FILE}: {e}")
-        return self
+
 
 @lru_cache()
 def get_settings() -> Settings:

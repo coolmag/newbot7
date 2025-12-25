@@ -1,7 +1,7 @@
 fastapi==0.110.0
 uvicorn[standard]==0.29.0
 python-telegram-bot==21.3
-yt-dlp>=2024.04.09
+yt-dlp>=2024.12.1
 aiosqlite==0.20.0
 pydantic==2.7.1
 pydantic-settings==2.2.1
