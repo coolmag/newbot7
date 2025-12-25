@@ -56,7 +56,7 @@ class YouTubeDownloader:
             "noplaylist": True,
             "socket_timeout": 30,
             "source_address": "0.0.0.0",
-            "logger": SilentLogger(),
+            "logger": logger,
             "retries": 5,
             "fragment_retries": 5,
             "ignoreerrors": True,
@@ -253,7 +253,7 @@ class YouTubeDownloader:
                 
                 info = await asyncio.wait_for(
                     loop.run_in_executor(None, do_download),
-                    timeout=90.0
+                    timeout=300.0
                 )
                 
                 if not info:
