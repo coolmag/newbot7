@@ -56,7 +56,7 @@ class YouTubeDownloader:
             "noplaylist": True,
             "socket_timeout": 30,
             "source_address": "0.0.0.0",
-            "logger": logger,
+            "logger": SilentLogger(),
             "retries": 5,
             "fragment_retries": 5,
             "ignoreerrors": True,
