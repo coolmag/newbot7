@@ -128,7 +128,7 @@ def setup_handlers(app: Application, radio: RadioManager, settings: Settings, do
             await update.message.reply_text("😕 Ничего не найдено.")
             return
 
-        text = f"**Результаты по запросу "{query}":**\n\n"
+        text = f"**Результаты по запросу \"{query}\":**\n\n"
         for i, track in enumerate(tracks, 1):
             text += f"{i}. {track.artist} - {track.title} ({track.duration // 60}:{track.duration % 60:02d})\n"
         
