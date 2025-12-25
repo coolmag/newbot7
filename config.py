@@ -33,8 +33,10 @@ class Settings(BaseSettings):
     MAX_FILE_SIZE_MB: int = 49  # Telegram limit is 50MB
     
     # --- Radio & Search ---
-    RADIO_MIN_DURATION_S: int = 60    # 1 minute
-    RADIO_MAX_DURATION_S: int = 900   # 15 minutes
+    RADIO_MIN_DURATION_S: int = 60    # 1 minute, for single tracks
+    RADIO_MAX_DURATION_S: int = 900   # 15 minutes, for single tracks
+    GENRE_SEARCH_MIN_DURATION_S: int = 300   # 5 minutes, for genre playlists/mixes
+    GENRE_SEARCH_MAX_DURATION_S: int = 18000 # 5 hours, for genre playlists/mixes
     
     # --- Fields populated by validators ---
     ADMIN_ID_LIST: List[int] = []

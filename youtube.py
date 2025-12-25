@@ -99,11 +99,20 @@ class YouTubeDownloader:
             try:
                 def filter_entry(entry: Dict[str, Any]) -> bool:
                     if not (entry and entry.get("id") and self.YT_ID_RE.match(entry.get("id")) and entry.get("title")): return False
+                    
                     duration = int(entry.get('duration') or 0)
-                    min_dur, max_dur = self._settings.RADIO_MIN_DURATION_S, self._settings.RADIO_MAX_DURATION_S
+                    
+                    # Use different duration limits based on search mode
+                    if search_mode == 'genre':
+                        min_dur, max_dur = self._settings.GENRE_SEARCH_MIN_DURATION_S, self._settings.GENRE_SEARCH_MAX_DURATION_S
+                    else: # for 'track' or 'artist'
+                        min_dur, max_dur = self._settings.RADIO_MIN_DURATION_S, self._settings.RADIO_MAX_DURATION_S
+
                     if not (min_dur <= duration <= max_dur): return False
+                    
                     BANNED_KEYWORDS = ['karaoke', 'vlog', 'parody', 'reaction', 'tutorial', 'commentary', 'live', 'concert', 'shorts', 'подкаст']
                     if any(keyword in entry.get('title', '').lower() for keyword in BANNED_KEYWORDS): return False
+                    
                     return True
 
                 opts = self._get_opts("search")
