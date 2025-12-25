@@ -10,9 +10,10 @@ from telegram.error import BadRequest
 
 from radio import RadioManager
 from config import Settings
-from keyboards import _generate_main_genres_keyboard, _generate_subgenres_keyboard, _get_style_search_query
+from keyboards import get_track_search_keyboard, get_genre_voting_keyboard
 from youtube import YouTubeDownloader
 from cache_service import CacheService
+from models import TrackInfo, DownloadResult
 
 logger = logging.getLogger("handlers")
 SearchMode = Literal['track', 'artist', 'genre']
