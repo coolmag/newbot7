@@ -1,15 +1,31 @@
 import logging
 import sys
 
-
-def setup_logging() -> None:
+def setup_logging():
+    """Настройка логирования для приложения"""
+    
+    # Формат логов
+    log_format = "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s"
+    date_format = "%Y-%m-%d %H:%M:%S"
+    
+    # Настройка корневого логгера
     logging.basicConfig(
         level=logging.INFO,
-        stream=sys.stdout,
-        format="%(asctime)s - [%(levelname)s] - %(name)s - %(message)s",
+        format=log_format,
+        datefmt=date_format,
+        handlers=[
+            logging.StreamHandler(sys.stdout)
+        ]
     )
-    # Скрываем подробные логи httpx и httpcore, чтобы не печатать токен
+    
+    # Уменьшаем шум от библиотек
     logging.getLogger("httpx").setLevel(logging.WARNING)
     logging.getLogger("httpcore").setLevel(logging.WARNING)
-    logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
-    logging.getLogger("yt_dlp").setLevel(logging.ERROR)
+    logging.getLogger("telegram").setLevel(logging.WARNING)
+    logging.getLogger("aiosqlite").setLevel(logging.WARNING)
+    
+    # Наши логгеры
+    logging.getLogger("radio").setLevel(logging.DEBUG)
+    logging.getLogger("handlers").setLevel(logging.DEBUG)
+    
+    logging.info("Logging configured successfully")

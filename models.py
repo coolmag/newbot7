@@ -3,10 +3,72 @@ from enum import Enum
 from pathlib import Path
 from typing import Optional, Any, Dict
 
+
 class Source(Enum):
     YOUTUBE = "youtube"
     SPOTIFY = "spotify"
     SOUNDCLOUD = "soundcloud"
+
+
+class CallbackAction:
+    """Константы для callback actions"""
+    PLAY = "play"
+    DOWNLOAD = "dl"
+    SKIP = "skip"
+    STOP = "stop"
+    VOTE = "vote"
+    GENRE = "genre"
+    PAGE = "page"
+    SELECT = "sel"
+    RADIO = "radio"
+    SEARCH = "search"
+    CANCEL = "cancel"
+    CONFIRM = "confirm"
+
+
+@dataclass
+class VoteCallback:
+    """Callback data для кнопок"""
+    action: str
+    value: str
+    extra: Optional[str] = None
+    
+    SEP: str = field(default=":", init=False, repr=False)
+    
+    def to_callback_data(self) -> str:
+        """Сериализация в строку для callback_data (max 64 bytes)"""
+        if self.extra:
+            data = f"{self.action}{self.SEP}{self.value}{self.SEP}{self.extra}"
+        else:
+            data = f"{self.action}{self.SEP}{self.value}"
+        
+        # Обрезаем если слишком длинно (Telegram limit = 64 bytes)
+        if len(data.encode('utf-8')) > 64:
+            # Укорачиваем value
+            max_value_len = 64 - len(self.action) - 2  # 2 for separator
+            data = f"{self.action}{self.SEP}{self.value[:max_value_len]}"
+        
+        return data
+    
+    @classmethod
+    def from_callback_data(cls, data: str) -> Optional["VoteCallback"]:
+        """Десериализация из callback_data"""
+        if not data:
+            return None
+        
+        parts = data.split(":")
+        if len(parts) < 2:
+            return None
+        
+        action = parts[0]
+        value = parts[1]
+        extra = parts[2] if len(parts) > 2 else None
+        
+        return cls(action=action, value=value, extra=extra)
+    
+    def __str__(self) -> str:
+        return self.to_callback_data()
+
 
 @dataclass
 class TrackInfo:
@@ -23,17 +85,31 @@ class TrackInfo:
         if not info:
             return None
         
-        video_id = info.get('id') or info.get('url', '').split('=')[-1]
+        # Получаем video_id
+        video_id = info.get('id')
+        if not video_id:
+            url = info.get('url', '')
+            if 'watch?v=' in url:
+                video_id = url.split('watch?v=')[-1].split('&')[0]
+            elif 'youtu.be/' in url:
+                video_id = url.split('youtu.be/')[-1].split('?')[0]
+        
         if not video_id:
             return None
         
         title = info.get('title', 'Unknown')
         
-        # Получаем артиста
-        artist = info.get('artist') or info.get('uploader') or info.get('channel') or 'Unknown'
+        # Получаем артиста (пробуем разные поля)
+        artist = (
+            info.get('artist') or 
+            info.get('creator') or
+            info.get('uploader') or 
+            info.get('channel') or 
+            'Unknown'
+        )
         
         # Получаем длительность
-        duration = info.get('duration', 0)
+        duration = info.get('duration') or 0
         if duration is None:
             duration = 0
         
@@ -56,58 +132,6 @@ class DownloadResult:
     file_path: Optional[Path] = None
     track_info: Optional[TrackInfo] = None
     error: Optional[str] = None
-
-
-@dataclass
-class VoteCallback:
-    """Callback data для кнопок голосования/выбора"""
-    action: str  # Тип действия: "vote", "select", "genre", "play", "skip", etc.
-    value: str   # Значение: ID трека, название жанра и т.д.
-    extra: Optional[str] = None  # Дополнительные данные
-    
-    # Разделитель для сериализации
-    SEP: str = field(default=":", init=False, repr=False)
-    
-    def to_callback_data(self) -> str:
-        """Сериализация в строку для callback_data"""
-        if self.extra:
-            return f"{self.action}{self.SEP}{self.value}{self.SEP}{self.extra}"
-        return f"{self.action}{self.SEP}{self.value}"
-    
-    @classmethod
-    def from_callback_data(cls, data: str) -> Optional["VoteCallback"]:
-        """Десериализация из callback_data"""
-        if not data:
-            return None
-        
-        parts = data.split(":")
-        if len(parts) < 2:
-            return None
-        
-        action = parts[0]
-        value = parts[1]
-        extra = parts[2] if len(parts) > 2 else None
-        
-        return cls(action=action, value=value, extra=extra)
-    
-    def __str__(self) -> str:
-        return self.to_callback_data()
-
-
-# Предопределённые actions для удобства
-class CallbackAction:
-    PLAY = "play"
-    DOWNLOAD = "dl"
-    SKIP = "skip"
-    STOP = "stop"
-    VOTE = "vote"
-    GENRE = "genre"
-    PAGE = "page"
-    SELECT = "sel"
-    RADIO = "radio"
-    SEARCH = "search"
-    CANCEL = "cancel"
-    CONFIRM = "confirm"
 
 
 @dataclass

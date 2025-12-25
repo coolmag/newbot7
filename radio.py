@@ -8,10 +8,11 @@ from telegram import Bot
 from telegram.constants import ParseMode
 
 from config import Settings
-from models import TrackInfo, DownloadResult
+from models import TrackInfo
 from youtube import YouTubeDownloader, SearchMode
 
 logger = logging.getLogger("radio")
+
 
 @dataclass
 class RadioSession:
@@ -82,10 +83,13 @@ class RadioSession:
                 
                 if not self.playlist:
                     logger.warning(f"[{self.chat_id}] Playlist is empty. Stopping radio.")
-                    await self.bot.send_message(
-                        self.chat_id, 
-                        f"❌ Не удалось найти музыку по запросу '{self.query}'. Радио остановлено."
-                    )
+                    try:
+                        await self.bot.send_message(
+                            self.chat_id, 
+                            f"❌ Не удалось найти музыку по запросу '{self.query}'. Радио остановлено."
+                        )
+                    except Exception:
+                        pass
                     break
                 
                 track = self.playlist.pop(0)
@@ -109,12 +113,15 @@ class RadioSession:
                 else:
                     error_count += 1
                     if error_count >= max_errors:
-                        await self.bot.send_message(
-                            self.chat_id, 
-                            "⚠️ Радио остановлено из-за множественных ошибок загрузки."
-                        )
+                        try:
+                            await self.bot.send_message(
+                                self.chat_id, 
+                                "⚠️ Радио остановлено из-за множественных ошибок загрузки."
+                            )
+                        except Exception:
+                            pass
                         break
-                    await asyncio.sleep(2)  # Небольшая пауза перед следующей попыткой
+                    await asyncio.sleep(2)
                 
             except asyncio.CancelledError:
                 logger.info(f"[{self.chat_id}] Radio loop cancelled.")
@@ -126,9 +133,9 @@ class RadioSession:
                     try:
                         await self.bot.send_message(
                             self.chat_id, 
-                            "⚠️ Радио остановлено из-за множественных ошибок."
+                            "⚠️ Радио остановлено из-за ошибок."
                         )
-                    except:
+                    except Exception:
                         pass
                     break
                 await asyncio.sleep(5)
@@ -140,7 +147,7 @@ class RadioSession:
         """Воспроизведение трека. Возвращает True при успехе."""
         result = None
         try:
-            logger.info(f"[{self.chat_id}] Processing track: {track.title} - {track.artist}")
+            logger.info(f"[{self.chat_id}] Processing: {track.artist} - {track.title}")
             result = await self.downloader.download(track.identifier)
             
             if not result or not result.success:
@@ -155,7 +162,7 @@ class RadioSession:
             # Отправляем аудио
             with open(result.file_path, 'rb') as audio_file:
                 await self.bot.send_audio(
-                    chat_id=self.chat_id,  # ИСПРАВЛЕНО: было self._chat_id
+                    chat_id=self.chat_id,
                     audio=audio_file,
                     title=track.title,
                     performer=track.artist,
@@ -166,15 +173,16 @@ class RadioSession:
             return True
             
         except Exception as e:
-            logger.error(f"[{self.chat_id}] Failed to play track {track.identifier}: {e}", exc_info=True)
+            logger.error(f"[{self.chat_id}] Failed to play {track.identifier}: {e}", exc_info=True)
             return False
         finally:
             # Очистка файла
-            if result and result.file_path and result.file_path.exists():
+            if result and result.file_path:
                 try:
-                    result.file_path.unlink()
+                    if result.file_path.exists():
+                        result.file_path.unlink()
                 except OSError as e:
-                    logger.warning(f"[{self.chat_id}] Failed to clean up file: {e}")
+                    logger.warning(f"[{self.chat_id}] Cleanup failed: {e}")
 
 
 class RadioManager:
@@ -200,12 +208,6 @@ class RadioManager:
             if query == "random":
                 query, display_name = self._get_random_style_query()
             
-            await self._bot.send_message(
-                chat_id, 
-                f"🎧 Запускаю радио: **{display_name or query}**...", 
-                parse_mode=ParseMode.MARKDOWN
-            )
-
             session = RadioSession(
                 chat_id=chat_id,
                 bot=self._bot,
@@ -222,15 +224,13 @@ class RadioManager:
         async with self._get_lock(chat_id):
             if session := self._sessions.pop(chat_id, None):
                 await session.stop()
-                await self._bot.send_message(chat_id, "⏹️ Радио остановлено.")
 
     async def skip(self, chat_id: int):
         if session := self._sessions.get(chat_id):
             await session.skip()
-            await self._bot.send_message(chat_id, "⏭️ Пропускаю трек...")
 
     async def stop_all(self):
-        """Остановка всех сессий (для graceful shutdown)"""
+        """Остановка всех сессий"""
         for chat_id in list(self._sessions.keys()):
             try:
                 await self.stop(chat_id)
@@ -238,25 +238,32 @@ class RadioManager:
                 logger.error(f"Error stopping session {chat_id}: {e}")
 
     def is_playing(self, chat_id: int) -> bool:
-        """Проверка, играет ли радио в чате"""
         session = self._sessions.get(chat_id)
         return session is not None and session.is_running
 
     def _get_random_style_query(self) -> tuple[str, str]:
-        """Получение случайного жанра для радио"""
+        """Получение случайного жанра"""
         try:
             genres_data = self._settings.GENRE_DATA
             if not genres_data:
-                return "lofi beats", "Lo-Fi"
+                return "lofi hip hop beats", "Lo-Fi"
             
-            base_genre_key = random.choice(list(genres_data.keys()))
-            main_genre = genres_data.get(base_genre_key, {})
-            display_name = main_genre.get("name", base_genre_key)
+            # Выбираем случайный основной жанр
+            main_key = random.choice(list(genres_data.keys()))
+            main_genre = genres_data[main_key]
             
-            # Формируем поисковый запрос
-            search_query = main_genre.get("query", display_name)
+            # Выбираем случайный поджанр
+            subgenres = main_genre.get("subgenres", {})
+            if subgenres:
+                sub_key = random.choice(list(subgenres.keys()))
+                sub_genre = subgenres[sub_key]
+                query = sub_genre.get("query", f"{main_key} {sub_key}")
+                display_name = f"{sub_genre.get('icon', '')} {sub_genre.get('name', sub_key)}"
+            else:
+                query = main_genre.get("query", main_key)
+                display_name = f"{main_genre.get('icon', '')} {main_genre.get('name', main_key)}"
             
-            return search_query, display_name
+            return query, display_name
         except Exception as e:
             logger.error(f"Error getting random genre: {e}")
-            return "lofi beats", "Lo-Fi"
+            return "lofi hip hop beats", "Lo-Fi"
