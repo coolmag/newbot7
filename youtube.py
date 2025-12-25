@@ -63,8 +63,12 @@ class YouTubeDownloader:
             "geo_bypass": True,
             "geo_bypass_country": "US",
             
-            # ВАЖНО: Формат без m3u8 - прямые файлы
             "format": "bestaudio/best",
+            "extractaudio": True,
+            "postprocessors": [{
+                'key': 'FFmpegExtractAudio',
+                'preferredcodec': 'mp3',
+            }],
             
             "outtmpl": str(self._settings.DOWNLOADS_DIR / "%(id)s.%(ext)s"),
             
