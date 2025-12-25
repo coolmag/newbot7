@@ -247,9 +247,9 @@ class RadioSession:
                     error_count = 0
                     self.tracks_played += 1
                     
-                    # Ждём skip или таймаут
+                    # Ждём 90 секунд или команду skip
                     try:
-                        wait_time = float(track.duration + 10) if track.duration > 0 else 180.0
+                        wait_time = 90.0 # Новый трек каждые 90 секунд
                         await asyncio.wait_for(self.skip_event.wait(), timeout=wait_time)
                         self.skip_event.clear()
                         logger.info(f"[{self.chat_id}] ⏭️ Skipped by user")
