@@ -204,6 +204,8 @@ class YouTubeDownloader:
             return None
         if '24/7' in title:
             return None
+        if any(word in title.lower() for word in ['full album', 'playlist', 'best songs of', 'mix']):
+            return None
         
         artist = (
             entry.get('artist') or 

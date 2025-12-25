@@ -36,7 +36,7 @@ class Settings(BaseSettings):
     RADIO_MIN_DURATION_S: int = 60    # 1 minute, for single tracks
     RADIO_MAX_DURATION_S: int = 900   # 15 minutes, for single tracks
     GENRE_SEARCH_MIN_DURATION_S: int = 120   # 2 minutes, for genre playlists/mixes
-    GENRE_SEARCH_MAX_DURATION_S: int = 3600 # 60 minutes, for genre playlists/mixes
+    GENRE_SEARCH_MAX_DURATION_S: int = 600 # 10 minutes, for genre playlists/mixes
     
     # --- Fields populated by validators ---
     ADMIN_ID_LIST: List[int] = []
