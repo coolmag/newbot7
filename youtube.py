@@ -246,11 +246,15 @@ class YouTubeDownloader:
                 loop = asyncio.get_running_loop()
                 
                 def do_download():
+                    logger.debug(f"[Download] yt-dlp started for {video_url}")
                     try:
                         with yt_dlp.YoutubeDL(download_opts) as ydl:
-                            return ydl.extract_info(video_url, download=True)
+                            logger.debug(f"[Download] Calling extract_info for {video_url}")
+                            info = ydl.extract_info(video_url, download=True)
+                            logger.debug(f"[Download] extract_info returned for {video_url}")
+                            return info
                     except Exception as e:
-                        logger.error(f"Download error: {e}")
+                        logger.error(f"[Download] yt-dlp internal error for {video_url}: {e}")
                         return None
                 
                 info = await asyncio.wait_for(
