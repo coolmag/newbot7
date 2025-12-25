@@ -43,17 +43,16 @@ COSMIC_THEMES = {
     ]
 }
 
+
 def get_progress_bar(percent: int, length: int = 15) -> str:
     """Создаёт космический прогресс-бар"""
     filled = int(length * percent / 100)
     empty = length - filled
     
-    # Разные стили прогресс-бара
     styles = [
         ("▓", "░"),
         ("█", "░"),
         ("◉", "○"),
-        ("⬢", "⬡"),
         ("●", "○"),
     ]
     fill_char, empty_char = random.choice(styles)
@@ -61,51 +60,30 @@ def get_progress_bar(percent: int, length: int = 15) -> str:
     bar = fill_char * filled + empty_char * empty
     return f"[{bar}]"
 
+
 def format_duration(seconds: int) -> str:
     """Форматирует длительность"""
     mins, secs = divmod(seconds, 60)
     return f"{mins}:{secs:02d}"
 
-def get_cosmic_status(track: TrackInfo, genre_name: str = "") -> str:
-    """Генерирует космический статус для трека"""
-    icon = random.choice(COSMIC_THEMES["playing"])
-    
-    # Случайные эффекты
-    effects = ["✧", "✦", "⋆", "★", "☆", "·", "•", "◦"]
-    left_effect = "".join(random.choices(effects, k=3))
-    right_effect = "".join(random.choices(effects, k=3))
-    
-    # Случайный прогресс для визуального эффекта
-    progress = get_progress_bar(random.randint(20, 80))
-    
-    status = f"""
-{left_effect} {icon} CYBER RADIO {icon} {right_effect}
-
-╔══════════════════════════════════╗
-║  🎵 {track.title[:30]}{'...' if len(track.title) > 30 else ''}
-║  👤 {track.artist[:25]}{'...' if len(track.artist) > 25 else ''}
-║  ⏱ {format_duration(track.duration)}
-╚══════════════════════════════════╝
-
-{progress}
-
-📻 Волна: {genre_name or "Random Mix"}
-🌌 Частота: {random.randint(88, 108)}.{random.randint(0, 9)} MHz
-"""
-    return status.strip()
 
 def get_now_playing_message(track: TrackInfo, genre_name: str = "") -> str:
     """Компактное сообщение о текущем треке"""
     icon = random.choice(["🎧", "🎵", "🎶", "📻", "💿"])
     stars = "".join(random.choices(["✧", "✦", "⋆", "·"], k=5))
     
-    return f"""{stars} {icon} NOW PLAYING {icon} {stars}
-
-🎵 *{track.title}*
-👤 {track.artist}
-⏱ {format_duration(track.duration)}
-
-📻 _{genre_name or "Cosmic Waves"}_"""
+    title = track.title[:40] if len(track.title) > 40 else track.title
+    artist = track.artist[:30] if len(track.artist) > 30 else track.artist
+    duration = format_duration(track.duration)
+    wave = genre_name if genre_name else "Cosmic Waves"
+    
+    return (
+        f"{stars} {icon} NOW PLAYING {icon} {stars}\n\n"
+        f"🎵 *{title}*\n"
+        f"👤 {artist}\n"
+        f"⏱ {duration}\n\n"
+        f"📻 _{wave}_"
+    )
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -161,14 +139,13 @@ class RadioSession:
             if self.status_message:
                 try:
                     await self.status_message.edit_text(text, parse_mode=parse_mode)
+                    return
                 except BadRequest:
-                    # Сообщение не изменилось или удалено
                     self.status_message = None
             
-            if not self.status_message:
-                self.status_message = await self.bot.send_message(
-                    self.chat_id, text, parse_mode=parse_mode
-                )
+            self.status_message = await self.bot.send_message(
+                self.chat_id, text, parse_mode=parse_mode
+            )
         except Exception as e:
             logger.warning(f"[{self.chat_id}] Status update error: {e}")
 
@@ -177,14 +154,15 @@ class RadioSession:
         if self.status_message:
             try:
                 await self.status_message.delete()
-            except:
+            except Exception:
                 pass
             self.status_message = None
 
     async def _fill_playlist(self):
         """Заполняет плейлист"""
         search_msg = random.choice(COSMIC_THEMES["search"])
-        await self._update_status(f"{search_msg}\n\n🔍 Запрос: _{self.query}_", ParseMode.MARKDOWN)
+        status_text = f"{search_msg}\n\n🔍 Запрос: _{self.query}_ "
+        await self._update_status(status_text, ParseMode.MARKDOWN)
         
         logger.info(f"[{self.chat_id}] 🔍 Searching: '{self.query}'")
         
@@ -207,7 +185,7 @@ class RadioSession:
             else:
                 logger.warning(f"[{self.chat_id}] ⚠️ No new tracks for '{self.query}'")
                 
-                # Пробуем упрощённый запрос
+                # Fallback с упрощённым запросом
                 if " " in self.query:
                     simple_query = self.query.split()[0] + " music"
                     logger.info(f"[{self.chat_id}] 🔄 Trying fallback: '{simple_query}'")
@@ -229,12 +207,12 @@ class RadioSession:
         max_errors = 5
         
         # Начальное сообщение
-        await self._update_status(
+        start_text = (
             f"📻 *Запускаю радио*\n\n"
             f"🎵 Волна: _{self.display_name or self.query}_\n"
-            f"🌌 Настройка частоты...",
-            ParseMode.MARKDOWN
+            f"🌌 Настройка частоты..."
         )
+        await self._update_status(start_text, ParseMode.MARKDOWN)
         
         while self.is_running:
             try:
@@ -244,12 +222,12 @@ class RadioSession:
                 
                 if not self.playlist:
                     logger.error(f"[{self.chat_id}] ❌ Empty playlist")
-                    await self._update_status(
+                    error_text = (
                         f"❌ *Не удалось найти музыку*\n\n"
-                        f"Запрос: _{self.display_name or self.query}_\n"
-                        f"Попробуйте другой жанр.",
-                        ParseMode.MARKDOWN
+                        f"Запрос: _{self.query}_\n"
+                        f"Попробуйте другой жанр."
                     )
+                    await self._update_status(error_text, ParseMode.MARKDOWN)
                     break
                 
                 # Берём следующий трек
@@ -271,10 +249,8 @@ class RadioSession:
                     
                     # Ждём skip или таймаут
                     try:
-                        await asyncio.wait_for(
-                            self.skip_event.wait(), 
-                            timeout=float(track.duration + 10)  # длина трека + буфер
-                        )
+                        wait_time = float(track.duration + 10) if track.duration > 0 else 180.0
+                        await asyncio.wait_for(self.skip_event.wait(), timeout=wait_time)
                         self.skip_event.clear()
                         logger.info(f"[{self.chat_id}] ⏭️ Skipped by user")
                     except asyncio.TimeoutError:
@@ -284,12 +260,13 @@ class RadioSession:
                     logger.warning(f"[{self.chat_id}] ⚠️ Error count: {error_count}/{max_errors}")
                     
                     if error_count >= max_errors:
-                        await self._update_status(
+                        stop_text = (
                             "❌ *Радио остановлено*\n\n"
                             "Слишком много ошибок загрузки.\n"
                             "Попробуйте позже или выберите другой жанр.",
                             ParseMode.MARKDOWN
                         )
+                        await self._update_status(stop_text, ParseMode.MARKDOWN)
                         break
                     
                     await asyncio.sleep(2)
@@ -313,13 +290,10 @@ class RadioSession:
         try:
             # Статус загрузки
             loading_msg = random.choice(COSMIC_THEMES["loading"])
-            await self._update_status(
-                f"{loading_msg}\n\n"
-                f"🎵 _{track.title}_
-"
-                f"👤 {track.artist}",
-                ParseMode.MARKDOWN
-            )
+            title_short = track.title[:35] + "..." if len(track.title) > 35 else track.title
+            
+            loading_text = f"{loading_msg}\n\n🎵 _{title_short}_\n👤 {track.artist}"
+            await self._update_status(loading_text, ParseMode.MARKDOWN)
             
             logger.info(f"[{self.chat_id}] 📥 Downloading: {track.title}")
             
@@ -338,6 +312,8 @@ class RadioSession:
             # Отправляем аудио
             logger.info(f"[{self.chat_id}] 📤 Sending: {track.title}")
             
+            caption = get_now_playing_message(track, self.display_name)
+            
             with open(result.file_path, 'rb') as audio_file:
                 await self.bot.send_audio(
                     chat_id=self.chat_id,
@@ -345,11 +321,11 @@ class RadioSession:
                     title=track.title,
                     performer=track.artist,
                     duration=track.duration,
-                    caption=get_now_playing_message(track, self.display_name),
+                    caption=caption,
                     parse_mode=ParseMode.MARKDOWN
                 )
             
-            # Обновляем статус
+            # Удаляем статус после успешной отправки
             await self._delete_status()
             
             logger.info(f"[{self.chat_id}] ✅ Sent: {track.title}")
@@ -394,7 +370,7 @@ class RadioManager:
         display_name: Optional[str] = None
     ):
         async with self._get_lock(chat_id):
-            # Стоп предыдущей
+            # Стоп предыдущей сессии
             if chat_id in self._sessions:
                 await self._sessions[chat_id].stop()
             
@@ -404,9 +380,10 @@ class RadioManager:
             
             # Стартовое сообщение
             start_msg = random.choice(COSMIC_THEMES["search"])
+            wave_name = display_name if display_name else query
             await self._bot.send_message(
                 chat_id,
-                f"{start_msg}\n\n🎧 Волна: *{display_name or query}*",
+                f"{start_msg}\n\n🎧 Волна: *{wave_name}*",
                 parse_mode=ParseMode.MARKDOWN
             )
             
@@ -417,7 +394,7 @@ class RadioManager:
                 settings=self._settings,
                 query=query,
                 search_mode=search_mode,
-                display_name=display_name or query
+                display_name=display_name if display_name else query
             )
             
             self._sessions[chat_id] = session
@@ -425,11 +402,13 @@ class RadioManager:
 
     async def stop(self, chat_id: int):
         async with self._get_lock(chat_id):
-            if session := self._sessions.pop(chat_id, None):
+            session = self._sessions.pop(chat_id, None)
+            if session:
                 await session.stop()
 
     async def skip(self, chat_id: int):
-        if session := self._sessions.get(chat_id):
+        session = self._sessions.get(chat_id)
+        if session:
             await session.skip()
 
     async def stop_all(self):
@@ -443,12 +422,12 @@ class RadioManager:
         session = self._sessions.get(chat_id)
         return session is not None and session.is_running
 
-    def _get_random_style_query(self) -> tuple[str, str]:
+    def _get_random_style_query(self) -> tuple:
         """Случайный жанр из конфига"""
         try:
             genres = self._settings.GENRE_DATA
             if not genres:
-                return "lofi hip hop", "Lo-Fi"
+                return ("lofi hip hop", "Lo-Fi")
             
             main_key = random.choice(list(genres.keys()))
             main = genres[main_key]
@@ -458,14 +437,17 @@ class RadioManager:
                 sub_key = random.choice(list(subs.keys()))
                 sub = subs[sub_key]
                 query = sub.get("query", f"{main_key} {sub_key}")
-                name = f"{sub.get('icon', '🎵')} {sub.get('name', sub_key)}"
+                icon = sub.get("icon", "🎵")
+                name = sub.get("name", sub_key)
+                display = f"{icon} {name}"
             else:
                 query = main.get("query", main_key)
-                name = f"{main.get('icon', '🎵')} {main.get('name', main_key)}"
+                icon = main.get("icon", "🎵")
+                name = main.get("name", main_key)
+                display = f"{icon} {name}"
             
-            logger.debug(f"Random genre selected: '{name}' with query '{query}'")
-            return query, name
+            return (query, display)
             
         except Exception as e:
             logger.error(f"Random genre error: {e}")
-            return "lofi hip hop beats", "🎧 Lo-Fi"
+            return ("lofi hip hop beats", "🎧 Lo-Fi")
