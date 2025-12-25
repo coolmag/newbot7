@@ -1,6 +1,0 @@
-# Configuration for Railway's Nixpacks builders
-# This file ensures that the `ffmpeg` package is available in the environment,
-# which is crucial for `yt-dlp` to reliably convert audio to MP3 format.
-
-[phases.setup]
-nixPkgs = ["ffmpeg"]
