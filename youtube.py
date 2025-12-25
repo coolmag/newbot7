@@ -100,20 +100,21 @@ class YouTubeDownloader:
                 def filter_entry(entry: Dict[str, Any]) -> bool:
                     if not (entry and entry.get("id") and self.YT_ID_RE.match(entry.get("id")) and entry.get("title")): return False
                     
-                    # 1. Category Check (Most important filter)
-                    categories = entry.get('categories')
-                    if not isinstance(categories, list) or 'Music' not in categories:
-                        return False
+                    # For genre searches, be less strict. For specific tracks/artists, require the 'Music' category.
+                    if search_mode != 'genre':
+                        categories = entry.get('categories')
+                        if not isinstance(categories, list) or 'Music' not in categories:
+                            return False
 
-                    # 2. Duration Check
+                    # Duration Check
                     duration = int(entry.get('duration') or 0)
                     if search_mode == 'genre':
                         min_dur, max_dur = self._settings.GENRE_SEARCH_MIN_DURATION_S, self._settings.GENRE_SEARCH_MAX_DURATION_S
-                    else:
+                    else: # for 'track' or 'artist'
                         min_dur, max_dur = self._settings.RADIO_MIN_DURATION_S, self._settings.RADIO_MAX_DURATION_S
                     if not (min_dur <= duration <= max_dur): return False
                     
-                    # 3. Keyword Check
+                    # Keyword Check
                     BANNED_KEYWORDS = ['karaoke', 'vlog', 'parody', 'reaction', 'tutorial', 'commentary', 'live', 'concert', 'shorts', 'подкаст']
                     if any(keyword in entry.get('title', '').lower() for keyword in BANNED_KEYWORDS): return False
                     
