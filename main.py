@@ -15,7 +15,6 @@ from dependencies import (
     get_cache_service_dep,
     get_downloader_dep,
     get_radio_manager_dep,
-    get_genre_voting_service_dep,
 )
 from config import Settings
 from logging_setup import setup_logging
@@ -41,9 +40,9 @@ async def lifespan(app: FastAPI):
     cache: CacheService = get_cache_service_dep()
     downloader: YouTubeDownloader = get_downloader_dep()
     radio_manager: RadioManager = get_radio_manager_dep()
-    voting_service: GenreVotingService = get_genre_voting_service_dep()
 
     settings.DOWNLOADS_DIR.mkdir(parents=True, exist_ok=True)
+    settings.TEMP_AUDIO_DIR.mkdir(parents=True, exist_ok=True)
     await cache.initialize()
 
     tg_app = Application.builder().token(settings.BOT_TOKEN).build()
@@ -55,7 +54,6 @@ async def lifespan(app: FastAPI):
         radio=radio_manager,
         settings=settings,
         downloader=downloader,
-        voting_service=voting_service,
         cache_service=cache
     )
     
@@ -70,8 +68,6 @@ async def lifespan(app: FastAPI):
     await tg_app.bot.set_webhook(url=webhook_url)
     
     logger.info(f"✅ Bot started. Webhook: {webhook_url}")
-    
-    # --- App is running ---
     yield
     
     # --- Shutdown ---
