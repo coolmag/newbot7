@@ -1,94 +1,56 @@
 {
-    "electronic": {
-        "name": "Электронная",
-        "icon": "🎧",
-        "subgenres": {
-            "house": { "name": "House", "icon": "🏠", "query": "house music" },
-            "techno": { "name": "Techno", "icon": "⚡", "query": "techno" },
-            "trance": { "name": "Trance", "icon": "🌀", "query": "trance music" },
-            "dubstep": { "name": "Dubstep", "icon": "💥", "query": "dubstep" },
-            "drum_and_bass": { "name": "Drum & Bass", "icon": "🥁", "query": "drum and bass" }
-        }
-    },
-    "chill": {
-        "name": "Расслабляющая",
-        "icon": "😌",
-        "subgenres": {
-            "lofi": { "name": "Lo-Fi", "icon": "📻", "query": "lofi hip hop" },
-            "ambient": { "name": "Ambient", "icon": "🌌", "query": "ambient relaxing" },
-            "chillhop": { "name": "Chillhop", "icon": "☕", "query": "chillhop" },
-            "jazz_lofi": { "name": "Jazz Lo-Fi", "icon": "🎷", "query": "jazz lofi" }
-        }
-    },
     "rock": {
-        "name": "Рок",
-        "icon": "🎸",
-        "subgenres": {
-            "classic_rock": { 
-                "name": "Классический рок", "icon": "🎵", "query": "classic rock",
-                "decades": ["1970s", "1980s", "1990s"]
-            },
-            "alternative": { 
-                "name": "Альтернатива", "icon": "🔊", "query": "alternative rock",
-                "decades": ["1990s", "2000s", "2010s"]
-            },
-            "indie": { "name": "Инди", "icon": "🎤", "query": "indie rock" },
-            "metal": { "name": "Метал", "icon": "🤘", "query": "heavy metal" }
+        "name": "🎸 Рок и Альтернатива",
+        "decades": {
+            "1960s": { "name": "60-е", "queries": ["Psychedelic Rock 60s", "Classic Rock 1960s"] },
+            "1970s": { "name": "70-е", "queries": ["Hard Rock 70s", "Progressive Rock 70s", "Glam Rock"] },
+            "1980s": { "name": "80-е", "queries": ["Post-Punk", "New Wave 80s", "Glam Metal"] },
+            "1990s": { "name": "90-е", "queries": ["Grunge", "Britpop", "Alternative Rock 90s"] },
+            "2000s": { "name": "00-е", "queries": ["Indie Rock 2000s", "Pop-Punk", "Nu Metal"] },
+            "2010s": { "name": "10-е", "queries": ["Modern Rock", "Indie Pop", "Post-Punk Revival"] }
+        }
+    },
+    "electronic": {
+        "name": "🎹 Электронная музыка",
+        "decades": {
+            "1970s": { "name": "70-е", "queries": ["Disco music", "Space Disco", "Krautrock"] },
+            "1980s": { "name": "80-е", "queries": ["Synth-Pop 80s", "Italo Disco", "Chicago House"] },
+            "1990s": { "name": "90-е", "queries": ["Eurodance", "Big Beat", "Trance 90s", "Jungle music", "Drum and Bass"] },
+            "2000s": { "name": "00-е", "queries": ["Electro House", "Dubstep 2000s", "Minimal Techno"] },
+            "2010s": { "name": "10-е", "queries": ["EDM hits", "Deep House", "Future Bass", "Tropical House"] },
+            "2020s": { "name": "20-е", "queries": ["Phonk", "Melodic Techno", "Synthwave", "Retro-futurism"] }
         }
     },
     "hip_hop": {
-        "name": "Хип-Хоп",
-        "icon": "🎤",
-        "subgenres": {
-            "old_school": { 
-                "name": "Old School", "icon": "📼", "query": "old school hip hop",
-                "decades": ["1980s", "1990s"]
-            },
-            "trap": { "name": "Trap", "icon": "🔥", "query": "trap music" },
-            "boom_bap": { "name": "Boom Bap", "icon": "💿", "query": "boom bap hip hop" },
-            "rap_ru": { "name": "Русский рэп", "icon": "🇷🇺", "query": "русский рэп" }
+        "name": "🎤 Хип-хоп и R&B",
+        "decades": {
+            "1980s": { "name": "80-е", "queries": ["Old School Hip Hop", "Electro-funk"] },
+            "1990s": { "name": "90-е", "queries": ["Golden age hip hop", "G-Funk", "East Coast hip hop 90s", "West Coast hip hop 90s", "90s R&B"] },
+            "2000s": { "name": "00-е", "queries": ["Dirty South", "Crunk", "2000s R&B hits"] },
+            "2010s": { "name": "10-е", "queries": ["Trap music", "Cloud Rap", "Mumble Rap", "2010s R&B"] },
+            "2020s": { "name": "20-е", "queries": ["UK Drill", "Rage rap", "Alternative R&B"] }
         }
     },
     "pop": {
-        "name": "Поп",
-        "icon": "⭐",
-        "subgenres": {
-            "hits": { "name": "Хиты", "icon": "🏆", "query": "pop hits 2024" },
-            "dance_pop": { 
-                "name": "Dance Pop", "icon": "💃", "query": "dance pop",
-                "decades": ["1990s", "2000s", "2010s"]
-            },
-            "synth_pop": { 
-                "name": "Synth Pop", "icon": "🎹", "query": "synthpop",
-                "decades": ["1980s", "2020s"]
-            }
+        "name": "💃 Поп-музыка",
+        "decades": {
+            "1970s": { "name": "70-е", "queries": ["70s pop hits", "Soft Rock 70s"] },
+            "1980s": { "name": "80-е", "queries": ["80s dance-pop", "80s pop hits"] },
+            "1990s": { "name": "90-е", "queries": ["Teen Pop", "90s boy bands", "90s girl groups"] },
+            "2000s": { "name": "00-е", "queries": ["Electropop", "Hip-Pop", "2000s pop hits"] },
+            "2010s": { "name": "10-е", "queries": ["Dance-Pop 2010s", "Latin Pop", "Reggaeton"] },
+            "2020s": { "name": "20-е", "queries": ["Hyperpop", "K-Pop hits"] }
         }
     },
-    "jazz": {
-        "name": "Джаз",
-        "icon": "🎷",
-        "subgenres": {
-            "smooth": { "name": "Smooth Jazz", "icon": "🌙", "query": "smooth jazz" },
-            "bebop": { "name": "Bebop", "icon": "🎺", "query": "bebop jazz" },
-            "fusion": { "name": "Jazz Fusion", "icon": "🎸", "query": "jazz fusion" }
-        }
-    },
-    "classical": {
-        "name": "Классика",
-        "icon": "🎻",
-        "subgenres": {
-            "piano": { "name": "Фортепиано", "icon": "🎹", "query": "classical piano" },
-            "orchestra": { "name": "Оркестр", "icon": "🎼", "query": "classical orchestra" },
-            "modern": { "name": "Современная", "icon": "✨", "query": "modern classical" }
-        }
-    },
-    "world": {
-        "name": "Этническая",
-        "icon": "🌍",
-        "subgenres": {
-            "celtic": { "name": "Кельтская", "icon": "☘️", "query": "celtic music" },
-            "asian": { "name": "Азиатская", "icon": "🏯", "query": "asian traditional" },
-            "latin": { "name": "Латинская", "icon": "💃", "query": "latin music" }
+    "jazz_funk_soul": {
+        "name": "🎷 Джаз, Фанк и Соул",
+        "decades": {
+            "1960s": { "name": "60-е", "queries": ["Bebop", "Cool Jazz", "60s Soul music"] },
+            "1970s": { "name": "70-е", "queries": ["Jazz Fusion", "Funk 70s", "Soul music 70s"] },
+            "1980s": { "name": "80-е", "queries": ["Smooth Jazz", "Boogie funk"] },
+            "1990s": { "name": "90-е", "queries": ["Acid Jazz", "Neo-Soul"] },
+            "2000s": { "name": "00-е", "queries": ["Nu-Jazz", "Modern Soul"] },
+            "2010s": { "name": "10-е", "queries": ["Lo-Fi Beats", "Modern Funk"] }
         }
     }
 }

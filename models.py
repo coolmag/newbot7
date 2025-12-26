@@ -17,13 +17,17 @@ class CallbackAction:
     SKIP = "skip"
     STOP = "stop"
     VOTE = "vote"
-    GENRE = "genre"
+    GENRE = "genre" # DEPRECATED, will be removed
+    RADIO = "radio" # DEPRECATED, will be removed
     PAGE = "page"
     SELECT = "sel"
-    RADIO = "radio"
     SEARCH = "search"
     CANCEL = "cancel"
     CONFIRM = "confirm"
+    
+    # New actions for Era -> Decade flow
+    ERA = "era"
+    DECADE = "decade"
 
 
 @dataclass
