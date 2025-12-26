@@ -46,6 +46,7 @@ class RadioSession:
     settings: Settings
     query: str
     display_name: str
+    decade: Optional[str] = None
     
     is_running: bool = field(init=False, default=False)
     playlist: List[TrackInfo] = field(default_factory=list)
@@ -60,7 +61,7 @@ class RadioSession:
             return
         self.is_running = True
         self.current_task = asyncio.create_task(self._radio_loop())
-        logger.info(f"[{self.chat_id}] 🚀 Radio started: '{self.query}'")
+        logger.info(f"[{self.chat_id}] 🚀 Radio started: '{self.query}' decade: {self.decade}")
 
     async def stop(self):
         if not self.is_running:
@@ -95,11 +96,10 @@ class RadioSession:
 
     async def _fill_playlist(self):
         await self._update_status(f"{COSMIC_THEMES['search']}\n\nПоток: _{self.display_name}_")
-        logger.info(f"[{self.chat_id}] 🔍 Searching for '{self.query}'")
+        logger.info(f"[{self.chat_id}] 🔍 Searching for '{self.query}', decade: {self.decade}")
         
         try:
-            # The new search is cached and reliable, no fallback needed
-            tracks = await self.downloader.search(self.query, limit=30)
+            tracks = await self.downloader.search(self.query, decade=self.decade, limit=30)
             new_tracks = [t for t in tracks if t.identifier not in self.played_ids]
             
             if new_tracks:
@@ -107,7 +107,7 @@ class RadioSession:
                 self.playlist.extend(new_tracks)
                 logger.info(f"[{self.chat_id}] ✅ Added {len(new_tracks)} new tracks to playlist.")
             else:
-                logger.warning(f"[{self.chat_id}] ⚠️ No new tracks found for query '{self.query}'.")
+                logger.warning(f"[{self.chat_id}] ⚠️ No new tracks found for query '{self.query}' with decade '{self.decade}'.")
         except Exception as e:
             logger.error(f"[{self.chat_id}] ❌ Playlist fill error: {e}", exc_info=True)
 
@@ -134,7 +134,6 @@ class RadioSession:
                 if success:
                     self.tracks_played += 1
                     try:
-                        # Wait for a bit before the next track
                         await asyncio.wait_for(self.skip_event.wait(), timeout=90.0)
                         self.skip_event.clear()
                         logger.info(f"[{self.chat_id}] ⏭️ Skipped by user")
@@ -165,7 +164,6 @@ class RadioSession:
 
             caption = get_now_playing_message(track, self.display_name)
             
-            # Case 1: Cache hit, send by file_id
             if result.file_id:
                 logger.info(f"[{self.chat_id}] ⚡ Cache hit, sending by file_id: {track.title}")
                 await self.bot.send_audio(
@@ -174,7 +172,6 @@ class RadioSession:
                     caption=caption,
                     parse_mode=ParseMode.MARKDOWN
                 )
-            # Case 2: Cache miss, send file and cache the new file_id
             elif result.file_path and result.file_path.exists():
                 logger.info(f"[{self.chat_id}] 📤 Sending file and caching: {track.title}")
                 with open(result.file_path, 'rb') as audio_file:
@@ -215,7 +212,7 @@ class RadioManager:
         self._locks.setdefault(chat_id, asyncio.Lock())
         return self._locks[chat_id]
 
-    async def start(self, chat_id: int, query: str, display_name: Optional[str] = None):
+    async def start(self, chat_id: int, query: str, display_name: Optional[str] = None, decade: Optional[str] = None):
         async with self._get_lock(chat_id):
             if chat_id in self._sessions:
                 await self._sessions[chat_id].stop()
@@ -236,7 +233,8 @@ class RadioManager:
                 downloader=self._downloader,
                 settings=self._settings,
                 query=query,
-                display_name=display_name
+                display_name=display_name,
+                decade=decade
             )
             self._sessions[chat_id] = session
             await session.start()

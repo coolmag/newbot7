@@ -3,129 +3,64 @@
         "name": "Электронная",
         "icon": "🎧",
         "subgenres": {
-            "house": {
-                "name": "House",
-                "icon": "🏠",
-                "query": "house music"
-            },
-            "techno": {
-                "name": "Techno",
-                "icon": "⚡",
-                "query": "techno"
-            },
-            "trance": {
-                "name": "Trance",
-                "icon": "🌀",
-                "query": "trance music"
-            },
-            "dubstep": {
-                "name": "Dubstep",
-                "icon": "💥",
-                "query": "dubstep"
-            },
-            "drum_and_bass": {
-                "name": "Drum & Bass",
-                "icon": "🥁",
-                "query": "drum and bass"
-            }
+            "house": { "name": "House", "icon": "🏠", "query": "house music" },
+            "techno": { "name": "Techno", "icon": "⚡", "query": "techno" },
+            "trance": { "name": "Trance", "icon": "🌀", "query": "trance music" },
+            "dubstep": { "name": "Dubstep", "icon": "💥", "query": "dubstep" },
+            "drum_and_bass": { "name": "Drum & Bass", "icon": "🥁", "query": "drum and bass" }
         }
     },
     "chill": {
         "name": "Расслабляющая",
         "icon": "😌",
         "subgenres": {
-            "lofi": {
-                "name": "Lo-Fi",
-                "icon": "📻",
-                "query": "lofi hip hop"
-            },
-            "ambient": {
-                "name": "Ambient",
-                "icon": "🌌",
-                "query": "ambient relaxing"
-            },
-            "chillhop": {
-                "name": "Chillhop",
-                "icon": "☕",
-                "query": "chillhop"
-            },
-            "jazz_lofi": {
-                "name": "Jazz Lo-Fi",
-                "icon": "🎷",
-                "query": "jazz lofi"
-            }
+            "lofi": { "name": "Lo-Fi", "icon": "📻", "query": "lofi hip hop" },
+            "ambient": { "name": "Ambient", "icon": "🌌", "query": "ambient relaxing" },
+            "chillhop": { "name": "Chillhop", "icon": "☕", "query": "chillhop" },
+            "jazz_lofi": { "name": "Jazz Lo-Fi", "icon": "🎷", "query": "jazz lofi" }
         }
     },
     "rock": {
         "name": "Рок",
         "icon": "🎸",
         "subgenres": {
-            "classic_rock": {
-                "name": "Классический рок",
-                "icon": "🎵",
-                "query": "classic rock"
+            "classic_rock": { 
+                "name": "Классический рок", "icon": "🎵", "query": "classic rock",
+                "decades": ["1970s", "1980s", "1990s"]
             },
-            "alternative": {
-                "name": "Альтернатива",
-                "icon": "🔊",
-                "query": "alternative rock"
+            "alternative": { 
+                "name": "Альтернатива", "icon": "🔊", "query": "alternative rock",
+                "decades": ["1990s", "2000s", "2010s"]
             },
-            "indie": {
-                "name": "Инди",
-                "icon": "🎤",
-                "query": "indie rock"
-            },
-            "metal": {
-                "name": "Метал",
-                "icon": "🤘",
-                "query": "heavy metal"
-            }
+            "indie": { "name": "Инди", "icon": "🎤", "query": "indie rock" },
+            "metal": { "name": "Метал", "icon": "🤘", "query": "heavy metal" }
         }
     },
     "hip_hop": {
         "name": "Хип-Хоп",
         "icon": "🎤",
         "subgenres": {
-            "old_school": {
-                "name": "Old School",
-                "icon": "📼",
-                "query": "old school hip hop"
+            "old_school": { 
+                "name": "Old School", "icon": "📼", "query": "old school hip hop",
+                "decades": ["1980s", "1990s"]
             },
-            "trap": {
-                "name": "Trap",
-                "icon": "🔥",
-                "query": "trap music"
-            },
-            "boom_bap": {
-                "name": "Boom Bap",
-                "icon": "💿",
-                "query": "boom bap hip hop"
-            },
-            "rap_ru": {
-                "name": "Русский рэп",
-                "icon": "🇷🇺",
-                "query": "русский рэп"
-            }
+            "trap": { "name": "Trap", "icon": "🔥", "query": "trap music" },
+            "boom_bap": { "name": "Boom Bap", "icon": "💿", "query": "boom bap hip hop" },
+            "rap_ru": { "name": "Русский рэп", "icon": "🇷🇺", "query": "русский рэп" }
         }
     },
     "pop": {
         "name": "Поп",
         "icon": "⭐",
         "subgenres": {
-            "hits": {
-                "name": "Хиты",
-                "icon": "🏆",
-                "query": "pop hits 2024"
+            "hits": { "name": "Хиты", "icon": "🏆", "query": "pop hits 2024" },
+            "dance_pop": { 
+                "name": "Dance Pop", "icon": "💃", "query": "dance pop",
+                "decades": ["1990s", "2000s", "2010s"]
             },
-            "dance_pop": {
-                "name": "Dance Pop",
-                "icon": "💃",
-                "query": "dance pop"
-            },
-            "synth_pop": {
-                "name": "Synth Pop",
-                "icon": "🎹",
-                "query": "synthpop"
+            "synth_pop": { 
+                "name": "Synth Pop", "icon": "🎹", "query": "synthpop",
+                "decades": ["1980s", "2020s"]
             }
         }
     },
@@ -133,63 +68,27 @@
         "name": "Джаз",
         "icon": "🎷",
         "subgenres": {
-            "smooth": {
-                "name": "Smooth Jazz",
-                "icon": "🌙",
-                "query": "smooth jazz"
-            },
-            "bebop": {
-                "name": "Bebop",
-                "icon": "🎺",
-                "query": "bebop jazz"
-            },
-            "fusion": {
-                "name": "Jazz Fusion",
-                "icon": "🎸",
-                "query": "jazz fusion"
-            }
+            "smooth": { "name": "Smooth Jazz", "icon": "🌙", "query": "smooth jazz" },
+            "bebop": { "name": "Bebop", "icon": "🎺", "query": "bebop jazz" },
+            "fusion": { "name": "Jazz Fusion", "icon": "🎸", "query": "jazz fusion" }
         }
     },
     "classical": {
         "name": "Классика",
         "icon": "🎻",
         "subgenres": {
-            "piano": {
-                "name": "Фортепиано",
-                "icon": "🎹",
-                "query": "classical piano"
-            },
-            "orchestra": {
-                "name": "Оркестр",
-                "icon": "🎼",
-                "query": "classical orchestra"
-            },
-            "modern": {
-                "name": "Современная",
-                "icon": "✨",
-                "query": "modern classical"
-            }
+            "piano": { "name": "Фортепиано", "icon": "🎹", "query": "classical piano" },
+            "orchestra": { "name": "Оркестр", "icon": "🎼", "query": "classical orchestra" },
+            "modern": { "name": "Современная", "icon": "✨", "query": "modern classical" }
         }
     },
     "world": {
         "name": "Этническая",
         "icon": "🌍",
         "subgenres": {
-            "celtic": {
-                "name": "Кельтская",
-                "icon": "☘️",
-                "query": "celtic music"
-            },
-            "asian": {
-                "name": "Азиатская",
-                "icon": "🏯",
-                "query": "asian traditional"
-            },
-            "latin": {
-                "name": "Латинская",
-                "icon": "💃",
-                "query": "latin music"
-            }
+            "celtic": { "name": "Кельтская", "icon": "☘️", "query": "celtic music" },
+            "asian": { "name": "Азиатская", "icon": "🏯", "query": "asian traditional" },
+            "latin": { "name": "Латинская", "icon": "💃", "query": "latin music" }
         }
     }
 }

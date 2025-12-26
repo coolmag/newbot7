@@ -58,7 +58,7 @@ class YouTubeDownloader:
             "user_agent": "com.google.android.youtube/19.29.37 (Linux; U; Android 11; en_US; Pixel 5) gzip",
         }
 
-    def _is_track_valid(self, entry: Dict) -> bool:
+    def _is_track_valid(self, entry: Dict, decade: Optional[str] = None) -> bool:
         """Проверяет, является ли результат поиска валидным треком."""
         if not entry or entry.get('resultType') not in ['song', 'video']:
             return False
@@ -69,31 +69,48 @@ class YouTubeDownloader:
             return False
         
         duration_sec = entry.get('duration_seconds', 0)
-        # Отсеиваем слишком короткие и слишком длинные треки (10 минут)
-        if not duration_sec or not (60 < duration_sec < 600):
+        if not duration_sec or not (60 < duration_sec < 720): # 12 минут max
             logger.debug(f"Filtered out '{title}' due to duration: {duration_sec}s.")
             return False
             
+        if decade:
+            year_str = entry.get('year')
+            if not year_str or not year_str.isdigit():
+                logger.debug(f"Filtered out '{title}' as it has no year for decade filtering.")
+                return False # У трека нет года, а мы фильтруем по нему
+            
+            try:
+                year = int(year_str)
+                start_year = int(decade[:4])
+                end_year = start_year + 9
+                if not (start_year <= year <= end_year):
+                    logger.debug(f"Filtered out '{title}' ({year}) as it's outside decade {decade}.")
+                    return False
+            except (ValueError, IndexError):
+                logger.warning(f"Could not parse decade: {decade}")
+                return False # Невалидный формат десятилетия
+
         return True
 
-    async def search(self, query: str, limit: int = 20) -> List[TrackInfo]:
+    async def search(self, query: str, decade: Optional[str] = None, limit: int = 20) -> List[TrackInfo]:
         """Поиск треков с использованием YTMusic, фильтрацией и кэшированием."""
         async with self.search_semaphore:
-            cache_key = f"ytmusic_search_v2:{query.lower().strip()}"
+            refined_query = f"{query} {decade}" if decade else query
+            cache_key = f"ytmusic_search_v3:{refined_query.lower().strip()}"
             
             cached_tracks = await self._cache.get(cache_key)
             if cached_tracks is not None:
-                logger.info(f"[Search] Cache hit for query: '{query}'")
+                logger.info(f"[Search] Cache hit for query: '{refined_query}'")
                 return cached_tracks
 
-            logger.info(f"[Search] Cache miss. Querying YTMusic API for: '{query}'")
+            logger.info(f"[Search] Cache miss. Querying YTMusic API for: '{refined_query}'")
             
             loop = asyncio.get_running_loop()
             
             def do_search() -> List[Dict]:
                 try:
                     # Ищем с запасом, чтобы после фильтрации что-то осталось
-                    return self._ytmusic.search(query, filter="songs", limit=limit * 2)
+                    return self._ytmusic.search(refined_query, filter="songs", limit=limit * 2)
                 except Exception as e:
                     logger.error(f"YTMusic search failed: {e}", exc_info=True)
                     return []
@@ -101,14 +118,14 @@ class YouTubeDownloader:
             search_results = await loop.run_in_executor(None, do_search)
             
             # Фильтруем результаты перед парсингом и кэшированием
-            valid_entries = [entry for entry in search_results if self._is_track_valid(entry)]
+            valid_entries = [entry for entry in search_results if self._is_track_valid(entry, decade=decade)]
             
             tracks = [self._parse_ytmusic_entry(entry) for entry in valid_entries][:limit]
             
             # Кэшируем отфильтрованный результат на 1 час
             await self._cache.set(cache_key, tracks, ttl=3600)
             
-            logger.info(f"[Search] Found and filtered {len(tracks)} tracks for query '{query}'")
+            logger.info(f"[Search] Found and filtered {len(tracks)} tracks for query '{refined_query}'")
             return tracks
 
     def _parse_ytmusic_entry(self, entry: Dict) -> TrackInfo:

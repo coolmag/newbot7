@@ -28,43 +28,46 @@ class CallbackAction:
 
 @dataclass
 class VoteCallback:
-    """Callback data для кнопок"""
+    """Callback data для кнопок. Упрощенная и надежная версия."""
     action: str
     value: str
-    extra: Optional[str] = None
     
     SEP: str = field(default=":", init=False, repr=False)
     
     def to_callback_data(self) -> str:
         """Сериализация в строку для callback_data (max 64 bytes)"""
-        if self.extra:
-            data = f"{self.action}{self.SEP}{self.value}{self.SEP}{self.extra}"
-        else:
-            data = f"{self.action}{self.SEP}{self.value}"
+        data = f"{self.action}{self.SEP}{self.value}"
         
         # Обрезаем если слишком длинно (Telegram limit = 64 bytes)
         if len(data.encode('utf-8')) > 64:
-            # Укорачиваем value
-            max_value_len = 64 - len(self.action) - 2  # 2 for separator
-            data = f"{self.action}{self.SEP}{self.value[:max_value_len]}"
+            # Укорачиваем value до максимально возможной длины
+            value_bytes = self.value.encode('utf-8')
+            max_value_bytes = 64 - len(self.action.encode('utf-8')) - len(self.SEP.encode('utf-8'))
+            
+            if max_value_bytes < 0:
+                max_value_bytes = 0
+
+            # Find the largest possible string that fits
+            end = len(value_bytes)
+            while len(value_bytes[:end]) > max_value_bytes:
+                end -= 1
+            
+            value_truncated = value_bytes[:end].decode('utf-8', 'ignore')
+            data = f"{self.action}{self.SEP}{value_truncated}"
         
         return data
     
     @classmethod
     def from_callback_data(cls, data: str) -> Optional["VoteCallback"]:
-        """Десериализация из callback_data"""
+        """Десериализация из callback_data. Разделяет только по первому ':'."""
         if not data:
             return None
         
-        parts = data.split(":")
-        if len(parts) < 2:
+        parts = data.split(cls.SEP, 1)
+        if len(parts) != 2:
             return None
         
-        action = parts[0]
-        value = parts[1]
-        extra = parts[2] if len(parts) > 2 else None
-        
-        return cls(action=action, value=value, extra=extra)
+        return cls(action=parts[0], value=parts[1])
     
     def __str__(self) -> str:
         return self.to_callback_data()
