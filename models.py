@@ -130,6 +130,7 @@ class TrackInfo:
 class DownloadResult:
     success: bool
     file_path: Optional[Path] = None
+    file_id: Optional[str] = None
     track_info: Optional[TrackInfo] = None
     error: Optional[str] = None
 
