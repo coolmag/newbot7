@@ -6,27 +6,27 @@
             "house": {
                 "name": "House",
                 "icon": "🏠",
-                "query": "house music mix"
+                "query": "house music"
             },
             "techno": {
                 "name": "Techno",
                 "icon": "⚡",
-                "query": "techno music mix"
+                "query": "techno"
             },
             "trance": {
                 "name": "Trance",
                 "icon": "🌀",
-                "query": "trance music mix"
+                "query": "trance music"
             },
             "dubstep": {
                 "name": "Dubstep",
                 "icon": "💥",
-                "query": "dubstep music mix"
+                "query": "dubstep"
             },
             "drum_and_bass": {
                 "name": "Drum & Bass",
                 "icon": "🥁",
-                "query": "drum and bass mix"
+                "query": "drum and bass"
             }
         }
     },
@@ -37,22 +37,22 @@
             "lofi": {
                 "name": "Lo-Fi",
                 "icon": "📻",
-                "query": "lofi hip hop beats"
+                "query": "lofi hip hop"
             },
             "ambient": {
                 "name": "Ambient",
                 "icon": "🌌",
-                "query": "ambient relaxing music"
+                "query": "ambient relaxing"
             },
             "chillhop": {
                 "name": "Chillhop",
                 "icon": "☕",
-                "query": "chillhop music mix"
+                "query": "chillhop"
             },
             "jazz_lofi": {
                 "name": "Jazz Lo-Fi",
                 "icon": "🎷",
-                "query": "jazz lofi beats"
+                "query": "jazz lofi"
             }
         }
     },
@@ -63,22 +63,22 @@
             "classic_rock": {
                 "name": "Классический рок",
                 "icon": "🎵",
-                "query": "classic rock playlist"
+                "query": "classic rock"
             },
             "alternative": {
                 "name": "Альтернатива",
                 "icon": "🔊",
-                "query": "alternative rock music"
+                "query": "alternative rock"
             },
             "indie": {
                 "name": "Инди",
                 "icon": "🎤",
-                "query": "indie rock playlist"
+                "query": "indie rock"
             },
             "metal": {
                 "name": "Метал",
                 "icon": "🤘",
-                "query": "metal music playlist"
+                "query": "heavy metal"
             }
         }
     },
@@ -89,22 +89,22 @@
             "old_school": {
                 "name": "Old School",
                 "icon": "📼",
-                "query": "old school hip hop classics"
+                "query": "old school hip hop"
             },
             "trap": {
                 "name": "Trap",
                 "icon": "🔥",
-                "query": "trap music mix"
+                "query": "trap music"
             },
             "boom_bap": {
                 "name": "Boom Bap",
                 "icon": "💿",
-                "query": "boom bap hip hop beats"
+                "query": "boom bap hip hop"
             },
             "rap_ru": {
                 "name": "Русский рэп",
                 "icon": "🇷🇺",
-                "query": "русский рэп плейлист"
+                "query": "русский рэп"
             }
         }
     },
@@ -115,17 +115,17 @@
             "hits": {
                 "name": "Хиты",
                 "icon": "🏆",
-                "query": "pop music hits 2024"
+                "query": "pop hits 2024"
             },
             "dance_pop": {
                 "name": "Dance Pop",
                 "icon": "💃",
-                "query": "dance pop music"
+                "query": "dance pop"
             },
             "synth_pop": {
                 "name": "Synth Pop",
                 "icon": "🎹",
-                "query": "synthpop music mix"
+                "query": "synthpop"
             }
         }
     },
@@ -136,17 +136,17 @@
             "smooth": {
                 "name": "Smooth Jazz",
                 "icon": "🌙",
-                "query": "smooth jazz music"
+                "query": "smooth jazz"
             },
             "bebop": {
                 "name": "Bebop",
                 "icon": "🎺",
-                "query": "bebop jazz classics"
+                "query": "bebop jazz"
             },
             "fusion": {
                 "name": "Jazz Fusion",
                 "icon": "🎸",
-                "query": "jazz fusion music"
+                "query": "jazz fusion"
             }
         }
     },
@@ -157,17 +157,17 @@
             "piano": {
                 "name": "Фортепиано",
                 "icon": "🎹",
-                "query": "classical piano music"
+                "query": "classical piano"
             },
             "orchestra": {
                 "name": "Оркестр",
                 "icon": "🎼",
-                "query": "classical orchestra music"
+                "query": "classical orchestra"
             },
             "modern": {
                 "name": "Современная",
                 "icon": "✨",
-                "query": "modern classical music"
+                "query": "modern classical"
             }
         }
     },
@@ -178,17 +178,17 @@
             "celtic": {
                 "name": "Кельтская",
                 "icon": "☘️",
-                "query": "celtic music relaxing"
+                "query": "celtic music"
             },
             "asian": {
                 "name": "Азиатская",
                 "icon": "🏯",
-                "query": "asian traditional music"
+                "query": "asian traditional"
             },
             "latin": {
                 "name": "Латинская",
                 "icon": "💃",
-                "query": "latin music mix"
+                "query": "latin music"
             }
         }
     }

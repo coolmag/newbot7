@@ -53,8 +53,7 @@ async def lifespan(app: FastAPI):
         app=tg_app,
         radio=radio_manager,
         settings=settings,
-        downloader=downloader,
-        cache_service=cache
+        downloader=downloader
     )
     
     await tg_app.initialize()

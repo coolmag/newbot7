@@ -1,94 +1,42 @@
 import asyncio
 import logging
 import random
+import os
 from typing import List, Optional, Dict, Set
 from dataclasses import dataclass, field
-from datetime import datetime
 
 from telegram import Bot, Message
 from telegram.constants import ParseMode
 from telegram.error import BadRequest
 
 from config import Settings
-from models import TrackInfo
-from youtube import YouTubeDownloader, SearchMode
+from models import TrackInfo, DownloadResult
+from youtube import YouTubeDownloader
 
 logger = logging.getLogger("radio")
 
-
-# ═══════════════════════════════════════════════════════════════
-# 🌌 КОСМИЧЕСКИЕ ТЕМЫ ДЛЯ СТАТУС-БАРА
-# ═══════════════════════════════════════════════════════════════
-
+# Simplified status messages
 COSMIC_THEMES = {
-    "search": [
-        "🛸 Сканирую галактику...",
-        "🌌 Исследую туманности...",
-        "✨ Ловлю космические волны...",
-        "🔭 Настраиваю антенны...",
-        "💫 Синхронизация с орбитой...",
-        "🌠 Перехватываю сигналы...",
-        "🚀 Запуск поисковых зондов...",
-        "⚡ Активация гиперпривода...",
-    ],
-    "loading": [
-        "📡 Загрузка аудиопотока...",
-        "🌍 Приём данных с орбиты...",
-        "💿 Декодирование сигнала...",
-        "🎛️ Калибровка частот...",
-        "🔊 Усиление сигнала...",
-    ],
-    "playing": [
-        "🎧", "🎵", "🎶", "🔊", "📻", "💿", "🎹", "🎸"
-    ]
+    "search": "🌌 Поиск новой музыки...",
+    "loading": "📡 Загрузка аудиопотока...",
 }
 
-
-def get_progress_bar(percent: int, length: int = 15) -> str:
-    """Создаёт космический прогресс-бар"""
-    filled = int(length * percent / 100)
-    empty = length - filled
-    
-    styles = [
-        ("▓", "░"),
-        ("█", "░"),
-        ("◉", "○"),
-        ("●", "○"),
-    ]
-    fill_char, empty_char = random.choice(styles)
-    
-    bar = fill_char * filled + empty_char * empty
-    return f"[{bar}]"
-
-
 def format_duration(seconds: int) -> str:
-    """Форматирует длительность"""
     mins, secs = divmod(seconds, 60)
     return f"{mins}:{secs:02d}"
 
-
-def get_now_playing_message(track: TrackInfo, genre_name: str = "") -> str:
-    """Компактное сообщение о текущем треке"""
+def get_now_playing_message(track: TrackInfo, genre_name: str) -> str:
     icon = random.choice(["🎧", "🎵", "🎶", "📻", "💿"])
-    stars = "".join(random.choices(["✧", "✦", "⋆", "·"], k=5))
-    
-    title = track.title[:40] if len(track.title) > 40 else track.title
-    artist = track.artist[:30] if len(track.artist) > 30 else track.artist
+    title = track.title[:40].strip()
+    artist = track.artist[:30].strip()
     duration = format_duration(track.duration)
-    wave = genre_name if genre_name else "Cosmic Waves"
+    wave = genre_name.strip()
     
     return (
-        f"{stars} {icon} NOW PLAYING {icon} {stars}\n\n"
-        f"🎵 *{title}*\n"
+        f"{icon} *{title}*\n"
         f"👤 {artist}\n"
-        f"⏱ {duration}\n\n"
-        f"📻 _{wave}_"
+        f"⏱ {duration} | 📻 _{wave}_"
     )
-
-
-# ═══════════════════════════════════════════════════════════════
-# 🎛️ РАДИО СЕССИЯ
-# ═══════════════════════════════════════════════════════════════
 
 @dataclass
 class RadioSession:
@@ -97,10 +45,8 @@ class RadioSession:
     downloader: YouTubeDownloader
     settings: Settings
     query: str
-    search_mode: SearchMode
-    display_name: Optional[str] = None
+    display_name: str
     
-    # Internal State
     is_running: bool = field(init=False, default=False)
     playlist: List[TrackInfo] = field(default_factory=list)
     played_ids: Set[str] = field(default_factory=set)
@@ -113,7 +59,6 @@ class RadioSession:
         if self.is_running:
             return
         self.is_running = True
-        self.tracks_played = 0
         self.current_task = asyncio.create_task(self._radio_loop())
         logger.info(f"[{self.chat_id}] 🚀 Radio started: '{self.query}'")
 
@@ -123,34 +68,24 @@ class RadioSession:
         self.is_running = False
         if self.current_task:
             self.current_task.cancel()
-            try:
-                await self.current_task
-            except asyncio.CancelledError:
-                pass
         await self._delete_status()
         logger.info(f"[{self.chat_id}] 🛑 Radio stopped. Played {self.tracks_played} tracks.")
 
     async def skip(self):
         self.skip_event.set()
 
-    async def _update_status(self, text: str, parse_mode: str = None):
-        """Обновляет или создаёт статус-сообщение"""
+    async def _update_status(self, text: str):
         try:
             if self.status_message:
-                try:
-                    await self.status_message.edit_text(text, parse_mode=parse_mode)
-                    return
-                except BadRequest:
-                    self.status_message = None
-            
-            self.status_message = await self.bot.send_message(
-                self.chat_id, text, parse_mode=parse_mode
-            )
+                await self.status_message.edit_text(text, parse_mode=ParseMode.MARKDOWN)
+                return
+            self.status_message = await self.bot.send_message(self.chat_id, text, parse_mode=ParseMode.MARKDOWN)
+        except BadRequest: # Message not modified or other issues
+            self.status_message = None # Reset if message is gone
         except Exception as e:
             logger.warning(f"[{self.chat_id}] Status update error: {e}")
 
     async def _delete_status(self):
-        """Удаляет статус-сообщение"""
         if self.status_message:
             try:
                 await self.status_message.delete()
@@ -159,195 +94,114 @@ class RadioSession:
             self.status_message = None
 
     async def _fill_playlist(self):
-        """Заполняет плейлист"""
-        search_msg = random.choice(COSMIC_THEMES["search"])
-        status_text = f"{search_msg}\n\n🔍 Запрос: _{self.query}_ "
-        await self._update_status(status_text, ParseMode.MARKDOWN)
-        
-        logger.info(f"[{self.chat_id}] 🔍 Searching: '{self.query}'")
+        await self._update_status(f"{COSMIC_THEMES['search']}\n\nПоток: _{self.display_name}_")
+        logger.info(f"[{self.chat_id}] 🔍 Searching for '{self.query}'")
         
         try:
-            tracks = await self.downloader.search(
-                self.query, 
-                search_mode=self.search_mode, 
-                limit=30
-            )
-            
+            # The new search is cached and reliable, no fallback needed
+            tracks = await self.downloader.search(self.query, limit=30)
             new_tracks = [t for t in tracks if t.identifier not in self.played_ids]
             
             if new_tracks:
                 random.shuffle(new_tracks)
                 self.playlist.extend(new_tracks)
-                logger.info(f"[{self.chat_id}] ✅ Added {len(new_tracks)} tracks")
-                await self._update_status(
-                    f"✅ Найдено {len(new_tracks)} треков!\n\n🎵 Запускаю воспроизведение..."
-                )
+                logger.info(f"[{self.chat_id}] ✅ Added {len(new_tracks)} new tracks to playlist.")
             else:
-                logger.warning(f"[{self.chat_id}] ⚠️ No new tracks for '{self.query}'")
-                
-                # Fallback с упрощённым запросом
-                if " " in self.query:
-                    simple_query = self.query.split()[0] + " music"
-                    logger.info(f"[{self.chat_id}] 🔄 Trying fallback: '{simple_query}'")
-                    
-                    tracks = await self.downloader.search(simple_query, 'genre', 20)
-                    new_tracks = [t for t in tracks if t.identifier not in self.played_ids]
-                    
-                    if new_tracks:
-                        random.shuffle(new_tracks)
-                        self.playlist.extend(new_tracks)
-                        logger.info(f"[{self.chat_id}] ✅ Fallback found {len(new_tracks)} tracks")
-                        
+                logger.warning(f"[{self.chat_id}] ⚠️ No new tracks found for query '{self.query}'.")
         except Exception as e:
-            logger.error(f"[{self.chat_id}] ❌ Search error: {e}", exc_info=True)
+            logger.error(f"[{self.chat_id}] ❌ Playlist fill error: {e}", exc_info=True)
 
     async def _radio_loop(self):
-        """Основной цикл радио"""
-        error_count = 0
-        max_errors = 5
-        
-        # Начальное сообщение
-        start_text = (
-            f"📻 *Запускаю радио*\n\n"
-            f"🎵 Волна: _{self.display_name or self.query}_\n"
-            f"🌌 Настройка частоты..."
-        )
-        await self._update_status(start_text, ParseMode.MARKDOWN)
+        await self._update_status(f"📻 *Запуск радио...*\n\nВолна: _{self.display_name}_")
         
         while self.is_running:
             try:
-                # Заполняем плейлист
-                if len(self.playlist) < 3:
+                if len(self.playlist) < 5:
                     await self._fill_playlist()
                 
                 if not self.playlist:
-                    logger.error(f"[{self.chat_id}] ❌ Empty playlist")
-                    error_text = (
-                        f"❌ *Не удалось найти музыку*\n\n"
-                        f"Запрос: _{self.query}_\n"
-                        f"Попробуйте другой жанр."
-                    )
-                    await self._update_status(error_text, ParseMode.MARKDOWN)
+                    logger.error(f"[{self.chat_id}] ❌ Playlist is empty after search. Stopping.")
+                    await self._update_status(f"❌ Не удалось найти музыку для потока _{self.display_name}_. Радио остановлено.")
                     break
                 
-                # Берём следующий трек
                 track = self.playlist.pop(0)
                 self.played_ids.add(track.identifier)
                 
-                # Чистим историю
                 if len(self.played_ids) > 200:
-                    oldest = list(self.played_ids)[:100]
-                    for old_id in oldest:
-                        self.played_ids.discard(old_id)
+                    self.played_ids = set(list(self.played_ids)[100:])
 
-                # Проигрываем трек
                 success = await self._play_track(track)
-                
                 if success:
-                    error_count = 0
                     self.tracks_played += 1
-                    
-                    # Ждём 90 секунд или команду skip
                     try:
-                        wait_time = 90.0 # Новый трек каждые 90 секунд
-                        await asyncio.wait_for(self.skip_event.wait(), timeout=wait_time)
+                        # Wait for a bit before the next track
+                        await asyncio.wait_for(self.skip_event.wait(), timeout=90.0)
                         self.skip_event.clear()
                         logger.info(f"[{self.chat_id}] ⏭️ Skipped by user")
                     except asyncio.TimeoutError:
                         pass
                 else:
-                    error_count += 1
-                    logger.warning(f"[{self.chat_id}] ⚠️ Error count: {error_count}/{max_errors}")
-                    
-                    if error_count >= max_errors:
-                        stop_text = (
-                            "❌ *Радио остановлено*\n\n"
-                            "Слишком много ошибок загрузки.\n"
-                            "Попробуйте позже или выберите другой жанр.",
-                            ParseMode.MARKDOWN
-                        )
-                        await self._update_status(stop_text[0], stop_text[1])
-                        break
-                    
-                    await asyncio.sleep(2)
-                
+                    await asyncio.sleep(5) # Cooldown on failure
             except asyncio.CancelledError:
                 break
             except Exception as e:
-                logger.error(f"[{self.chat_id}] ❌ Loop error: {e}", exc_info=True)
-                error_count += 1
-                if error_count >= max_errors:
-                    break
-                await asyncio.sleep(3)
+                logger.error(f"[{self.chat_id}] ❌ Unhandled error in radio loop: {e}", exc_info=True)
+                break
         
         self.is_running = False
-        logger.info(f"[{self.chat_id}] 🏁 Radio loop finished")
+        logger.info(f"[{self.chat_id}] 🏁 Radio loop finished.")
 
     async def _play_track(self, track: TrackInfo) -> bool:
-        """Воспроизводит один трек"""
-        result = None
+        """Downloads, sends, and caches a single track."""
+        await self._update_status(f"{COSMIC_THEMES['loading']}\n\nТрек: _{track.title}_")
+        logger.info(f"[{self.chat_id}] 📥 Processing track: {track.title}")
         
+        result: Optional[DownloadResult] = None
         try:
-            # Статус загрузки
-            loading_msg = random.choice(COSMIC_THEMES["loading"])
-            title_short = track.title[:35] + "..." if len(track.title) > 35 else track.title
-            
-            loading_text = f"{loading_msg}\n\n🎵 _{title_short}_\n👤 {track.artist}"
-            await self._update_status(loading_text, ParseMode.MARKDOWN)
-            
-            logger.info(f"[{self.chat_id}] 📥 Downloading: {track.title}")
-            
-            # Скачиваем
             result = await self.downloader.download(track.identifier)
-            
             if not result or not result.success:
-                error = result.error if result else "Unknown"
-                logger.error(f"[{self.chat_id}] ❌ Download failed: {error}")
+                logger.error(f"[{self.chat_id}] ❌ Download failed: {result.error if result else 'Unknown'}")
                 return False
-            
-            if not result.file_path or not result.file_path.exists():
-                logger.error(f"[{self.chat_id}] ❌ File not found")
-                return False
-            
-            # Отправляем аудио
-            logger.info(f"[{self.chat_id}] 📤 Sending: {track.title}")
-            
+
             caption = get_now_playing_message(track, self.display_name)
             
-            with open(result.file_path, 'rb') as audio_file:
+            # Case 1: Cache hit, send by file_id
+            if result.file_id:
+                logger.info(f"[{self.chat_id}] ⚡ Cache hit, sending by file_id: {track.title}")
                 await self.bot.send_audio(
-                    chat_id=self.chat_id,
-                    audio=audio_file,
-                    title=track.title,
-                    performer=track.artist,
-                    duration=track.duration,
+                    self.chat_id,
+                    audio=result.file_id,
                     caption=caption,
                     parse_mode=ParseMode.MARKDOWN
                 )
-            
-            # Удаляем статус после успешной отправки
+            # Case 2: Cache miss, send file and cache the new file_id
+            elif result.file_path and result.file_path.exists():
+                logger.info(f"[{self.chat_id}] 📤 Sending file and caching: {track.title}")
+                with open(result.file_path, 'rb') as audio_file:
+                    sent_message = await self.bot.send_audio(
+                        self.chat_id,
+                        audio=audio_file,
+                        caption=caption,
+                        parse_mode=ParseMode.MARKDOWN
+                    )
+                    if sent_message.audio:
+                        await self.downloader.cache_file_id(track.identifier, sent_message.audio.file_id)
+            else:
+                logger.error(f"[{self.chat_id}] ❌ Download result invalid for {track.identifier}")
+                return False
+
             await self._delete_status()
-            
             logger.info(f"[{self.chat_id}] ✅ Sent: {track.title}")
             return True
-            
         except Exception as e:
-            logger.error(f"[{self.chat_id}] ❌ Play error: {e}", exc_info=True)
+            logger.error(f"[{self.chat_id}] ❌ Critical error in _play_track: {e}", exc_info=True)
             return False
-            
         finally:
-            # Чистим файл
             if result and result.file_path:
                 try:
-                    if result.file_path.exists():
-                        result.file_path.unlink()
-                except Exception as e:
-                    logger.warning(f"Cleanup error: {e}")
-
-
-# ═══════════════════════════════════════════════════════════════
-# 📻 МЕНЕДЖЕР РАДИО
-# ═══════════════════════════════════════════════════════════════
+                    os.unlink(result.file_path)
+                except OSError:
+                    pass
 
 class RadioManager:
     def __init__(self, bot: Bot, settings: Settings, downloader: YouTubeDownloader):
@@ -358,32 +212,21 @@ class RadioManager:
         self._locks: Dict[int, asyncio.Lock] = {}
 
     def _get_lock(self, chat_id: int) -> asyncio.Lock:
-        if chat_id not in self._locks:
-            self._locks[chat_id] = asyncio.Lock()
+        self._locks.setdefault(chat_id, asyncio.Lock())
         return self._locks[chat_id]
 
-    async def start(
-        self, 
-        chat_id: int, 
-        query: str, 
-        search_mode: SearchMode = 'genre', 
-        display_name: Optional[str] = None
-    ):
+    async def start(self, chat_id: int, query: str, display_name: Optional[str] = None):
         async with self._get_lock(chat_id):
-            # Стоп предыдущей сессии
             if chat_id in self._sessions:
                 await self._sessions[chat_id].stop()
             
-            # Random жанр
             if query == "random":
                 query, display_name = self._get_random_style_query()
             
-            # Стартовое сообщение
-            start_msg = random.choice(COSMIC_THEMES["search"])
-            wave_name = display_name if display_name else query
+            display_name = display_name or query
             await self._bot.send_message(
                 chat_id,
-                f"{start_msg}\n\n🎧 Волна: *{wave_name}*",
+                f"🛰️ Настраиваюсь на волну: *{display_name}*",
                 parse_mode=ParseMode.MARKDOWN
             )
             
@@ -393,61 +236,36 @@ class RadioManager:
                 downloader=self._downloader,
                 settings=self._settings,
                 query=query,
-                search_mode=search_mode,
-                display_name=display_name if display_name else query
+                display_name=display_name
             )
-            
             self._sessions[chat_id] = session
             await session.start()
 
     async def stop(self, chat_id: int):
         async with self._get_lock(chat_id):
-            session = self._sessions.pop(chat_id, None)
-            if session:
+            if session := self._sessions.pop(chat_id, None):
                 await session.stop()
 
     async def skip(self, chat_id: int):
-        session = self._sessions.get(chat_id)
-        if session:
+        if session := self._sessions.get(chat_id):
             await session.skip()
 
     async def stop_all(self):
         for chat_id in list(self._sessions.keys()):
-            try:
-                await self.stop(chat_id)
-            except Exception as e:
-                logger.error(f"Stop error for {chat_id}: {e}")
+            await self.stop(chat_id)
 
-    def is_playing(self, chat_id: int) -> bool:
-        session = self._sessions.get(chat_id)
-        return session is not None and session.is_running
-
-    def _get_random_style_query(self) -> tuple:
-        """Случайный жанр из конфига"""
+    def _get_random_style_query(self) -> tuple[str, str]:
         try:
-            genres = self._settings.GENRE_DATA
-            if not genres:
-                return ("lofi hip hop", "Lo-Fi")
-            
-            main_key = random.choice(list(genres.keys()))
-            main = genres[main_key]
-            
-            subs = main.get("subgenres", {})
-            if subs:
-                sub_key = random.choice(list(subs.keys()))
-                sub = subs[sub_key]
-                query = sub.get("query", f"{main_key} {sub_key}")
-                icon = sub.get("icon", "🎵")
-                name = sub.get("name", sub_key)
-                display = f"{icon} {name}"
-            else:
-                query = main.get("query", main_key)
-                icon = main.get("icon", "🎵")
-                name = main.get("name", main_key)
-                display = f"{icon} {name}"
-            
-            return (query, display)
-            
-        except Exception as e:
-            logger.error(f"Random genre error: {e}")
-            return ("lofi hip hop beats", "🎧 Lo-Fi")
+            main_key = random.choice(list(self._settings.GENRE_DATA.keys()))
+            subgenres = self._settings.GENRE_DATA[main_key].get("subgenres", {})
+            if not subgenres:
+                return ("lofi hip hop", "Lo-Fi Hip Hop")
+                
+            sub_key = random.choice(list(subgenres.keys()))
+            sub_info = subgenres[sub_key]
+            query = sub_info["query"]
+            display_name = f"{sub_info.get('icon', '🎵')} {sub_info['name']}"
+            return (query, display_name)
+        except Exception:
+            logger.error("Failed to get random genre, using fallback.", exc_info=True)
+            return ("lofi hip hop", "🎧 Lo-Fi")
