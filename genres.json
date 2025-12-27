@@ -11,9 +11,24 @@
     "moods": {
         "name": "🌈 По настроению",
         "subgenres": {
-            "energy": { "name": "⚡ Энергия", "query": "High energy music hits" },
-            "chill": { "name": "😌 Чилл", "query": "Chillout lounge relaxing music" },
-            "focus": { "name": "🧠 Фокус", "query": "Music for concentration and focus" }
+            "energy": { 
+                "name": "⚡ Энергия", 
+                "decades": {
+                    "all": { "name": "Зарядиться", "query": "High energy music hits 2025" }
+                }
+            },
+            "chill": { 
+                "name": "😌 Чилл", 
+                "decades": {
+                    "all": { "name": "Расслабиться", "query": "Chillout lounge relaxing music" }
+                }
+            },
+            "focus": { 
+                "name": "🧠 Фокус", 
+                "decades": {
+                    "all": { "name": "Концентрация", "query": "Music for concentration and focus" }
+                }
+            }
         }
     },
     "russian_music": {
@@ -65,8 +80,7 @@
             "chill": {
                 "name": "Lo-Fi & Chillout",
                 "decades": {
-                    "2010s": { "name": "10-е: Lo-Fi Beats", "query": "Lo-Fi Hip Hop 2010s" },
-                    "2020s": { "name": "20-е: Chillhop", "query": "Chillhop beats 2025" }
+                    "2010s": { "name": "10-е: Lo-Fi Beats", "query": "Lo-Fi Hip Hop 2010s" }
                 }
             }
         }
@@ -78,37 +92,14 @@
                 "name": "Classic & Hard Rock",
                 "decades": {
                     "1960s": { "name": "60-е: Psychedelic", "query": "60s Psychedelic Rock" },
-                    "1970s": { "name": "70-е: Hard Rock", "query": "70s Classic Hard Rock" },
-                    "1980s": { "name": "80-е: Heavy Metal", "query": "80s Heavy Metal Glam" }
+                    "1970s": { "name": "70-е: Hard Rock", "query": "70s Classic Hard Rock" }
                 }
             },
             "alt": {
                 "name": "Alternative & Indie",
                 "decades": {
                     "1990s": { "name": "90-е: Grunge", "query": "90s Grunge Alternative" },
-                    "2000s": { "name": "00-е: Indie Rock", "query": "2000s Indie Rock Revival" },
-                    "2010s": { "name": "10-е: Post-Punk", "query": "Post-Punk Revival 2010s" }
-                }
-            }
-        }
-    },
-    "world_electronic": {
-        "name": "🎹 Электроника",
-        "subgenres": {
-            "disco_house": {
-                "name": "Disco & House",
-                "decades": {
-                    "1970s": { "name": "70-е: Space Disco", "query": "70s Space Disco" },
-                    "1980s": { "name": "80-е: Chicago House", "query": "80s Chicago House" },
-                    "1990s": { "name": "90-е: Eurodance", "query": "90s Eurodance hits" }
-                }
-            },
-            "techno_bass": {
-                "name": "Techno & Bass",
-                "decades": {
-                    "1990s": { "name": "90-е: Jungle/D&B", "query": "90s Jungle Drum and Bass" },
-                    "2010s": { "name": "10-е: EDM Era", "query": "2010s EDM Festival" },
-                    "2020s": { "name": "20-е: Phonk & Drift", "query": "Phonk music 2025" }
+                    "2000s": { "name": "00-е: Indie Rock", "query": "2000s Indie Rock Revival" }
                 }
             }
         }
@@ -121,12 +112,6 @@
                 "decades": {
                     "west": { "name": "Hollywood OST", "query": "Best Hollywood movie soundtracks" },
                     "ussr": { "name": "Советское кино", "query": "Песни из советских кинофильмов" }
-                }
-            },
-            "classic": {
-                "name": "Классика",
-                "decades": {
-                    "all": { "name": "Шедевры", "query": "Classical music masterpieces" }
                 }
             }
         }

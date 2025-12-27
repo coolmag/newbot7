@@ -23,7 +23,7 @@ def get_now_playing_message(track: TrackInfo, genre_name: str, decade: Optional[
     icon = random.choice(["🎧", "🎵", "🎶", "📻", "💿"])
     title = track.title[:40].strip()
     artist = track.artist[:30].strip()
-    era_info = f" ({decade})" if decade and "s" in decade else "" # Only add for actual decades
+    era_info = f" ({decade})" if decade and "s" in decade else ""
     return f"{icon} *{title}*\n👤 {artist}\n⏱ {format_duration(track.duration)} | 📻 _{genre_name.strip()}{era_info}_"
 
 @dataclass
@@ -76,6 +76,7 @@ class RadioSession:
             self.status_message = None
 
     async def _fill_playlist(self):
+        await self._update_status(f"🌌 Поиск новой музыки для волны:\n*_{self.display_name}_*")
         logger.info(f"[{self.chat_id}] 🔍 Searching for '{self.query}', decade: {self.decade}")
         try:
             tracks = await self.downloader.search(self.query, decade=self.decade, limit=20)
@@ -88,6 +89,16 @@ class RadioSession:
                 logger.warning(f"[{self.chat_id}] ⚠️ No new tracks found for query '{self.query}'.")
         except Exception as e:
             logger.error(f"[{self.chat_id}] ❌ Playlist fill error: {e}", exc_info=True)
+            
+    async def _fill_emergency_playlist(self):
+        """Fills playlist with popular tracks if the main search fails."""
+        fallbacks = ["Lo-Fi Hip Hop", "Top Hits 2025", "Classic Rock Radio"]
+        fallback_query = random.choice(fallbacks)
+        logger.info(f"[{self.chat_id}] Using emergency fallback: {fallback_query}")
+        tracks = await self.downloader.search(fallback_query, limit=10)
+        if tracks:
+            self.playlist.extend(tracks)
+            await self._update_status(f"🛰️ На волне: *{fallback_query}* (аварийный режим)")
 
     async def _radio_loop(self):
         error_streak = 0
@@ -97,9 +108,12 @@ class RadioSession:
                     await self._fill_playlist()
                 
                 if not self.playlist:
-                    logger.error(f"[{self.chat_id}] ❌ Playlist is empty. Stopping.")
-                    await self._update_status(f"❌ Не удалось найти музыку для потока _{self.display_name}_. Радио остановлено.")
-                    break
+                    logger.warning(f"[{self.chat_id}] Playlist empty. Trying emergency fallback...")
+                    await self._fill_emergency_playlist()
+                    if not self.playlist:
+                        logger.error(f"[{self.chat_id}] ❌ Emergency fallback also failed. Stopping.")
+                        await self._update_status(f"❌ Не удалось найти музыку для волны _{self.display_name}_. Радио остановлено.")
+                        break
 
                 track = self.playlist.pop(0)
                 self.played_ids.add(track.identifier)
@@ -110,7 +124,9 @@ class RadioSession:
                     if success:
                         error_streak = 0
                         self.tracks_played += 1
-                        await asyncio.wait_for(self.skip_event.wait(), timeout=float(track.duration))
+                        # Wait for the track's duration or a skip event
+                        timeout = float(track.duration or 200) # Fallback to 200s if duration is 0
+                        await asyncio.wait_for(self.skip_event.wait(), timeout=timeout)
                     else: raise Exception("Play track failed")
                 except Exception as e:
                     error_streak += 1
@@ -139,11 +155,9 @@ class RadioSession:
                 await self.bot.send_audio(self.chat_id, audio=result.file_id, caption=caption, parse_mode=ParseMode.MARKDOWN)
             elif result.file_path and os.path.exists(result.file_path):
                 with open(result.file_path, 'rb') as f:
-                    sent_message = await self.bot.send_audio(self.chat_id, audio=f, caption=caption, parse_mode=ParseMode.MARKDOWN)
-                    if sent_message.audio: await self.downloader.cache_file_id(track.identifier, sent_message.audio.file_id)
+                    msg = await self.bot.send_audio(self.chat_id, audio=f, caption=caption, parse_mode=ParseMode.MARKDOWN)
+                    if msg.audio: await self.downloader.cache_file_id(track.identifier, msg.audio.file_id)
             else: return False
-            
-            logger.info(f"[{self.chat_id}] ✅ Sent: {track.title}")
             return True
         except Exception as e:
             logger.error(f"[{self.chat_id}] ❌ Critical error in _play_track: {e}", exc_info=True)
@@ -180,20 +194,21 @@ class RadioManager:
 
     async def stop(self, chat_id: int):
         async with self._get_lock(chat_id):
-            if session := self._sessions.pop(chat_id, None): await session.stop()
+            if session := self._sessions.pop(chat_id, None):
+                await session.stop()
 
     async def skip(self, chat_id: int):
-        if session := self._sessions.get(chat_id): await session.skip()
+        if session := self._sessions.get(chat_id):
+            await session.skip()
 
     async def stop_all(self):
-        for chat_id in list(self._sessions.keys()): await self.stop(chat_id)
+        for chat_id in list(self._sessions.keys()):
+            await self.stop(chat_id)
 
     def _get_random_query(self) -> tuple[str, str, str]:
+        """Gets a random query from the entire 3-level genre structure."""
         try:
-            era_key = random.choice(list(self._settings.GENRE_DATA.keys()))
-            if era_key in ["main_menu", "moods"]: # Skip special keys
-                return self._get_random_query()
-
+            era_key = random.choice([k for k in self._settings.GENRE_DATA.keys() if k not in ["main_menu", "moods"]])
             era_data = self._settings.GENRE_DATA[era_key]
             subgenre_key = random.choice(list(era_data["subgenres"].keys()))
             subgenre_data = era_data["subgenres"][subgenre_key]
