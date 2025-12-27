@@ -2,114 +2,113 @@
     "main_menu": {
         "name": "Главное меню",
         "children": {
-            "genres": { "name": "🎶 Музыка по жанрам", "action": "navigate", "value": "genres" },
-            "moods": { "name": "🌈 По настроению", "action": "navigate", "value": "moods" },
+            "g_for": { "name": "🌍 Зарубежная музыка", "action": "navigate", "value": "genres" },
+            "g_ru": { "name": "🇷🇺 Русская музыка", "action": "navigate", "value": "ru_music" },
+            "moods": { "name": "✨ Под настроение", "action": "navigate", "value": "moods" },
             "search": { "name": "🔎 Поиск", "action": "navigate", "value": "search_menu" },
-            "random": { "name": "🎲 Случайная волна", "action": "random_radio" }
+            "random": { "name": "🎲 Мне повезет", "action": "random_radio" }
         }
     },
     "genres": {
-        "name": "🎶 Жанры",
+        "name": "🌍 Жанры и Эпохи",
         "children": {
+            "pop": {
+                "name": "💃 Поп & Ретро",
+                "children": {
+                    "p80": { "name": "80-е (Disco/Pop)", "query": "best 80s pop hits michael jackson madonna" },
+                    "p90": { "name": "90-е (Eurodance/Pop)", "query": "90s pop hits spice girls backstreet boys" },
+                    "p00": { "name": "2000-е (MTV Hits)", "query": "2000s pop hits britney spears rihanna" },
+                    "p_now": { "name": "Свежие хиты 2024", "query": "top pop hits 2024" }
+                }
+            },
             "rock": {
-                "name": "🎸 Рок",
+                "name": "🎸 Рок & Метал",
                 "children": {
-                    "psychedelic": {
-                        "name": "Psychedelic Rock",
-                        "children": {
-                            "60s": { "name": "60-е", "query": "60s psychedelic rock" },
-                            "70s": { "name": "70-е", "query": "70s psychedelic prog rock" }
-                        }
-                    },
-                    "classic": {
-                        "name": "Classic Rock",
-                        "children": {
-                            "70s": { "name": "70-е", "query": "70s classic rock anthems" },
-                            "80s": { "name": "80-е", "query": "80s arena rock" }
-                        }
-                    },
-                    "alternative": {
-                        "name": "Alternative & Indie",
-                        "children": {
-                            "90s_grunge": { "name": "90-е (Grunge)", "query": "90s grunge nirvana alice in chains" },
-                            "90s_britpop": { "name": "90-е (Britpop)", "query": "90s britpop oasis blur" },
-                            "00s": { "name": "2000-е", "query": "2000s indie rock revival" }
-                        }
-                    },
-                    "hard_metal": {
-                        "name": "Hard Rock & Metal",
-                        "children": {
-                            "70s": { "name": "70-е (Hard Rock)", "query": "70s hard rock deep purple black sabbath" },
-                            "80s": { "name": "80-е (Heavy & Thrash)", "query": "80s heavy metal thrash metallica" },
-                            "90s": { "name": "90-е (Nu-Metal)", "query": "90s nu-metal korn limp bizkit" }
-                        }
-                    },
-                    "punk": {
-                        "name": "Punk Rock",
-                        "children": {
-                            "70s": { "name": "70-е", "query": "70s punk rock ramones sex pistols" },
-                            "00s": { "name": "2000-е (Pop-punk)", "query": "2000s pop punk blink-182 sum 41" }
-                        }
-                    }
+                    "r_cl": { "name": "Classic Rock (60-70s)", "query": "classic rock 70s led zeppelin pink floyd" },
+                    "r_80": { "name": "Hard & Glam (80s)", "query": "80s hard rock guns n roses acdc" },
+                    "r_alt": { "name": "Alt & Grunge (90s)", "query": "90s grunge nirvana pearl jam" },
+                    "r_ind": { "name": "Indie & Britpop", "query": "indie rock arctic monkeys the strokes" },
+                    "r_mtl": { "name": "Heavy Metal", "query": "best heavy metal metallica iron maiden" },
+                    "r_pnk": { "name": "Punk Rock", "query": "punk rock green day blink 182" }
                 }
             },
-            "rap": {
-                "name": "🎤 Рэп / Хип-хоп",
+            "hip": {
+                "name": "🎤 Хип-хоп & R'n'B",
                 "children": {
-                    "oldschool": {
-                        "name": "Old School (80-90-е)",
-                        "children": {
-                            "boom_bap": { "name": "Boom Bap", "query": "90s boom bap wu-tang clan" },
-                            "g_funk": { "name": "G-Funk", "query": "90s g-funk snoop dogg dr. dre" }
-                        }
-                    },
-                    "modern": {
-                        "name": "Modern (00-20-е)",
-                        "children": {
-                            "trap": { "name": "Trap", "query": "2010s trap music" },
-                            "drill": { "name": "Drill", "query": "2020s drill music" }
-                        }
-                    },
-                    "lofi": {
-                        "name": "Lo-Fi & Chillhop",
-                        "query": "lo-fi hip hop radio"
-                    }
+                    "h_old": { "name": "Old School (90s)", "query": "90s hip hop tupac biggie snoop dogg" },
+                    "h_em": { "name": "Eminem & 2000s", "query": "2000s hip hop eminem 50 cent" },
+                    "h_trp": { "name": "Trap & Modern", "query": "modern trap hip hop drake travis scott" },
+                    "h_lo": { "name": "Lofi & Chill", "query": "lofi hip hop radio beats to relax" }
                 }
             },
-            "electronic": {
+            "edm": {
                 "name": "🎧 Электроника",
                 "children": {
-                    "house": { "name": "House", "query": "classic house music" },
-                    "techno": { "name": "Techno", "query": "techno mix 2025" },
-                    "trance": { "name": "Trance", "query": "classic trance anthems" },
-                    "dnb": { "name": "Drum & Bass", "query": "liquid drum and bass" },
-                    "synthwave": { "name": "Synthwave", "query": "synthwave retrowave mix" }
+                    "e_hou": { "name": "House", "query": "ibiza house music summer mix" },
+                    "e_tec": { "name": "Techno", "query": "techno bunker mix" },
+                    "e_dnb": { "name": "Drum & Bass", "query": "liquid drum and bass mix" },
+                    "e_syn": { "name": "Synthwave / Retro", "query": "synthwave retrowave mix" },
+                    "e_phk": { "name": "Phonk", "query": "drift phonk mix" }
                 }
             },
-            "pop": {
-                "name": "💃 Поп",
+            "soul": {
+                "name": "🎷 Джаз, Блюз, Соул",
                 "children": {
-                    "80s": { "name": "80-е", "query": "80s pop michael jackson madonna" },
-                    "90s": { "name": "90-е", "query": "90s pop hits" },
-                    "00s": { "name": "2000-е", "query": "2000s pop britney spears" }
-                }
-            },
-            "russian": {
-                "name": "🇷🇺 Русская музыка",
-                "children": {
-                    "rock": { "name": "Рок", "query": "русский рок" },
-                    "pop": { "name": "Поп", "query": "русская поп музыка" },
-                    "rap": { "name": "Рэп", "query": "русский рэп" }
+                    "s_jaz": { "name": "Jazz Classics", "query": "classic jazz frank sinatra louis armstrong" },
+                    "s_blu": { "name": "Blues Rock", "query": "blues rock guitar mix" },
+                    "s_sou": { "name": "Soul & R&B", "query": "classic soul music marvin gaye" }
                 }
             }
         }
     },
-    "moods": {
-        "name": "🌈 Настроения",
+    "ru_music": {
+        "name": "🇷🇺 Русская музыка",
         "children": {
-            "energy": { "name": "⚡ Энергия", "query": "high energy music" },
-            "chill": { "name": "😌 Чилл", "query": "chillout relaxing music" },
-            "focus": { "name": "🧠 Фокус", "query": "lo-fi hip hop for focus" }
+            "ru_sov": {
+                "name": "☭ Советская Эстрада & Ретро",
+                "children": {
+                    "sov_hit": { "name": "🎙 Золотые хиты СССР", "query": "лучшие песни ссср 70-80 эстрада магомаев пугачева" },
+                    "sov_mov": { "name": "🎬 Песни из Кинофильмов", "query": "песни из советских кинофильмов сборник" },
+                    "sov_via": { "name": "🎸 ВИА (Песняры, Земляне)", "query": "лучшие виа ссср песняры самоцветы" },
+                    "sov_vys": { "name": "🔥 Высоцкий и Барды", "query": "владимир высоцкий лучшие песни" }
+                }
+            },
+            "ru_rck": {
+                "name": "🎸 Русский Рок",
+                "children": {
+                    "rr_leg": { "name": "Легенды (Кино, Би-2)", "query": "русский рок хиты кино би-2 сплин наутилус" },
+                    "rr_mod": { "name": "Современный рок", "query": "современный русский рок" },
+                    "rr_pnk": { "name": "Панк (КиШ, Сектор)", "query": "король и шут сектор газа лучшее" }
+                }
+            },
+            "ru_pop": {
+                "name": "💃 Русская Попса",
+                "children": {
+                    "rp_90": { "name": "Лихие 90-е", "query": "русская дискотека 90 руки вверх иванушки" },
+                    "rp_00": { "name": "Нулевые (2000-е)", "query": "русские хиты 2000х виагра звери" },
+                    "rp_now": { "name": "Топ чарты 2024", "query": "русские хиты 2024 новинки поп" }
+                }
+            },
+            "ru_rap": {
+                "name": "🎤 Русский Рэп",
+                "children": {
+                    "rap_ol": { "name": "Олдскул (Баста, Гуф)", "query": "русский рэп 2000х баста гуф каста" },
+                    "rap_nw": { "name": "Новая Школа", "query": "русский рэп новинки 2024" },
+                    "rap_ly": { "name": "Лирика / Кальянный", "query": "кальянный рэп мияги энди панда хамжали" }
+                }
+            },
+            "ru_atm": { "name": "🚬 Шансон / Душевное", "query": "золотой шансон михаил круг бутырка" }
+        }
+    },
+    "moods": {
+        "name": "✨ Настроение и Дела",
+        "children": {
+            "m_wrk": { "name": "👨‍💻 Работа / Фокус", "query": "deep focus music for work" },
+            "m_gym": { "name": "💪 Спорт / Gym", "query": "workout motivation music aggressive phonk" },
+            "m_rel": { "name": "😌 Релакс / Сон", "query": "ambient relaxing music for sleep" },
+            "m_prt": { "name": "🎉 Вечеринка", "query": "party mix 2024 club dance" },
+            "m_drv": { "name": "🚗 В машину", "query": "night drive music bass boosted" },
+            "m_cls": { "name": "🎻 Классика", "query": "best classical music mozart beethoven" }
         }
     },
     "search_menu": {
