@@ -205,19 +205,38 @@ class RadioManager:
         for chat_id in list(self._sessions.keys()):
             await self.stop(chat_id)
 
-    def _get_random_query(self) -> tuple[str, str, str]:
-        """Gets a random query from the entire 3-level genre structure."""
+    def _get_random_query(self) -> tuple[str, Optional[str], str]:
+        """Gets a random query by traversing the new deep genre tree."""
         try:
-            era_key = random.choice([k for k in self._settings.GENRE_DATA.keys() if k not in ["main_menu", "moods"]])
-            era_data = self._settings.GENRE_DATA[era_key]
-            subgenre_key = random.choice(list(era_data["subgenres"].keys()))
-            subgenre_data = era_data["subgenres"][subgenre_key]
-            decade_key = random.choice(list(subgenre_data["decades"].keys()))
-            decade_data = subgenre_data["decades"][decade_key]
+            # Start at the main 'genres' node.
+            node = self._settings.GENRE_DATA['genres']
+            path_names = [node.get('name', 'Жанры')]
+
+            # Traverse until we find a 'query' key (a leaf node)
+            while 'children' in node:
+                # Pick a random child key
+                key = random.choice(list(node['children'].keys()))
+                node = node['children'][key]
+                path_names.append(node.get('name', key))
             
-            query = decade_data["query"]
-            display_name = f"{subgenre_data['name']} ({decade_data['name']})"
+            # We've found a leaf node with a query.
+            query = node['query']
+            
+            # Construct a display name, e.g., "Classic Rock (70-е)"
+            # The last part is the specific station name, the one before is the parent.
+            if len(path_names) > 2:
+                display_name = f"{path_names[-2]} ({path_names[-1]})"
+            else:
+                display_name = path_names[-1]
+
+            # Try to guess the decade for display purposes
+            decade_key = None
+            last_name = path_names[-1]
+            if 'е' in last_name or 's' in last_name:
+                decade_key = last_name
+
             return (query, decade_key, display_name)
         except Exception as e:
             logger.error(f"Failed to get random genre: {e}", exc_info=True)
-            return ("80s synth pop", "1980s", "🎹 Synth-Pop (80-е)")
+            # Fallback to a known-good station
+            return ("80s synth pop", "80s", "🎹 Synth-Pop (80-е)")
