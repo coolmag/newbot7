@@ -37,8 +37,8 @@ class YouTubeDownloader:
         self.semaphore = asyncio.Semaphore(3)
         self.search_semaphore = asyncio.Semaphore(5)
         
-        # 1. Достаем куки из переменной Railway (назови её там YOUTUBE_COOKIES)
-        cookies_content = os.getenv("YOUTUBE_COOKIES")
+        # 1. Достаем куки из переменной Railway (назови её там COOKIES_CONTENT)
+        cookies_content = os.getenv("COOKIES_CONTENT")
         cookie_file_path = None
         
         if cookies_content:
@@ -48,7 +48,7 @@ class YouTubeDownloader:
                 f.write(cookies_content)
             logger.info("🍪 Куки успешно загружены из переменной в файл!")
         else:
-            logger.warning("⚠️ Переменная YOUTUBE_COOKIES не найдена, пробуем без кук.")
+            logger.warning("⚠️ Переменная COOKIES_CONTENT не найдена, пробуем без кук.")
 
         # 2. Настраиваем yt-dlp
         self.ydl_opts = {

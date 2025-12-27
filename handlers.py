@@ -51,45 +51,67 @@ def _generate_keyboard_from_path(path: str, settings: Settings) -> InlineKeyboar
     if 'children' in node:
         for key, child in node['children'].items():
             child_path = f"{path}:{key}"
-            # If the child has children, it's a navigation button
             if 'children' in child:
                 action = CallbackAction.NAVIGATE
                 value = child_path
-            # If it has a query, it's a radio station button
             elif 'query' in child:
                 action = CallbackAction.START_RADIO
                 value = child['query']
-            # If it has a special action, it's a command button
             elif 'action' in child:
                 action = child['action']
-                value = child.get('value', key) # Use key as value if not specified
+                value = child.get('value', key)
             else:
-                continue # Skip misconfigured items
+                continue
             
             buttons.append(InlineKeyboardButton(child['name'], callback_data=VoteCallback(action, value).to_callback_data()))
 
-    # Create a 2-column layout
     keyboard = [buttons[i:i + 2] for i in range(0, len(buttons), 2)]
     
-    # Add navigation buttons
     nav_buttons = []
-    if ':' in path: # Not the top level
+    if ':' in path:
         parent_path = ":".join(path.split(':')[:-1])
         nav_buttons.append(InlineKeyboardButton("◀️ Назад", callback_data=VoteCallback(CallbackAction.NAVIGATE, parent_path).to_callback_data()))
     
     if path != "main_menu":
-         nav_buttons.append(InlineKeyboardButton("🔝 В главное меню", callback_data=VoteCallback(CallbackAction.NAVIGATE, "main_menu").to_callback_data()))
+         nav_buttons.append(InlineKeyboardButton("🔝 Главное меню", callback_data=VoteCallback(CallbackAction.NAVIGATE, "main_menu").to_callback_data()))
     
     if nav_buttons:
         keyboard.append(nav_buttons)
         
     return InlineKeyboardMarkup(keyboard)
 
+# +++ Wrapper Handlers (Radio Control) +++
+
+async def stop_command_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Обработка команды /stop"""
+    await context.application.radio_manager.stop(update.effective_chat.id)
+    await update.message.reply_text("🛑 Радио остановлено.")
+    return MENU
+
+async def skip_command_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Обработка команды /skip"""
+    await context.application.radio_manager.skip(update.effective_chat.id)
+    return MENU
+
+async def stop_button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Обработка КНОПКИ Стоп (Callback)"""
+    query = update.callback_query
+    await query.answer()
+    await context.application.radio_manager.stop(update.effective_chat.id)
+    await query.message.reply_text("🛑 Радио остановлено.")
+    return MENU
+
+async def skip_button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Обработка КНОПКИ Пропустить (Callback)"""
+    query = update.callback_query
+    await query.answer("Пропускаю...")
+    await context.application.radio_manager.skip(update.effective_chat.id)
+    return MENU
+
 # +++ State Handlers +++
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Handles the /start command and main menu entry."""
-    text = "🎧 *Музыкальный комбайн v14*\n\nВыберите действие:"
+    text = "🎧 *Музыкальный комбайн v15*\n\nВыберите действие:"
     markup = _generate_keyboard_from_path("main_menu", context.application.settings)
     
     if update.callback_query:
@@ -100,7 +122,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     return MENU
 
 async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """The main handler for all menu navigation and actions."""
     query = update.callback_query
     await query.answer()
     
@@ -123,12 +144,13 @@ async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
     elif action == CallbackAction.START_RADIO:
         await query.edit_message_text(f"🛰️ Настраиваюсь на волну...")
         asyncio.create_task(context.application.radio_manager.start(chat_id=query.message.chat_id, query=value))
-        return ConversationHandler.END
+        # Не выходим из ConversationHandler, чтобы работали кнопки меню
+        return MENU 
 
     elif action == "random_radio":
         await query.edit_message_text("🎲 Ищу случайную волну...")
         asyncio.create_task(context.application.radio_manager.start(chat_id=query.message.chat_id, query="random"))
-        return ConversationHandler.END
+        return MENU
 
     elif action == CallbackAction.SEARCH_ARTIST:
         await query.edit_message_text("👤 Введите имя артиста:")
@@ -150,7 +172,7 @@ async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
 
     elif action == CallbackAction.CANCEL and value == "search":
         await query.edit_message_text("Поиск отменен.")
-        return await start(update, context) # Go back to main menu
+        return await start(update, context)
         
     return MENU
 
@@ -158,31 +180,28 @@ async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
 
 async def search_artist_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     query_text = update.message.text
-    # Remove the "waiting for input" message
     try:
         await context.bot.delete_message(chat_id=update.effective_chat.id, message_id=update.message.reply_to_message.message_id)
-    except Exception:
-        pass # Ignore if message cannot be deleted
+    except Exception: pass
         
     await _send_artist_search_results(update, context, query_text=query_text, page=1)
-    return MENU # Return to menu state to allow track selection or cancellation
+    return MENU
 
 async def search_track_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     query_text = update.message.text
     try:
         await context.bot.delete_message(chat_id=update.effective_chat.id, message_id=update.message.reply_to_message.message_id)
-    except Exception:
-        pass
+    except Exception: pass
 
     msg = await update.message.reply_text(f"🔎 Ищу трек: *{query_text}*...", parse_mode=ParseMode.MARKDOWN)
-    
     tracks = await context.application.downloader.search(query=query_text, search_mode='track', limit=1)
+    
     if not tracks:
         await msg.edit_text("😕 Ничего не найдено.")
     else:
         await msg.delete()
         await _send_track(context, update.message.chat_id, tracks[0].identifier)
-    return ConversationHandler.END
+    return MENU
 
 async def select_track_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     query = update.callback_query
@@ -193,7 +212,7 @@ async def select_track_handler(update: Update, context: ContextTypes.DEFAULT_TYP
     
     await query.edit_message_text("⏳ Готовлю выбранный трек к отправке...")
     await _send_track(context, query.message.chat_id, callback.value)
-    return ConversationHandler.END # End conversation after sending a track
+    return MENU
 
 # +++ Pagination and Track Sending Helpers +++
 
@@ -250,41 +269,38 @@ async def _send_track(context: ContextTypes.DEFAULT_TYPE, chat_id: int, video_id
 
 # +++ Application Setup +++
 
-async def stop_radio_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Wrapper to stop the radio for the current chat."""
-    await context.application.radio_manager.stop(update.effective_chat.id)
-    await update.message.reply_text("🛑 Радио остановлено.")
-
-async def skip_radio_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Wrapper to skip the current track for the current chat."""
-    await context.application.radio_manager.skip(update.effective_chat.id)
-    # No reply needed for skip, as the next track will be sent automatically.
-
 def setup_handlers(app: Application, radio: RadioManager, settings: Settings, downloader: YouTubeDownloader):
     app.downloader = downloader
     app.radio_manager = radio
     app.settings = settings
     
-    # --- Global Handlers ---
-    app.add_handler(CommandHandler("stop", stop_radio_handler))
-    app.add_handler(CommandHandler("skip", skip_radio_handler))
-    app.add_handler(CallbackQueryHandler(select_track_handler, pattern=f"^{CallbackAction.SELECT}:.*"))
-    app.add_handler(CallbackQueryHandler(stop_radio_handler, pattern=f"^{CallbackAction.STOP}:.*"))
-    app.add_handler(CallbackQueryHandler(skip_radio_handler, pattern=f"^{CallbackAction.SKIP}:.*"))
+    # 1. Сначала регистрируем команды (чтобы они работали всегда)
+    app.add_handler(CommandHandler("stop", stop_command_handler))
+    app.add_handler(CommandHandler("skip", skip_command_handler))
 
-    # --- Conversation Handler ---
+    # 2. Настраиваем логику разговора (меню)
     conv_handler = ConversationHandler(
         entry_points=[
             CommandHandler('start', start),
             CallbackQueryHandler(menu_handler, pattern=f"^{CallbackAction.NAVIGATE}:main_menu$"),
         ],
         states={
-            MENU: [CallbackQueryHandler(menu_handler)],
+            MENU: [
+                # ВАЖНО: Сначала проверяем кнопки управления плеером
+                CallbackQueryHandler(stop_button_handler, pattern=f"^{CallbackAction.STOP}:.*"),
+                CallbackQueryHandler(skip_button_handler, pattern=f"^{CallbackAction.SKIP}:.*"),
+                CallbackQueryHandler(select_track_handler, pattern=f"^{CallbackAction.SELECT}:.*"),
+                
+                # Потом всё остальное (навигация меню)
+                CallbackQueryHandler(menu_handler)
+            ],
             WAITING_ARTIST: [MessageHandler(filters.TEXT & ~filters.COMMAND, search_artist_handler)],
             WAITING_TRACK: [MessageHandler(filters.TEXT & ~filters.COMMAND, search_track_handler)],
         },
         fallbacks=[CommandHandler('start', start)],
-        per_message=False,
-        conversation_timeout=3600 # 1 hour
+        per_message=False
     )
     app.add_handler(conv_handler)
+    # Global handler for unknown commands (should be after ConversationHandler to avoid conflicts with fallbacks)
+    # This acts as a catch-all if no other handler or conversation state catches the command.
+    app.add_handler(MessageHandler(filters.COMMAND, unknown_command_handler))
