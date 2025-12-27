@@ -120,6 +120,9 @@ async def radio_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     markup = _generate_keyboard_from_path("main_menu", context.application.settings)
     await update.message.reply_text("📻 Выберите станцию:", reply_markup=markup)
 
+async def unknown_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("🤔 Команда не распознана. Жми /start")
+
 # ==================== КНОПКИ ПЛЕЕРА ====================
 
 async def stop_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -144,7 +147,7 @@ async def select_track_button(update: Update, context: ContextTypes.DEFAULT_TYPE
     await query.edit_message_text("⏳ Загружаю трек...")
     await _send_track(context, query.message.chat_id, callback.value)
 
-# ==================== МЕНЮ ====================
+# ==================== 4. НАВИГАЦИЯ ПО МЕНЮ ====================
 
 async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     query = update.callback_query
@@ -183,6 +186,7 @@ async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
         ))
         return MENU
 
+    # Поиск по артисту
     elif action == CallbackAction.SEARCH_ARTIST:
         cancel_btn = InlineKeyboardButton(
             "🔙 Отмена",
@@ -191,6 +195,7 @@ async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
         await query.edit_message_text("👤 Напишите имя артиста:", reply_markup=InlineKeyboardMarkup([[cancel_btn]]))
         return WAITING_ARTIST
         
+    # Поиск по треку
     elif action == CallbackAction.SEARCH_TRACK:
         cancel_btn = InlineKeyboardButton(
             "🔙 Отмена",
@@ -199,6 +204,7 @@ async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
         await query.edit_message_text("🎵 Напишите название трека:", reply_markup=InlineKeyboardMarkup([[cancel_btn]]))
         return WAITING_TRACK
 
+    # Пагинация
     elif action == CallbackAction.PAGE:
         try:
             page_str, search_query = value.split(":", 1)
@@ -207,6 +213,7 @@ async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
             logger.error(f"Page error: {e}")
         return MENU
 
+    # Отмена
     elif action == CallbackAction.CANCEL:
         return await start(update, context)
         
@@ -298,9 +305,9 @@ def setup_handlers(app: Application, radio: RadioManager, settings: Settings, do
     app.add_handler(CommandHandler("radio", radio_command))
     
     # 2. Кнопки плеера (ИСПРАВЛЕНО: добавлен .* в паттерн)
-    app.add_handler(CallbackQueryHandler(stop_button, pattern=f"^{CallbackAction.STOP}:.*"))
-    app.add_handler(CallbackQueryHandler(skip_button, pattern=f"^{CallbackAction.SKIP}:.*"))
-    app.add_handler(CallbackQueryHandler(select_track_button, pattern=f"^{CallbackAction.SELECT}:.*"))
+    app.add_handler(CallbackQueryHandler(stop_button, pattern=f"^{CallbackAction.STOP}:.*\""))
+    app.add_handler(CallbackQueryHandler(skip_button, pattern=f"^{CallbackAction.SKIP}:.*\""))
+    app.add_handler(CallbackQueryHandler(select_track_button, pattern=f"^{CallbackAction.SELECT}:.*\""))
     
     # 3. ConversationHandler
     conv_handler = ConversationHandler(
