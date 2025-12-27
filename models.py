@@ -23,9 +23,8 @@ class CallbackAction:
     CANCEL = "cancel"
     CONFIRM = "confirm"
     
-    # New actions for Era -> Subgenre -> Decade flow
+    # New actions for Era -> Decade flow
     ERA = "era"
-    SUBGENRE = "sub"
     DECADE = "dec"
 
 

@@ -49,101 +49,49 @@ class YouTubeDownloader:
         }
 
     def _is_track_valid(self, entry: Dict, decade: Optional[str] = None) -> bool:
-        """
-        Проверяет, является ли результат поиска валидным треком.
-        Фильтрация по году теперь "мягкая".
-        """
-        if not entry or entry.get('resultType') not in ['song', 'video']:
-            return False
-
+        if not entry or entry.get('resultType') not in ['song', 'video']: return False
         title = entry.get('title', '').lower()
-        if any(word in title for word in self.FORBIDDEN_WORDS):
-            logger.debug(f"Filtered out '{title}' due to forbidden words.")
-            return False
-        
+        if any(word in title for word in self.FORBIDDEN_WORDS): return False
         duration_sec = entry.get('duration_seconds', 0)
-        if not duration_sec or not (60 < duration_sec < 720):
-            logger.debug(f"Filtered out '{title}' due to duration: {duration_sec}s.")
-            return False
-            
+        if not (45 < duration_sec < 900): return False
         if decade:
             year_str = entry.get('year')
-            # Если года нет, мы не можем быть уверены, поэтому пропускаем трек.
-            # Это лучше, чем засорять эфир нерелевантной музыкой.
-            if not year_str or not year_str.isdigit():
-                logger.debug(f"Filtered out '{title}' as it has no year for decade filtering.")
-                return False
-            
-            try:
+            if year_str and year_str.isdigit():
                 year = int(year_str)
                 start_year = int(decade[:4])
-                
-                # Отсеиваем треки, которые ТОЧНО старше искомого десятилетия
-                if year < start_year:
-                    logger.debug(f"Filtered out '{title}' ({year}) as it's too old for decade {decade}.")
-                    return False
-                # Все, что новее (ремастеры) или в рамках десятилетия - пропускаем.
-            except (ValueError, IndexError):
-                logger.warning(f"Could not parse decade for year validation: {decade}")
-                return False
-
+                if year < start_year: return False
         return True
 
     async def search(self, query: str, decade: Optional[str] = None, limit: int = 20) -> List[TrackInfo]:
-        """
-        Поиск треков с использованием YTMusic, с отказоустойчивостью и "человечными" запросами.
-        """
         async with self.search_semaphore:
-            # Ключ кэша зависит от точного запроса и десятилетия
-            cache_key = f"ytmusic_search_v5:{query.lower().strip()}:{decade}"
-            
+            cache_key = f"ytmusic_search_v7:{query.lower().strip()}:{decade}"
             cached_tracks = await self._cache.get(cache_key)
             if cached_tracks is not None:
                 logger.info(f"[Search] Cache hit for '{query}' decade: {decade}")
                 return cached_tracks
 
-            logger.info(f"[Search] Cache miss for '{query}' decade: {decade}. Starting search.")
-
-            search_templates = [
-                f"{query} hits",
-                f"{query} best of",
-                query # Самый широкий запрос как фоллбэк
-            ]
+            logger.info(f"[Search] Cache miss for '{query}' decade: {decade}.")
             
-            found_entries = []
+            # Add "topic" to the query for better results
+            search_query = f"{query} topic"
+
             loop = asyncio.get_running_loop()
-
-            for template in search_templates:
-                logger.debug(f"[Search] Trying query: '{template}'")
-
-                def do_search(q: str) -> List[Dict]:
-                    try:
-                        return self._ytmusic.search(q, filter="songs", limit=limit * 2)
-                    except Exception as e:
-                        logger.error(f"YTMusic search for '{q}' failed: {e}", exc_info=True)
-                        return []
-                
-                search_results = await loop.run_in_executor(None, do_search, template)
-                
-                if search_results:
-                    found_entries.extend(search_results)
-                
-                if len(found_entries) >= limit * 2:
-                    logger.info("Collected enough results, stopping further searches.")
-                    break
+            def do_search(q: str) -> List[Dict]:
+                try: return self._ytmusic.search(q, filter="songs", limit=limit * 2)
+                except Exception as e:
+                    logger.error(f"YTMusic search for '{q}' failed: {e}", exc_info=True)
+                    return []
             
-            valid_entries = [entry for entry in found_entries if self._is_track_valid(entry, decade=decade)]
-            
+            search_results = await loop.run_in_executor(None, do_search, search_query)
+            valid_entries = [entry for entry in search_results if self._is_track_valid(entry, decade=decade)]
             unique_tracks_dict = {entry['videoId']: self._parse_ytmusic_entry(entry) for entry in valid_entries}
             final_tracks = list(unique_tracks_dict.values())[:limit]
             
             await self._cache.set(cache_key, final_tracks, ttl=3600)
-            
-            logger.info(f"[Search] Found {len(final_tracks)} filtered tracks for base query '{query}'")
+            logger.info(f"[Search] Found {len(final_tracks)} filtered tracks for '{query}'")
             return final_tracks
 
     def _parse_ytmusic_entry(self, entry: Dict) -> TrackInfo:
-        """Парсит результат поиска из YTMusic."""
         artists = ", ".join([artist['name'] for artist in entry.get('artists', [])])
         return TrackInfo(
             identifier=entry['videoId'], title=entry['title'], artist=artists,
@@ -152,20 +100,15 @@ class YouTubeDownloader:
         )
 
     async def get_track_info(self, video_id: str) -> Optional[TrackInfo]:
-        """Получение информации о треке с помощью yt-dlp и кэшированием."""
         cache_key = f"track_info:{video_id}"
         cached_info = await self._cache.get(cache_key)
-        if cached_info:
-            return cached_info
-
+        if cached_info: return cached_info
         logger.info(f"[TrackInfo] Cache miss. Fetching info for {video_id}")
         loop = asyncio.get_running_loop()
         
         def do_extract_info():
             try:
-                opts = self._get_dl_opts()
-                opts['skip_download'] = True
-                with yt_dlp.YoutubeDL(opts) as ydl:
+                with yt_dlp.YoutubeDL(self._get_dl_opts()) as ydl:
                     return ydl.extract_info(video_id, download=False)
             except Exception as e:
                 logger.error(f"[TrackInfo] Failed for {video_id}: {e}")
@@ -173,13 +116,11 @@ class YouTubeDownloader:
         
         info = await loop.run_in_executor(None, do_extract_info)
         if not info: return None
-        
         track_info = TrackInfo.from_yt_info(info)
         await self._cache.set(cache_key, track_info, ttl=86400)
         return track_info
 
     async def download(self, video_id: str) -> DownloadResult:
-        """Скачивание трека с проверкой кэша file_id."""
         async with self.semaphore:
             track_info = await self.get_track_info(video_id)
             if not track_info:
@@ -188,7 +129,6 @@ class YouTubeDownloader:
             file_id_cache_key = f"file_id:{video_id}"
             cached_file_id = await self._cache.get(file_id_cache_key)
             if cached_file_id:
-                logger.info(f"[Download] file_id cache hit for {video_id}")
                 return DownloadResult(success=True, file_id=cached_file_id, track_info=track_info)
             
             logger.info(f"[Download] Starting download: {video_id}")
@@ -199,16 +139,13 @@ class YouTubeDownloader:
                     with yt_dlp.YoutubeDL(self._get_dl_opts()) as ydl:
                         ydl.download([video_id])
                     return True
-                except Exception as e:
-                    logger.error(f"[Download] yt-dlp internal error for {video_id}: {e}", exc_info=True)
-                    return False
+                except Exception: return False
             
             try:
                 success = await asyncio.wait_for(loop.run_in_executor(None, do_download), timeout=300.0)
                 if not success:
                     return DownloadResult(success=False, error="Download failed", track_info=track_info)
             except asyncio.TimeoutError:
-                logger.error(f"[Download] Timeout: {video_id}")
                 self._cleanup_partial(video_id)
                 return DownloadResult(success=False, error="Timeout", track_info=track_info)
 
@@ -216,30 +153,23 @@ class YouTubeDownloader:
             if not final_path:
                 return DownloadResult(success=False, error="File not found", track_info=track_info)
             
-            logger.info(f"[Download] Success: {video_id}")
             return DownloadResult(success=True, file_path=final_path, track_info=track_info)
 
     async def cache_file_id(self, video_id: str, file_id: str):
-        """Сохраняет Telegram file_id в кэш навсегда."""
         cache_key = f"file_id:{video_id}"
         await self._cache.set(cache_key, file_id, ttl=0)
         logger.info(f"Cached file_id for {video_id}")
 
     def _find_downloaded_file(self, video_id: str) -> Optional[Path]:
-        """Поиск скачанного файла."""
         pattern = str(self._settings.DOWNLOADS_DIR / f"{video_id}.mp3")
         files = glob.glob(pattern)
         if files:
             path = Path(files[0])
-            if path.exists() and path.stat().st_size > 0:
-                return path
+            if path.exists() and path.stat().st_size > 0: return path
         return None
 
     def _cleanup_partial(self, video_id: str):
-        """Очистка временных файлов после неудачной загрузки."""
         pattern = str(self._settings.DOWNLOADS_DIR / f"{video_id}.*")
         for f in glob.glob(pattern):
-            try:
-                os.unlink(f)
-            except Exception:
-                pass
+            try: os.unlink(f)
+            except Exception: pass

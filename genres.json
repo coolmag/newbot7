@@ -1,180 +1,53 @@
 {
     "rock": {
         "name": "🎸 Рок и Альтернатива",
-        "subgenres": {
-            "classic_rock": {
-                "name": "Classic Rock",
-                "decades": {
-                    "1960s": { "name": "60-е", "query": "Psychedelic Rock 60s" },
-                    "1970s": { "name": "70-е", "query": "Classic Rock 70s" }
-                }
-            },
-            "hard_rock": {
-                "name": "Hard Rock / Metal",
-                "decades": {
-                    "1970s": { "name": "70-е", "query": "Hard Rock 70s" },
-                    "1980s": { "name": "80-е", "query": "Glam Metal 80s" }
-                }
-            },
-            "post_punk": {
-                "name": "Post-Punk / New Wave",
-                "decades": {
-                    "1980s": { "name": "80-е", "query": "Post-Punk 80s" },
-                    "2010s": { "name": "10-е", "query": "Post-Punk Revival" }
-                }
-            },
-            "alternative": {
-                "name": "Alternative Rock",
-                "decades": {
-                    "1990s": { "name": "90-е", "query": "Alternative Rock 90s" },
-                    "2000s": { "name": "00-е", "query": "Indie Rock 2000s" }
-                }
-            },
-            "modern_rock": {
-                "name": "Modern Rock",
-                "decades": {
-                    "2010s": { "name": "10-е", "query": "Modern Rock 2010s" },
-                    "2020s": { "name": "20-е", "query": "Modern Rock 2020s" }
-                }
-            }
+        "decades": {
+            "1960s": { "name": "60-е: Psychedelic", "query": "Psychedelic Rock 60s hits" },
+            "1970s": { "name": "70-е: Classic Rock", "query": "Classic Rock 70s official" },
+            "1980s": { "name": "80-е: Glam & Heavy", "query": "80s Glam Metal Hard Rock" },
+            "1990s": { "name": "90-е: Grunge & Alt", "query": "90s Grunge Alternative hits" },
+            "2000s": { "name": "00-е: Indie Rock", "query": "2000s Indie Rock Revival" },
+            "2020s": { "name": "20-е: Modern Rock", "query": "Modern Rock 2025" }
         }
     },
     "electronic": {
         "name": "🎹 Электронная музыка",
-        "subgenres": {
-            "disco": {
-                "name": "Disco / Space Disco",
-                "decades": {
-                    "1970s": { "name": "70-е", "query": "Space Disco" }
-                }
-            },
-            "synth_pop": {
-                "name": "Synth-Pop",
-                "decades": {
-                    "1980s": { "name": "80-е", "query": "Synth-Pop 80s official" },
-                    "2020s": { "name": "20-е", "query": "Synthwave" }
-                }
-            },
-            "house": {
-                "name": "House",
-                "decades": {
-                    "1980s": { "name": "80-е", "query": "Chicago House" },
-                    "2000s": { "name": "00-е", "query": "Electro House" },
-                    "2010s": { "name": "10-е", "query": "Deep House" }
-                }
-            },
-            "breakbeat": {
-                "name": "Breakbeat",
-                "decades": {
-                    "1990s": { "name": "90-е", "query": "Big Beat The Prodigy" }
-                }
-            },
-            "techno": {
-                "name": "Techno",
-                "decades": {
-                    "2000s": { "name": "00-е", "query": "Minimal Techno" },
-                    "2020s": { "name": "20-е", "query": "Melodic Techno" }
-                }
-            },
-            "bass_music": {
-                "name": "Bass Music",
-                "decades": {
-                    "1990s": { "name": "90-е", "query": "Jungle Drum and Bass" },
-                    "2000s": { "name": "00-е", "query": "Early Dubstep" },
-                    "2020s": { "name": "20-е", "query": "Phonk" }
-                }
-            }
+        "decades": {
+            "1970s": { "name": "70-е: Space Disco", "query": "70s Space Disco Eurodisco" },
+            "1980s": { "name": "80-е: Synth-Pop", "query": "80s Synth-Pop New Wave" },
+            "1990s": { "name": "90-е: Rave & Jungle", "query": "90s Jungle Drum and Bass" },
+            "2000s": { "name": "00-е: Electro House", "query": "2000s Electro House classics" },
+            "2010s": { "name": "10-е: EDM Era", "query": "2010s EDM Festival hits" },
+            "2020s": { "name": "20-е: Phonk & Drift", "query": "Phonk music 2025" }
         }
     },
     "hip_hop": {
-        "name": "🎤 Хип-хоп и R&B",
-        "subgenres": {
-            "old_school": {
-                "name": "Old School",
-                "decades": {
-                    "1980s": { "name": "80-е", "query": "Old School Hip Hop 80s" },
-                    "1990s": { "name": "90-е", "query": "Golden age hip hop" }
-                }
-            },
-            "new_school": {
-                "name": "New School",
-                "decades": {
-                    "2000s": { "name": "00-е", "query": "Dirty South Crunk" },
-                    "2010s": { "name": "10-е", "query": "Trap music" },
-                    "2020s": { "name": "20-е", "query": "UK Drill" }
-                }
-            },
-            "rnb": {
-                "name": "R&B",
-                "decades": {
-                    "1990s": { "name": "90-е", "query": "90s R&B" },
-                    "2000s": { "name": "00-е", "query": "2000s R&B hits" },
-                    "2020s": { "name": "20-е", "query": "Alternative R&B" }
-                }
-            }
-        }
-    },
-    "pop": {
-        "name": "💃 Поп-музыка",
-        "subgenres": {
-            "classic_pop": {
-                "name": "Classic Pop",
-                "decades": {
-                    "1970s": { "name": "70-е", "query": "70s soft rock" },
-                    "1980s": { "name": "80-е", "query": "80s dance-pop" }
-                }
-            },
-            "teen_pop": {
-                "name": "Teen Pop",
-                "decades": {
-                    "1990s": { "name": "90-е", "query": "90s boy bands" },
-                    "2000s": { "name": "00-е", "query": "2000s teen pop" }
-                }
-            },
-            "modern_pop": {
-                "name": "Modern Pop",
-                "decades": {
-                    "2010s": { "name": "10-е", "query": "2010s dance-pop" },
-                    "2020s": { "name": "20-е", "query": "Hyperpop" }
-                }
-            },
-            "world_pop": {
-                "name": "World Pop",
-                "decades": {
-                    "2010s": { "name": "10-е", "query": "Latin Pop Reggaeton" },
-                    "2020s": { "name": "20-е", "query": "K-Pop hits" }
-                }
-            }
+        "name": "🎤 Хип-Хоп и Urban",
+        "decades": {
+            "1980s": { "name": "80-е: Old School", "query": "80s Old School Hip Hop" },
+            "1990s": { "name": "90-е: Golden Era", "query": "90s East Coast West Coast" },
+            "2000s": { "name": "00-е: Gangsta & RnB", "query": "2000s Hip Hop RnB hits" },
+            "2010s": { "name": "10-е: Trap Era", "query": "2010s Trap music classics" },
+            "2020s": { "name": "20-е: UK Drill / Rage", "query": "Modern Drill Rage music" }
         }
     },
     "jazz_funk_soul": {
         "name": "🎷 Джаз, Фанк и Соул",
-        "subgenres": {
-            "jazz": {
-                "name": "Jazz",
-                "decades": {
-                    "1960s": { "name": "60-е", "query": "Cool Jazz" },
-                    "1970s": { "name": "70-е", "query": "Jazz Fusion" },
-                    "1990s": { "name": "90-е", "query": "Acid Jazz" },
-                    "2000s": { "name": "00-е", "query": "Nu-Jazz" }
-                }
-            },
-            "soul_funk": {
-                "name": "Soul & Funk",
-                "decades": {
-                    "1960s": { "name": "60-е", "query": "60s Soul music" },
-                    "1970s": { "name": "70-е", "query": "Funk 70s James Brown" },
-                    "1980s": { "name": "80-е", "query": "Boogie funk" },
-                    "2000s": { "name": "00-е", "query": "Neo-Soul" }
-                }
-            },
-            "chill_beats": {
-                "name": "Chill Beats",
-                "decades": {
-                    "2010s": { "name": "10-е", "query": "Lo-Fi Beats" },
-                    "2020s": { "name": "20-е", "query": "Modern Funk" }
-                }
-            }
+        "decades": {
+            "1960s": { "name": "60-е: Cool Jazz", "query": "Classic Cool Jazz hits" },
+            "1970s": { "name": "70-е: Funk & Fusion", "query": "70s Funk Jazz Fusion" },
+            "1980s": { "name": "80-е: Boogie & Soul", "query": "80s Soul Boogie funk" },
+            "1990s": { "name": "90-е: Acid Jazz", "query": "90s Acid Jazz Groove" },
+            "2020s": { "name": "20-е: Lo-Fi & Chill", "query": "Lo-Fi Hip Hop Chill Beats" }
+        }
+    },
+    "pop": {
+        "name": "💃 Поп-музыка",
+        "decades": {
+            "1970s": { "name": "70-е: Disco Pop", "query": "70s Disco Pop official" },
+            "1980s": { "name": "80-е: Star Pop", "query": "80s Dance Pop hits" },
+            "1990s": { "name": "90-е: Boy/Girl Bands", "query": "90s Boy Bands Girl Groups" },
+            "2020s": { "name": "20-е: K-Pop", "query": "K-Pop hits 2025" }
         }
     }
 }

@@ -192,19 +192,16 @@ class RadioManager:
             await self.stop(chat_id)
 
     def _get_random_query(self) -> tuple[str, str, str]:
-        """Gets a random query from the entire 3-level genre structure."""
+        """Gets a random query from the entire 2-level genre structure."""
         try:
             era_key = random.choice(list(self._settings.GENRE_DATA.keys()))
             era_data = self._settings.GENRE_DATA[era_key]
             
-            subgenre_key = random.choice(list(era_data["subgenres"].keys()))
-            subgenre_data = era_data["subgenres"][subgenre_key]
-
-            decade_key = random.choice(list(subgenre_data["decades"].keys()))
-            decade_data = subgenre_data["decades"][decade_key]
+            decade_key = random.choice(list(era_data["decades"].keys()))
+            decade_data = era_data["decades"][decade_key]
             
             query = decade_data["query"]
-            display_name = f"{subgenre_data['name']} ({decade_data['name']})"
+            display_name = f"{era_data['name']} ({decade_data['name']})"
             
             return (query, decade_key, display_name)
         except Exception:
