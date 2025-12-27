@@ -2,6 +2,7 @@ from __future__ import annotations
 import logging
 import os
 import asyncio
+from math import ceil
 from typing import Optional
 
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
@@ -18,13 +19,19 @@ from youtube import YouTubeDownloader
 from models import VoteCallback, CallbackAction
 
 try:
-    from keyboards import get_track_search_keyboard
+    from keyboards import get_track_search_keyboard, get_pagination_keyboard
 except ImportError:
     def get_track_search_keyboard(tracks) -> InlineKeyboardMarkup:
         buttons = [InlineKeyboardButton(f"{i}. {t.title}", callback_data=VoteCallback(CallbackAction.SELECT, t.identifier).to_callback_data()) for i, t in enumerate(tracks, 1)]
         return InlineKeyboardMarkup([[b] for b in buttons] + [[InlineKeyboardButton("❌ Отмена", callback_data=VoteCallback(CallbackAction.CANCEL, "search").to_callback_data())]])
+    def get_pagination_keyboard(current_page, total_pages, base_value) -> InlineKeyboardMarkup:
+        return InlineKeyboardMarkup([[]])
 
 logger = logging.getLogger("handlers")
+
+# Constants
+PAGE_SIZE = 5
+SEARCH_LIMIT = 30
 
 # Conversation states
 MENU, WAITING_ARTIST, WAITING_TRACK = range(3)
@@ -50,11 +57,11 @@ async def _send_track(context: ContextTypes.DEFAULT_TYPE, chat_id: int, video_id
             try: os.unlink(download_result.file_path)
             except OSError: pass
 
-# +++ Keyboard Generators +++
+# +++ Keyboard Generators (Menu) +++
 def _generate_main_menu_keyboard(settings: Settings) -> InlineKeyboardMarkup:
     buttons = [
         InlineKeyboardButton(
-            button["text"], 
+            button["text"],
             callback_data=VoteCallback(action=button["action"], value="go").to_callback_data()
         ) for button in settings.GENRE_DATA["main_menu"]["buttons"]
     ]
@@ -72,7 +79,7 @@ def _generate_era_keyboard(settings: Settings) -> InlineKeyboardMarkup:
 def _generate_subgenre_keyboard(settings: Settings, era_key: str) -> InlineKeyboardMarkup:
     buttons = [
         InlineKeyboardButton(sub_data["name"], callback_data=VoteCallback(CallbackAction.SUBGENRE, f"{era_key}:{sub_key}").to_callback_data())
-        for sub_key, sub_data in settings.GENRE_DATA[era_key].get("subgenres", {{}}).items()
+        for sub_key, sub_data in settings.GENRE_DATA[era_key].get("subgenres", {}).items()
     ]
     keyboard = [buttons[i:i + 2] for i in range(0, len(buttons), 2)]
     keyboard.append([InlineKeyboardButton("◀️ Назад к Эпохам", callback_data=VoteCallback(action="menu_eras", value="back").to_callback_data())])
@@ -81,11 +88,49 @@ def _generate_subgenre_keyboard(settings: Settings, era_key: str) -> InlineKeybo
 def _generate_decade_keyboard(settings: Settings, era_key: str, subgenre_key: str) -> InlineKeyboardMarkup:
     buttons = [
         InlineKeyboardButton(decade_data["name"], callback_data=VoteCallback(CallbackAction.DECADE, f"{era_key}:{subgenre_key}:{decade_key}").to_callback_data())
-        for decade_key, decade_data in settings.GENRE_DATA[era_key]["subgenres"].get(subgenre_key, {{}}).get("decades", {{}}).items()
+        for decade_key, decade_data in settings.GENRE_DATA[era_key]["subgenres"].get(subgenre_key, {}).get("decades", {}).items()
     ]
     keyboard = [buttons[i:i + 2] for i in range(0, len(buttons), 2)]
     keyboard.append([InlineKeyboardButton("◀️ Назад к Поджанрам", callback_data=VoteCallback(action=CallbackAction.ERA, value=era_key).to_callback_data())])
     return InlineKeyboardMarkup(keyboard)
+
+# +++ Search result pagination helper +++
+async def _send_artist_search_results(update: Update, context: ContextTypes.DEFAULT_TYPE, query_text: str, page: int = 1):
+    """Sends a paginated message with artist search results."""
+    tracks = await context.application.downloader.search(query=query_text, search_mode='artist', limit=SEARCH_LIMIT)
+
+    if not tracks:
+        text = "😕 Не удалось найти треки этого исполнителя."
+        if update.callback_query:
+            await update.callback_query.edit_message_text(text)
+        else:
+            await update.message.reply_text(text)
+        return
+
+    total_pages = ceil(len(tracks) / PAGE_SIZE)
+    start_index = (page - 1) * PAGE_SIZE
+    end_index = start_index + PAGE_SIZE
+    tracks_page = tracks[start_index:end_index]
+
+    if not tracks_page:
+        text = "😕 На этой странице больше ничего нет."
+        await update.effective_message.reply_text(text)
+        return
+
+    # Create keyboards
+    track_kb = get_track_search_keyboard(tracks_page)
+    pagination_kb = get_pagination_keyboard(page, total_pages, query_text)
+
+    # Combine keyboards
+    combined_buttons = track_kb.inline_keyboard + pagination_kb.inline_keyboard
+    final_markup = InlineKeyboardMarkup(combined_buttons)
+
+    text = f"**Лучшие треки {query_text} (Страница {page}/{total_pages}):**"
+
+    if update.callback_query:
+        await update.callback_query.edit_message_text(text, parse_mode=ParseMode.MARKDOWN, reply_markup=final_markup)
+    else:
+        await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN, reply_markup=final_markup)
 
 # +++ State Handlers +++
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -103,7 +148,7 @@ async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
     await query.answer()
     callback = VoteCallback.from_callback_data(query.data)
     if not callback: return MENU
-    
+
     settings = context.application.settings
     action, value = callback.action, callback.value
 
@@ -123,20 +168,19 @@ async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
         asyncio.create_task(context.application.radio_manager.start(chat_id=query.message.chat_id, query="random"))
         return ConversationHandler.END
     elif action == CallbackAction.ERA:
-        era_name = settings.GENRE_DATA.get(value, {{}}).get("name", "Музыка")
+        era_name = settings.GENRE_DATA.get(value, {}).get("name", "Музыка")
         await query.edit_message_text(f"🎧 *{era_name}*\n\nВыберите поджанр:", parse_mode=ParseMode.MARKDOWN, reply_markup=_generate_subgenre_keyboard(settings, value))
         return MENU
     elif action == CallbackAction.SUBGENRE:
         try:
             era_key, sub_key = value.split(":")
-            sub_data = settings.GENRE_DATA[era_key]["subgenres"][sub_key]
-            # If it's a mood or a genre without decades, start it directly
+            sub_data = settings.GENRE_DATA[era_key]["subgenres"].get(sub_key, {})
             if "decades" not in sub_data:
                 search_query, display_name = sub_data["query"], sub_data["name"]
                 await query.edit_message_text(f"🛰️ Настраиваюсь на волну: *{display_name}*...")
                 asyncio.create_task(context.application.radio_manager.start(chat_id=query.message.chat_id, query=search_query, display_name=display_name))
                 return ConversationHandler.END
-            else: # Show decades menu
+            else:
                 await query.edit_message_text(f"🕰️ *{sub_data['name']}*\n\nВыберите десятилетие:", parse_mode=ParseMode.MARKDOWN, reply_markup=_generate_decade_keyboard(settings, era_key, sub_key))
                 return MENU
         except (ValueError, KeyError) as e:
@@ -145,24 +189,40 @@ async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
     elif action == CallbackAction.DECADE:
         try:
             era_key, sub_key, decade_key = value.split(":")
-            sub_data = settings.GENRE_DATA[era_key]["subgenres"][sub_key]
-            decade_data = sub_data["decades"][decade_key]
+            sub_data = settings.GENRE_DATA[era_key]["subgenres"].get(sub_key, {})
+            decade_data = sub_data.get("decades", {}).get(decade_key, {})
             search_query, display_name = decade_data["query"], f"{sub_data['name']} ({decade_data['name']})"
             await query.edit_message_text(f"🛰️ Настраиваюсь на волну: *{display_name}*...")
-            asyncio.create_task(context.application.radio_manager.start(chat_id=query.message.chat_id, query=search_query, decade=decade_key, display_name=display_name))
-        except (ValueError, KeyError, IndexError):
-            await query.edit_message_text("❌ Ошибка меню. Пожалуйста, используйте /start.")
-        return ConversationHandler.END
+            asyncio.create_task(
+                context.application.radio_manager.start(
+                    chat_id=query.message.chat_id,
+                    query=search_query,
+                    decade=decade_key,
+                    display_name=display_name
+                )
+            )
+            return ConversationHandler.END
+        except Exception as e:
+            logger.error(f"Error in DECADE handler: {e}")
+            return MENU
+    elif action == CallbackAction.PAGE:
+        try:
+            page_num_str, search_query = value.split(":", 1)
+            page_num = int(page_num_str)
+            await _send_artist_search_results(update, context, query_text=search_query, page=page_num)
+        except (ValueError, TypeError) as e:
+            logger.error(f"Error handling pagination: {e}")
+            await query.answer("❌ Ошибка пагинации")
+        return MENU
+    elif action == CallbackAction.CANCEL and value == "search":
+        await query.edit_message_text("Поиск отменен.")
+        return MENU
     return MENU
 
 async def search_artist_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    await update.message.reply_text(f"🔎 Ищу лучшие треки: *{update.message.text}*...", parse_mode=ParseMode.MARKDOWN)
-    tracks = await context.application.downloader.search(query=update.message.text, search_mode='artist', limit=10)
-    if not tracks:
-        await update.message.reply_text("😕 Не удалось найти треки этого исполнителя.")
-    else:
-        text = f"**Лучшие треки {update.message.text}:**\n\n" + "\n".join([f"{i}. {t.title}" for i, t in enumerate(tracks, 1)])
-        await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN, reply_markup=get_track_search_keyboard(tracks))
+    query_text = update.message.text
+    await update.message.reply_text(f"🔎 Ищу лучшие треки: *{query_text}*...", parse_mode=ParseMode.MARKDOWN)
+    await _send_artist_search_results(update, context, query_text=query_text, page=1)
     return ConversationHandler.END
 
 async def search_track_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -190,7 +250,7 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
 def setup_handlers(app: Application, radio: RadioManager, settings: Settings, downloader: YouTubeDownloader):
     app.downloader, app.radio_manager, app.settings = downloader, radio, settings
-    
+
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler('start', start), CallbackQueryHandler(start, pattern="^main_menu:.*")],
         states={
