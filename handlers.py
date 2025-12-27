@@ -257,7 +257,7 @@ def setup_handlers(app: Application, radio: RadioManager, settings: Settings, do
         },
         fallbacks=[
             CommandHandler('start', start),
-            CallbackQueryHandler(select_track_handler, pattern=f"^{CallbackAction.SELECT}:.*",
+            CallbackQueryHandler(select_track_handler, pattern=f"^{CallbackAction.SELECT}:.*"),
         ],
         per_message=False,
         conversation_timeout=3600 # 1 hour
