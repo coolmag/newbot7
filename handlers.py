@@ -1,6 +1,7 @@
 from __future__ import annotations
 import logging
 import os
+import random
 from typing import Optional
 
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
@@ -24,7 +25,6 @@ async def _send_track(
     video_id: str, 
     downloader: YouTubeDownloader
 ) -> bool:
-    # This function is self-contained and correct.
     download_result = None
     try:
         download_result = await downloader.download(video_id)
@@ -58,13 +58,13 @@ async def _send_track(
         await context.bot.send_message(chat_id, f"❌ Произошла критическая ошибка при отправке трека.")
         return False
     finally:
-        if download_result and download_result.file_path and download_result.file_path.exists():
+        if download_result and download_result.file_path and os.path.exists(download_result.file_path):
             try:
                 os.unlink(download_result.file_path)
             except OSError as e:
                 logger.warning(f"Failed to clean up file in _send_track: {e}")
 
-# +++ Keyboard Generators (2-LEVEL STRUCTURE) +++
+# +++ Keyboard Generators (3-LEVEL STRUCTURE) +++
 
 def _generate_era_keyboard(settings: Settings) -> InlineKeyboardMarkup:
     """Level 1: Generates the top-level Era selection keyboard."""
@@ -75,19 +75,32 @@ def _generate_era_keyboard(settings: Settings) -> InlineKeyboardMarkup:
         ) for era_key, data in settings.GENRE_DATA.items()
     ]
     keyboard = [buttons[i:i + 2] for i in range(0, len(buttons), 2)]
-    keyboard.append([InlineKeyboardButton("❌ Закрыть", callback_data=VoteCallback(action=CallbackAction.CANCEL, value="menu").to_callback_data())])
+    # Add Random Wave button
+    keyboard.append([InlineKeyboardButton("🎲 Случайная волна", callback_data=VoteCallback(action=CallbackAction.DECADE, value="random").to_callback_data())])
     return InlineKeyboardMarkup(keyboard)
 
-def _generate_decade_keyboard(settings: Settings, era_key: str) -> InlineKeyboardMarkup:
-    """Level 2: Generates the Decade selection keyboard for a given Era."""
+def _generate_subgenre_keyboard(settings: Settings, era_key: str) -> InlineKeyboardMarkup:
+    """Level 2: Generates the Subgenre selection keyboard for a given Era."""
     buttons = []
-    decades = settings.GENRE_DATA[era_key].get("decades", {})
-    for decade_key, decade_data in decades.items():
-        callback_data = VoteCallback(action=CallbackAction.DECADE, value=f"{era_key}:{decade_key}").to_callback_data()
-        buttons.append(InlineKeyboardButton(decade_data["name"], callback_data=callback_data))
+    subgenres = settings.GENRE_DATA[era_key].get("subgenres", {})
+    for sub_key, sub_data in subgenres.items():
+        callback_data = VoteCallback(action=CallbackAction.SUBGENRE, value=f"{era_key}:{sub_key}").to_callback_data()
+        buttons.append(InlineKeyboardButton(sub_data["name"], callback_data=callback_data))
 
     keyboard = [buttons[i:i + 2] for i in range(0, len(buttons), 2)]
     keyboard.append([InlineKeyboardButton("◀️ Назад", callback_data=VoteCallback(action=CallbackAction.ERA, value="main_menu").to_callback_data())])
+    return InlineKeyboardMarkup(keyboard)
+
+def _generate_decade_keyboard(settings: Settings, era_key: str, subgenre_key: str) -> InlineKeyboardMarkup:
+    """Level 3: Generates the Decade selection keyboard for a given Subgenre."""
+    buttons = []
+    decades = settings.GENRE_DATA[era_key]["subgenres"][subgenre_key].get("decades", {})
+    for decade_key, decade_data in decades.items():
+        callback_data = VoteCallback(action=CallbackAction.DECADE, value=f"{era_key}:{subgenre_key}:{decade_key}").to_callback_data()
+        buttons.append(InlineKeyboardButton(decade_data["name"], callback_data=callback_data))
+
+    keyboard = [buttons[i:i + 2] for i in range(0, len(buttons), 2)]
+    keyboard.append([InlineKeyboardButton("◀️ Назад", callback_data=VoteCallback(action=CallbackAction.ERA, value=era_key).to_callback_data())])
     return InlineKeyboardMarkup(keyboard)
 
 # +++ Command and Callback Handlers +++
@@ -138,18 +151,31 @@ def setup_handlers(app: Application, radio: RadioManager, settings: Settings, do
             else:
                 era_key = callback.value
                 era_name = settings.GENRE_DATA.get(era_key, {}).get("name", "Музыка")
-                await query.edit_message_text(f"🕰️ *{era_name}*\n\nВыберите десятилетие:", parse_mode=ParseMode.MARKDOWN, reply_markup=_generate_decade_keyboard(settings, era_key))
+                await query.edit_message_text(f"🎧 *{era_name}*\n\nВыберите поджанр:", parse_mode=ParseMode.MARKDOWN, reply_markup=_generate_subgenre_keyboard(settings, era_key))
+
+        elif callback.action == CallbackAction.SUBGENRE:
+            try:
+                era_key, subgenre_key = callback.value.split(":")
+                subgenre_name = settings.GENRE_DATA[era_key]["subgenres"][subgenre_key].get("name", "Музыка")
+                await query.edit_message_text(f"🕰️ *{subgenre_name}*\n\nВыберите десятилетие:", parse_mode=ParseMode.MARKDOWN, reply_markup=_generate_decade_keyboard(settings, era_key, subgenre_key))
+            except (ValueError, KeyError) as e:
+                logger.error(f"Invalid SUBGENRE callback: {callback.value} - {e}")
+                await query.edit_message_text("❌ Меню устарело. Пожалуйста, используйте /start.")
 
         elif callback.action == CallbackAction.DECADE:
+            if callback.value == "random":
+                context.application.create_task(radio.start(chat_id=chat_id, query="random"))
+                return
             try:
-                era_key, decade_key = callback.value.split(":")
+                era_key, subgenre_key, decade_key = callback.value.split(":")
                 era_data = settings.GENRE_DATA[era_key]
-                decade_data = era_data["decades"][decade_key]
+                subgenre_data = era_data["subgenres"][subgenre_key]
+                decade_data = subgenre_data["decades"][decade_key]
                 
                 search_query = decade_data["query"]
-                display_name = f"{era_data['name']} ({decade_data['name']})"
+                display_name = f"{subgenre_data['name']} ({decade_data['name']})"
                 
-                # Сообщение удалено, т.к. оно дублируется в radio.py
+                await query.edit_message_text(f"🛰️ Настраиваюсь на волну: *{display_name}*...", parse_mode=ParseMode.MARKDOWN)
                 context.application.create_task(
                     radio.start(chat_id=chat_id, query=search_query, decade=decade_key, display_name=display_name)
                 )
