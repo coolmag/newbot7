@@ -65,12 +65,13 @@ def _generate_main_menu_keyboard(settings: Settings) -> InlineKeyboardMarkup:
             callback_data=VoteCallback(action=button["action"], value="go").to_callback_data()
         ) for button in settings.GENRE_DATA["main_menu"]["buttons"]
     ]
-    return InlineKeyboardMarkup([buttons[i:i + 2] for i in range(0, len(buttons) -1)] + [[buttons[-1]]])
+    return InlineKeyboardMarkup([buttons[i:i + 2] for i in range(0, len(buttons), 2)])
 
-def _generate_era_keyboard(settings: Settings) -> InlineKeyboardMarkup:
+def _generate_primary_menu_keyboard(settings: Settings) -> InlineKeyboardMarkup:
+    """Generates the keyboard for primary genre selection."""
     buttons = [
-        InlineKeyboardButton(data["name"], callback_data=VoteCallback(CallbackAction.ERA, era_key).to_callback_data())
-        for era_key, data in settings.GENRE_DATA.items() if era_key not in ["main_menu", "moods"]
+        InlineKeyboardButton(data["name"], callback_data=VoteCallback(CallbackAction.ERA, key).to_callback_data())
+        for key, data in settings.GENRE_DATA.items() if key not in ["main_menu", "search_menu", "moods"]
     ]
     keyboard = [buttons[i:i + 2] for i in range(0, len(buttons), 2)]
     keyboard.append([InlineKeyboardButton("◀️ В главное меню", callback_data=VoteCallback(action="main_menu", value="back").to_callback_data())])
@@ -82,7 +83,7 @@ def _generate_subgenre_keyboard(settings: Settings, era_key: str) -> InlineKeybo
         for sub_key, sub_data in settings.GENRE_DATA[era_key].get("subgenres", {}).items()
     ]
     keyboard = [buttons[i:i + 2] for i in range(0, len(buttons), 2)]
-    keyboard.append([InlineKeyboardButton("◀️ Назад к Эпохам", callback_data=VoteCallback(action="menu_eras", value="back").to_callback_data())])
+    keyboard.append([InlineKeyboardButton("◀️ Назад", callback_data=VoteCallback(action="menu_genres", value="back").to_callback_data())])
     return InlineKeyboardMarkup(keyboard)
 
 def _generate_decade_keyboard(settings: Settings, era_key: str, subgenre_key: str) -> InlineKeyboardMarkup:
@@ -154,8 +155,14 @@ async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
 
     if action == "main_menu":
         return await start(update, context)
-    elif action == "menu_eras":
-        await query.edit_message_text("👇 Выбери эпоху:", reply_markup=_generate_era_keyboard(settings))
+    elif action == "menu_genres":
+        await query.edit_message_text("👇 Выбери жанр:", reply_markup=_generate_primary_menu_keyboard(settings))
+        return MENU
+    elif action == "menu_search":
+        await query.edit_message_text("🔎 Что будем искать?", reply_markup=_generate_subgenre_keyboard(settings, "search_menu"))
+        return MENU
+    elif action == "menu_moods":
+        await query.edit_message_text("🌈 Какое у тебя настроение?", reply_markup=_generate_subgenre_keyboard(settings, "moods"))
         return MENU
     elif action == "search_artist":
         await query.edit_message_text("👤 Введите имя артиста:")
@@ -174,16 +181,36 @@ async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
     elif action == CallbackAction.SUBGENRE:
         try:
             era_key, sub_key = value.split(":")
-            sub_data = settings.GENRE_DATA[era_key]["subgenres"].get(sub_key, {})
-            if "decades" not in sub_data:
+            sub_data = settings.GENRE_DATA[era_key]["subgenres"][sub_key]
+
+            # Special handler for the search menu
+            if era_key == "search_menu":
+                if sub_key == "artist":
+                    await query.edit_message_text("👤 Введите имя артиста:")
+                    return WAITING_ARTIST
+                elif sub_key == "track":
+                    await query.edit_message_text("🎵 Введите название трека:")
+                    return WAITING_TRACK
+
+            # If the subgenre has a direct query (like a mood), start the radio
+            if "query" in sub_data:
                 search_query, display_name = sub_data["query"], sub_data["name"]
                 await query.edit_message_text(f"🛰️ Настраиваюсь на волну: *{display_name}*...")
                 asyncio.create_task(context.application.radio_manager.start(chat_id=query.message.chat_id, query=search_query, display_name=display_name))
                 return ConversationHandler.END
-            else:
+            
+            # Otherwise, show the decades menu
+            elif "decades" in sub_data:
                 await query.edit_message_text(f"🕰️ *{sub_data['name']}*\n\nВыберите десятилетие:", parse_mode=ParseMode.MARKDOWN, reply_markup=_generate_decade_keyboard(settings, era_key, sub_key))
                 return MENU
+            
+            # Fallback for misconfigured items
+            else:
+                await query.edit_message_text("❌ Ошибка конфигурации меню.")
+                return MENU
+
         except (ValueError, KeyError) as e:
+            logger.error(f"Error in SUBGENRE handler: {e}")
             await query.edit_message_text("❌ Ошибка меню. Пожалуйста, используйте /start.")
             return ConversationHandler.END
     elif action == CallbackAction.DECADE:
