@@ -1,11 +1,12 @@
 {
     "main_menu": {
-        "buttons": [
-            { "text": "🎶 Музыка по жанрам", "action": "navigate", "value": "genres" },
-            { "text": "🌈 По настроению", "action": "navigate", "value": "moods" },
-            { "text": "🔎 Поиск", "action": "navigate", "value": "search_menu" },
-            { "text": "🎲 Случайная волна", "action": "random_radio" }
-        ]
+        "name": "Главное меню",
+        "children": {
+            "genres": { "name": "🎶 Музыка по жанрам", "action": "navigate", "value": "genres" },
+            "moods": { "name": "🌈 По настроению", "action": "navigate", "value": "moods" },
+            "search": { "name": "🔎 Поиск", "action": "navigate", "value": "search_menu" },
+            "random": { "name": "🎲 Случайная волна", "action": "random_radio" }
+        }
     },
     "genres": {
         "name": "🎶 Жанры",
