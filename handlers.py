@@ -149,7 +149,7 @@ def setup_handlers(app: Application, radio: RadioManager, settings: Settings, do
                 search_query = decade_data["query"]
                 display_name = f"{era_data['name']} ({decade_data['name']})"
                 
-                await query.edit_message_text(f"🛰️ Настраиваюсь на волну: *{display_name}*...", parse_mode=ParseMode.MARKDOWN)
+                # Сообщение удалено, т.к. оно дублируется в radio.py
                 context.application.create_task(
                     radio.start(chat_id=chat_id, query=search_query, decade=decade_key, display_name=display_name)
                 )

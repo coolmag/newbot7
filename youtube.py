@@ -54,12 +54,20 @@ class YouTubeDownloader:
         if any(word in title for word in self.FORBIDDEN_WORDS): return False
         duration_sec = entry.get('duration_seconds', 0)
         if not (45 < duration_sec < 900): return False
+
         if decade:
-            year_str = entry.get('year')
-            if year_str and year_str.isdigit():
-                year = int(year_str)
-                start_year = int(decade[:4])
-                if year < start_year: return False
+            # Проверяем, что 'decade' - это действительно числовое десятилетие (напр. "1990s")
+            is_year_decade = len(decade) == 5 and decade.endswith('s') and decade[:4].isdigit()
+            
+            if is_year_decade:
+                year_str = entry.get('year')
+                if year_str and year_str.isdigit():
+                    year = int(year_str)
+                    start_year = int(decade[:4])
+                    # Отсеиваем только то, что ТОЧНО старше. Ремастеры (новее) - пропускаем.
+                    if year < start_year:
+                        logger.debug(f"Filtered out '{title}' ({year}) as it's too old for decade {decade}.")
+                        return False
         return True
 
     async def search(self, query: str, decade: Optional[str] = None, limit: int = 20) -> List[TrackInfo]:

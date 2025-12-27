@@ -1,53 +1,73 @@
 {
+    "russian_rock": {
+        "name": "🎸 Русский Рок",
+        "decades": {
+            "1980s": { "name": "80-е: Золотой век (Кино, Алиса)", "query": "Русский рок 80-х золотые хиты" },
+            "1990s": { "name": "90-е: Рок-поп (Мумий Тролль)", "query": "Русский рок 90-х легенды" },
+            "2000s": { "name": "00-е: Нашествие (Би-2, Сплин)", "query": "Русский рок 2000-х хиты" },
+            "2020s": { "name": "20-е: Инди-рок РФ", "query": "Современный русский инди рок 2025" }
+        }
+    },
+    "russian_estrada": {
+        "name": "💃 Русская Эстрада и Поп",
+        "decades": {
+            "1970s": { "name": "70-е: Советские ВИА", "query": "Советские ВИА 70-х лучшее" },
+            "1980s": { "name": "80-е: Дискотека СССР", "query": "Советская эстрада 80-х хиты" },
+            "1990s": { "name": "90-е: Пост-советский поп", "query": "Русские хиты 90-х поп" },
+            "2000s": { "name": "00-е: Золотой граммофон", "query": "Русская поп музыка 2000-х" },
+            "2020s": { "name": "20-е: Танцевальный РФ", "query": "Русский топ чарт 2025" }
+        }
+    },
+    "russian_rap": {
+        "name": "🎤 Русский Рэп",
+        "decades": {
+            "2000s": { "name": "00-е: Каста, Баста, Гуф", "query": "Русский рэп 2000-х классика" },
+            "2010s": { "name": "10-е: Новая школа", "query": "Русский рэп 2010-х хиты" },
+            "2020s": { "name": "20-е: Актуальный дрилл/трэп", "query": "Русский хип-хоп 2025" }
+        }
+    },
+    "shanson": {
+        "name": "🚬 Шансон и Душевная песня",
+        "decades": {
+            "1990s": { "name": "90-е: Классика жанра", "query": "Легенды русского шансона 90-х" },
+            "2000s": { "name": "00-е: Михаил Круг и др.", "query": "Лучший русский шансон 2000-х" }
+        }
+    },
     "rock": {
-        "name": "🎸 Рок и Альтернатива",
+        "name": "🎸 World Rock & Alt",
         "decades": {
             "1960s": { "name": "60-е: Psychedelic", "query": "Psychedelic Rock 60s hits" },
             "1970s": { "name": "70-е: Classic Rock", "query": "Classic Rock 70s official" },
             "1980s": { "name": "80-е: Glam & Heavy", "query": "80s Glam Metal Hard Rock" },
             "1990s": { "name": "90-е: Grunge & Alt", "query": "90s Grunge Alternative hits" },
             "2000s": { "name": "00-е: Indie Rock", "query": "2000s Indie Rock Revival" },
-            "2020s": { "name": "20-е: Modern Rock", "query": "Modern Rock 2025" }
+            "2010s": { "name": "10-е: Post-Punk Revival", "query": "Post-Punk Revival 2010s" },
+            "2020s": { "name": "20-е: Modern Rock", "query": "Modern Rock 2025 official" }
         }
     },
     "electronic": {
-        "name": "🎹 Электронная музыка",
+        "name": "🎹 World Electronic",
         "decades": {
             "1970s": { "name": "70-е: Space Disco", "query": "70s Space Disco Eurodisco" },
             "1980s": { "name": "80-е: Synth-Pop", "query": "80s Synth-Pop New Wave" },
             "1990s": { "name": "90-е: Rave & Jungle", "query": "90s Jungle Drum and Bass" },
             "2000s": { "name": "00-е: Electro House", "query": "2000s Electro House classics" },
-            "2010s": { "name": "10-е: EDM Era", "query": "2010s EDM Festival hits" },
-            "2020s": { "name": "20-е: Phonk & Drift", "query": "Phonk music 2025" }
+            "2010s": { "name": "10-е: EDM Festival", "query": "2010s EDM Festival hits" },
+            "2020s": { "name": "20-е: Phonk & Melodic", "query": "Phonk music 2025 / Melodic Techno" }
         }
     },
-    "hip_hop": {
-        "name": "🎤 Хип-Хоп и Urban",
+    "classic": {
+        "name": "🎻 Классическая музыка",
         "decades": {
-            "1980s": { "name": "80-е: Old School", "query": "80s Old School Hip Hop" },
-            "1990s": { "name": "90-е: Golden Era", "query": "90s East Coast West Coast" },
-            "2000s": { "name": "00-е: Gangsta & RnB", "query": "2000s Hip Hop RnB hits" },
-            "2010s": { "name": "10-е: Trap Era", "query": "2010s Trap music classics" },
-            "2020s": { "name": "20-е: UK Drill / Rage", "query": "Modern Drill Rage music" }
+            "all": { "name": "Шедевры на все времена", "query": "Classical music best of all time" },
+            "piano": { "name": "Фортепиано", "query": "Classical piano masterpieces" }
         }
     },
-    "jazz_funk_soul": {
-        "name": "🎷 Джаз, Фанк и Соул",
+    "cinema": {
+        "name": "🎬 Саундтреки кино",
         "decades": {
-            "1960s": { "name": "60-е: Cool Jazz", "query": "Classic Cool Jazz hits" },
-            "1970s": { "name": "70-е: Funk & Fusion", "query": "70s Funk Jazz Fusion" },
-            "1980s": { "name": "80-е: Boogie & Soul", "query": "80s Soul Boogie funk" },
-            "1990s": { "name": "90-е: Acid Jazz", "query": "90s Acid Jazz Groove" },
-            "2020s": { "name": "20-е: Lo-Fi & Chill", "query": "Lo-Fi Hip Hop Chill Beats" }
-        }
-    },
-    "pop": {
-        "name": "💃 Поп-музыка",
-        "decades": {
-            "1970s": { "name": "70-е: Disco Pop", "query": "70s Disco Pop official" },
-            "1980s": { "name": "80-е: Star Pop", "query": "80s Dance Pop hits" },
-            "1990s": { "name": "90-е: Boy/Girl Bands", "query": "90s Boy Bands Girl Groups" },
-            "2020s": { "name": "20-е: K-Pop", "query": "K-Pop hits 2025" }
+            "west": { "name": "Hollywood OST", "query": "Best Hollywood movie soundtracks" },
+            "ussr": { "name": "Музыка советского кино", "query": "Песни из советских кинофильмов" }
         }
     }
 }
