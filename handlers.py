@@ -108,10 +108,15 @@ async def skip_button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
     await context.application.radio_manager.skip(update.effective_chat.id)
     return MENU
 
+async def unknown_command_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Обработка неизвестных команд."""
+    await update.message.reply_text("🤔 Я не знаю такой команды. Введите /start для меню.")
+    return MENU
+
 # +++ State Handlers +++
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    text = "🎧 *Музыкальный комбайн v15*\n\nВыберите действие:"
+    text = "🎧 *Музыкальный комбайн v16*\n\nВыберите действие:"
     markup = _generate_keyboard_from_path("main_menu", context.application.settings)
     
     if update.callback_query:
@@ -144,7 +149,6 @@ async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
     elif action == CallbackAction.START_RADIO:
         await query.edit_message_text(f"🛰️ Настраиваюсь на волну...")
         asyncio.create_task(context.application.radio_manager.start(chat_id=query.message.chat_id, query=value))
-        # Не выходим из ConversationHandler, чтобы работали кнопки меню
         return MENU 
 
     elif action == "random_radio":
@@ -297,10 +301,11 @@ def setup_handlers(app: Application, radio: RadioManager, settings: Settings, do
             WAITING_ARTIST: [MessageHandler(filters.TEXT & ~filters.COMMAND, search_artist_handler)],
             WAITING_TRACK: [MessageHandler(filters.TEXT & ~filters.COMMAND, search_track_handler)],
         },
-        fallbacks=[CommandHandler('start', start)],
+        fallbacks=[
+            CommandHandler('start', start),
+            # Теперь эта функция существует и не вызовет ошибку
+            MessageHandler(filters.COMMAND, unknown_command_handler)
+        ],
         per_message=False
     )
     app.add_handler(conv_handler)
-    # Global handler for unknown commands (should be after ConversationHandler to avoid conflicts with fallbacks)
-    # This acts as a catch-all if no other handler or conversation state catches the command.
-    app.add_handler(MessageHandler(filters.COMMAND, unknown_command_handler))
