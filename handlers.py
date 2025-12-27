@@ -122,7 +122,7 @@ def setup_handlers(app: Application, radio: RadioManager, settings: Settings, do
         if not tracks:
             await search_msg.edit_text("😕 Ничего не найдено.")
             return
-        text = f"**Результаты по запросу "{query}":**\n\n" + "\n".join([f"{i}. {t.artist} - {t.title} ({t.duration // 60}:{t.duration % 60:02d})" for i, t in enumerate(tracks, 1)])
+        text = f"**Результаты по запросу '{query}':**\n\n" + "\n".join([f"{i}. {t.artist} - {t.title} ({t.duration // 60}:{t.duration % 60:02d})" for i, t in enumerate(tracks, 1)])
         await search_msg.edit_text(text, parse_mode=ParseMode.MARKDOWN, reply_markup=get_track_search_keyboard(tracks))
 
     async def radio_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
