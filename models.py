@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 from typing import Optional, Any, Dict
@@ -11,6 +11,7 @@ class Source(Enum):
 
 
 class CallbackAction:
+    """Константы для действий кнопок."""
     NAVIGATE = "nav"
     START_RADIO = "radio"
     SEARCH_ARTIST = "s_art"
@@ -25,31 +26,41 @@ class CallbackAction:
     SELECT = "sel"
     CANCEL = "cancel"
     CONFIRM = "confirm"
+    
+    # Разделитель — теперь это class-level константа
+    SEP = ":"
 
 
 @dataclass
 class VoteCallback:
+    """Упаковка/распаковка данных кнопки."""
     action: str
     value: str
-    SEP: str = field(default=":", init=False, repr=False)
     
     def to_callback_data(self) -> str:
-        data = f"{self.action}{self.SEP}{self.value}"
+        """Упаковывает action:value в строку для кнопки."""
+        data = f"{self.action}{CallbackAction.SEP}{self.value}"
+        
+        # Защита от лимита Telegram (64 байта)
         if len(data.encode('utf-8')) > 64:
-            value_bytes = self.value.encode('utf-8')
-            max_value_bytes = 64 - len(self.action.encode('utf-8')) - len(self.SEP.encode('utf-8'))
-            if max_value_bytes < 0: max_value_bytes = 0
-            end = len(value_bytes)
-            while len(value_bytes[:end]) > max_value_bytes: end -= 1
-            value_truncated = value_bytes[:end].decode('utf-8', 'ignore')
-            data = f"{self.action}{self.SEP}{value_truncated}"
+            max_value_len = 64 - len(self.action) - 1
+            truncated_value = self.value[:max_value_len]
+            data = f"{self.action}{CallbackAction.SEP}{truncated_value}"
+        
         return data
     
     @classmethod
     def from_callback_data(cls, data: str) -> Optional["VoteCallback"]:
-        if not data: return None
-        parts = data.split(cls.SEP, 1)
-        if len(parts) != 2: return None
+        """Распаковывает строку обратно в объект."""
+        if not data:
+            return None
+        
+        # Используем константу из CallbackAction
+        parts = data.split(CallbackAction.SEP, 1)
+        
+        if len(parts) != 2:
+            return None
+        
         return cls(action=parts[0], value=parts[1])
 
 
@@ -64,24 +75,47 @@ class TrackInfo:
     
     @classmethod
     def from_yt_info(cls, info: Dict[str, Any]) -> Optional["TrackInfo"]:
-        if not info: return None
+        if not info:
+            return None
+        
         video_id = info.get('id')
         if not video_id:
             url = info.get('url', '')
-            if 'watch?v=' in url: video_id = url.split('watch?v=')[-1].split('&')[0]
-            elif 'youtu.be/' in url: video_id = url.split('youtu.be/')[-1].split('?')[0]
-        if not video_id: return None
+            if 'watch?v=' in url:
+                video_id = url.split('watch?v=')[-1].split('&')[0]
+            elif 'youtu.be/' in url:
+                video_id = url.split('youtu.be/')[-1].split('?')[0]
+        
+        if not video_id:
+            return None
+        
         title = info.get('title', 'Unknown')
-        artist = (info.get('artist') or info.get('creator') or info.get('uploader') or info.get('channel') or 'Unknown')
+        artist = (
+            info.get('artist') or 
+            info.get('creator') or 
+            info.get('uploader') or 
+            info.get('channel') or 
+            'Unknown'
+        )
         duration = info.get('duration') or 0
-        if duration is None: duration = 0
         thumbnail = info.get('thumbnail')
+        
+        # Пытаемся разбить "Artist - Title" если артист неизвестен
         if " - " in title and artist in ["Unknown", "Various Artists"]:
             try:
                 parts = title.split(" - ", 1)
                 artist, title = parts[0].strip(), parts[1].strip()
-            except Exception: pass
-        return cls(identifier=video_id, title=title, artist=artist, duration=int(duration), source=Source.YOUTUBE, thumbnail_url=thumbnail)
+            except Exception:
+                pass
+        
+        return cls(
+            identifier=video_id,
+            title=title,
+            artist=artist,
+            duration=int(duration),
+            source=Source.YOUTUBE,
+            thumbnail_url=thumbnail
+        )
 
 
 @dataclass
@@ -100,6 +134,7 @@ class SearchResult:
     total: int = 0
     page: int = 1
     has_more: bool = False
+
 
 @dataclass 
 class RadioState:
