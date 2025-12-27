@@ -1,7 +1,6 @@
 from __future__ import annotations
 import logging
 import os
-import random
 from typing import Optional
 
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
@@ -42,7 +41,7 @@ async def _send_track(
             )
             return True
         
-        if download_result.file_path:
+        if download_result.file_path and os.path.exists(download_result.file_path):
             with open(download_result.file_path, 'rb') as audio_file:
                 sent_message = await context.bot.send_audio(
                     chat_id=chat_id, audio=audio_file,
@@ -55,7 +54,6 @@ async def _send_track(
         return False
     except Exception as e:
         logger.error(f"Error in _send_track for video_id {video_id}: {e}", exc_info=True)
-        await context.bot.send_message(chat_id, f"❌ Произошла критическая ошибка при отправке трека.")
         return False
     finally:
         if download_result and download_result.file_path and os.path.exists(download_result.file_path):
@@ -64,7 +62,7 @@ async def _send_track(
             except OSError as e:
                 logger.warning(f"Failed to clean up file in _send_track: {e}")
 
-# +++ Keyboard Generators (3-LEVEL STRUCTURE) +++
+# +++ Keyboard Generators (FINAL 3-LEVEL STRUCTURE) +++
 
 def _generate_era_keyboard(settings: Settings) -> InlineKeyboardMarkup:
     """Level 1: Generates the top-level Era selection keyboard."""
@@ -75,7 +73,6 @@ def _generate_era_keyboard(settings: Settings) -> InlineKeyboardMarkup:
         ) for era_key, data in settings.GENRE_DATA.items()
     ]
     keyboard = [buttons[i:i + 2] for i in range(0, len(buttons), 2)]
-    # Add Random Wave button
     keyboard.append([InlineKeyboardButton("🎲 Случайная волна", callback_data=VoteCallback(action=CallbackAction.DECADE, value="random").to_callback_data())])
     return InlineKeyboardMarkup(keyboard)
 
@@ -112,10 +109,9 @@ def setup_handlers(app: Application, radio: RadioManager, settings: Settings, do
         await update.effective_message.reply_text(text, parse_mode=ParseMode.MARKDOWN, reply_markup=_generate_era_keyboard(settings))
 
     async def search_or_play_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-        command = update.message.text.split()[0].lower()
         query = " ".join(context.args)
         if not query:
-            await update.message.reply_text(f"💬 Укажите запрос, например: `{command} Queen`")
+            await update.message.reply_text(f"💬 Укажите запрос, например: `/play Queen`")
             return
         search_msg = await update.message.reply_text(f"🔎 Ищу: `{query}`...", parse_mode=ParseMode.MARKDOWN)
         tracks = await downloader.search(query, limit=10)
@@ -126,9 +122,7 @@ def setup_handlers(app: Application, radio: RadioManager, settings: Settings, do
         await search_msg.edit_text(text, parse_mode=ParseMode.MARKDOWN, reply_markup=get_track_search_keyboard(tracks))
 
     async def radio_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-        context.application.create_task(
-             radio.start(chat_id=update.effective_chat.id, query="random")
-        )
+        context.application.create_task(radio.start(chat_id=update.effective_chat.id, query="random"))
 
     async def stop_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await radio.stop(update.effective_chat.id)
@@ -164,6 +158,7 @@ def setup_handlers(app: Application, radio: RadioManager, settings: Settings, do
 
         elif callback.action == CallbackAction.DECADE:
             if callback.value == "random":
+                await query.edit_message_text(f"🎲 Ищу случайную волну...")
                 context.application.create_task(radio.start(chat_id=chat_id, query="random"))
                 return
             try:

@@ -91,7 +91,6 @@ class RadioSession:
             logger.error(f"[{self.chat_id}] ❌ Playlist fill error: {e}", exc_info=True)
 
     async def _radio_loop(self):
-        await self._update_status(f"📻 *Запуск радио...*\n\nВолна: _{self.display_name}_")
         error_streak = 0
         while self.is_running:
             try:
@@ -99,10 +98,10 @@ class RadioSession:
                     await self._fill_playlist()
                 
                 if not self.playlist:
-                    logger.warning(f"[{self.chat_id}] Playlist empty, trying one more time.")
-                    await self._fill_playlist() # Try one more time
+                    logger.warning(f"[{self.chat_id}] Playlist empty. Trying emergency fallback...")
+                    await self._fill_emergency_playlist()
                     if not self.playlist:
-                        logger.error(f"[{self.chat_id}] ❌ Playlist is empty after all retries. Stopping.")
+                        logger.error(f"[{self.chat_id}] ❌ Emergency fallback also failed. Stopping.")
                         await self._update_status(f"❌ Не удалось найти музыку для потока _{self.display_name}_. Радио остановлено.")
                         break
 
@@ -133,9 +132,9 @@ class RadioSession:
         self.is_running = False
 
     async def _play_track(self, track: TrackInfo) -> bool:
-        await self._update_status(f"📡 Загрузка аудиопотока...\n\nТрек: _{track.title}_")
         result: Optional[DownloadResult] = None
         try:
+            # No need to send "Loading..." status, as the main loop already shows a search status
             result = await self.downloader.download(track.identifier)
             if not result or not result.success:
                 logger.error(f"[{self.chat_id}] ❌ Download failed: {result.error if result else 'Unknown'}")
@@ -159,6 +158,16 @@ class RadioSession:
                 try: os.unlink(result.file_path)
                 except OSError: pass
 
+    async def _fill_emergency_playlist(self):
+        """Fills playlist with popular tracks if the main search fails."""
+        fallbacks = ["Lo-Fi Hip Hop", "Top Hits 2025", "Classic Rock Radio"]
+        fallback_query = random.choice(fallbacks)
+        logger.info(f"[{self.chat_id}] Using emergency fallback: {fallback_query}")
+        tracks = await self.downloader.search(fallback_query, limit=10)
+        if tracks:
+            self.playlist.extend(tracks)
+            await self._update_status(f"🛰️ На волне: *{fallback_query}* (аварийный режим)")
+
 class RadioManager:
     def __init__(self, bot: Bot, settings: Settings, downloader: YouTubeDownloader):
         self._bot, self._settings, self._downloader = bot, settings, downloader
@@ -178,13 +187,13 @@ class RadioManager:
                 query, decade, display_name = self._get_random_query()
 
             display_name = display_name or query
-            await self._bot.send_message(chat_id, f"🛰️ Настраиваюсь на волну: *{display_name}*", parse_mode=ParseMode.MARKDOWN)
             
             session = RadioSession(
                 chat_id=chat_id, bot=self._bot, downloader=self._downloader, settings=self._settings,
                 query=query, display_name=display_name, decade=decade
             )
             self._sessions[chat_id] = session
+            # The 'Tuning in...' message is now sent from the handler
             await session.start()
 
     async def stop(self, chat_id: int):
@@ -202,17 +211,14 @@ class RadioManager:
         try:
             era_key = random.choice(list(self._settings.GENRE_DATA.keys()))
             era_data = self._settings.GENRE_DATA[era_key]
-            
             subgenre_key = random.choice(list(era_data["subgenres"].keys()))
             subgenre_data = era_data["subgenres"][subgenre_key]
-
             decade_key = random.choice(list(subgenre_data["decades"].keys()))
             decade_data = subgenre_data["decades"][decade_key]
             
             query = decade_data["query"]
             display_name = f"{subgenre_data['name']} ({decade_data['name']})"
-            
             return (query, decade_key, display_name)
-        except Exception:
-            logger.error("Failed to get random genre, using fallback.", exc_info=True)
+        except Exception as e:
+            logger.error(f"Failed to get random genre, using fallback: {e}")
             return ("80s synth pop", "1980s", "🎹 Synth-Pop (80-е)")
