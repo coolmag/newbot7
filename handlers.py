@@ -247,21 +247,26 @@ def setup_handlers(app: Application, radio: RadioManager, settings: Settings, do
     app.radio_manager = radio
     app.settings = settings
     
-    # We use a single state (MENU) for all navigation, and WAITING_* for text input.
+    # --- Global Handlers ---
+    # These handlers are registered first and will trigger regardless of conversation state.
+    app.add_handler(CommandHandler("stop", radio.stop))
+    app.add_handler(CommandHandler("skip", radio.skip))
+    app.add_handler(CallbackQueryHandler(select_track_handler, pattern=f"^{CallbackAction.SELECT}:.*"))
+
+    # --- Conversation Handler ---
+    # This handler manages the main menu navigation and search states.
     conv_handler = ConversationHandler(
-        entry_points=[CommandHandler('start', start)],
+        entry_points=[
+            CommandHandler('start', start),
+            CallbackQueryHandler(menu_handler, pattern=f"^{CallbackAction.NAVIGATE}:main_menu$"),
+        ],
         states={
             MENU: [CallbackQueryHandler(menu_handler)],
             WAITING_ARTIST: [MessageHandler(filters.TEXT & ~filters.COMMAND, search_artist_handler)],
             WAITING_TRACK: [MessageHandler(filters.TEXT & ~filters.COMMAND, search_track_handler)],
         },
-        fallbacks=[
-            CommandHandler('start', start),
-            CallbackQueryHandler(select_track_handler, pattern=f"^{CallbackAction.SELECT}:.*"),
-        ],
+        fallbacks=[CommandHandler('start', start)], # Allows restarting the bot from any state
         per_message=False,
         conversation_timeout=3600 # 1 hour
     )
     app.add_handler(conv_handler)
-    app.add_handler(CommandHandler("stop", radio.stop))
-    app.add_handler(CommandHandler("skip", radio.skip))
