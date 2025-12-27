@@ -1,143 +1,121 @@
 {
     "main_menu": {
         "buttons": [
-            { "text": "🎶 Музыка по жанрам", "action": "menu_genres" },
-            { "text": "🌈 По настроению", "action": "menu_moods" },
-            { "text": "🔎 Поиск", "action": "menu_search" },
+            { "text": "🎶 Музыка по жанрам", "action": "navigate", "value": "genres" },
+            { "text": "🌈 По настроению", "action": "navigate", "value": "moods" },
+            { "text": "🔎 Поиск", "action": "navigate", "value": "search_menu" },
             { "text": "🎲 Случайная волна", "action": "random_radio" }
         ]
     },
-    "search_menu": {
-        "name": "🔎 Что будем искать?",
-        "subgenres": {
-            "artist": { "name": "👤 Артиста", "query": "search_artist" },
-            "track": { "name": "🎵 Трек", "query": "search_track" }
-        }
-    },
-    "moods": {
-        "name": "🌈 По настроению",
-        "subgenres": {
-            "energy": { "name": "⚡ Энергия", "query": "High energy music for workout" },
-            "chill": { "name": "😌 Чилл", "query": "Chillout lounge relaxing music" },
-            "focus": { "name": "🧠 Фокус", "query": "lo-fi hip hop radio - beats to relax/study to" },
-            "party": { "name": "🎉 Вечеринка", "query": "party dance music hits 2025" }
-        }
-    },
-    "rock": {
-        "name": "🎸 Рок",
-        "subgenres": {
-            "classic": {
-                "name": "Classic Rock & Pop-Rock",
-                "decades": {
-                    "60s": { "name": "60-е: The Beatles, The Doors", "query": "60s classic rock hits" },
-                    "70s": { "name": "70-е: Queen, Led Zeppelin", "query": "70s classic rock anthems" },
-                    "80s": { "name": "80-е: Bon Jovi, U2", "query": "80s pop-rock hits" }
-                }
-            },
-            "alternative": {
-                "name": "Alternative & Indie",
-                "decades": {
-                    "90s": { "name": "90-е: Nirvana, Radiohead", "query": "90s grunge & alternative rock" },
-                    "00s": { "name": "00-е: The Strokes, Arctic Monkeys", "query": "2000s indie rock revival" },
-                    "10s": { "name": "10-е: Tame Impala, The 1975", "query": "2010s indie pop rock" }
-                }
-            },
-            "metal": {
-                "name": "Hard Rock & Metal",
-                "decades": {
-                    "70s": { "name": "70-е: Black Sabbath", "query": "70s hard rock essentials" },
-                    "80s": { "name": "80-е: Metallica, Iron Maiden", "query": "80s heavy metal thrash" },
-                    "90s": { "name": "90-е: Pantera, Korn", "query": "90s groove metal & nu-metal" }
-                }
-            },
-            "punk": {
-                "name": "Punk Rock",
-                "decades": {
-                    "70s": { "name": "70-е: Sex Pistols, Ramones", "query": "70s punk rock classics" },
-                    "90s": { "name": "00-е: Green Day, Blink-182", "query": "2000s pop punk hits" }
-                }
-            }
-        }
-    },
-    "rap": {
-        "name": "🎤 Рэп / Хип-хоп",
-        "subgenres": {
-            "oldschool": {
-                "name": "Old School",
-                "decades": {
-                    "80s": { "name": "80-е: The Sugarhill Gang", "query": "80s old school hip hop" },
-                    "90s": { "name": "90-е: 2Pac, Notorious B.I.G.", "query": "90s boom bap g-funk" }
-                }
-            },
-            "modern": {
-                "name": "Modern & Trap",
-                "decades": {
-                    "00s": { "name": "00-е: Eminem, 50 Cent", "query": "2000s club hip hop" },
-                    "10s": { "name": "10-е: Drake, Travis Scott", "query": "2010s trap music hits" },
-                    "20s": { "name": "20-е: Pop Smoke, Lil Baby", "query": "2020s drill & trap" }
-                }
-            },
-            "lofi": {
-                "name": "Lo-Fi & Chillhop",
-                "query": "lo-fi hip hop radio"
-            }
-        }
-    },
-    "electronic": {
-        "name": "🎧 Электроника",
-        "subgenres": {
-            "house": {
-                "name": "House",
-                "decades": {
-                    "90s": { "name": "90-е: Classic House", "query": "90s classic house tracks" },
-                    "00s": { "name": "00-е: French House (Daft Punk)", "query": "2000s french touch house" },
-                    "10s": { "name": "10-е: Deep & Tropical", "query": "2010s deep house tropical" }
-                }
-            },
-            "dnb": {
-                "name": "Drum & Bass",
-                "query": "liquid drum and bass mix"
-            },
-            "techno": {
-                "name": "Techno & Trance",
-                "decades": {
-                    "90s": { "name": "90-е: Classic Trance", "query": "90s classic trance anthems" },
-                    "00s": { "name": "00-е: Progressive Trance", "query": "2000s progressive trance" },
-                    "10s": { "name": "10-е: Modern Techno", "query": "modern melodic techno mix" }
-                }
-            },
-            "synthwave": {
-                "name": "Synthwave & Retrowave",
-                "query": "synthwave retrowave mix"
-            }
-        }
-    },
-    "russian": {
-        "name": "🇷🇺 Русская музыка",
-        "subgenres": {
+    "genres": {
+        "name": "🎶 Жанры",
+        "children": {
             "rock": {
-                "name": "Рок",
-                "decades": {
-                    "80s": { "name": "80-е: Кино, ДДТ", "query": "Русский рок 80-х" },
-                    "90s": { "name": "90-е: Сплин, Агата Кристи", "query": "Русский рок 90-х" },
-                    "00s": { "name": "00-е: Земфира, Lumen", "query": "Русский рок 2000-х" }
-                }
-            },
-            "pop": {
-                "name": "Поп",
-                "decades": {
-                    "90s": { "name": "90-е: Руки Вверх!, Иванушки", "query": "Русская поп музыка 90-х" },
-                    "00s": { "name": "00-е: Дима Билан, SEREBRO", "query": "Русская поп музыка 2000-х" },
-                    "10s": { "name": "10-е: Zivert, MONATIK", "query": "Русская поп музыка 2010-х" }
+                "name": "🎸 Рок",
+                "children": {
+                    "psychedelic": {
+                        "name": "Psychedelic Rock",
+                        "children": {
+                            "60s": { "name": "60-е", "query": "60s psychedelic rock" },
+                            "70s": { "name": "70-е", "query": "70s psychedelic prog rock" }
+                        }
+                    },
+                    "classic": {
+                        "name": "Classic Rock",
+                        "children": {
+                            "70s": { "name": "70-е", "query": "70s classic rock anthems" },
+                            "80s": { "name": "80-е", "query": "80s arena rock" }
+                        }
+                    },
+                    "alternative": {
+                        "name": "Alternative & Indie",
+                        "children": {
+                            "90s_grunge": { "name": "90-е (Grunge)", "query": "90s grunge nirvana alice in chains" },
+                            "90s_britpop": { "name": "90-е (Britpop)", "query": "90s britpop oasis blur" },
+                            "00s": { "name": "2000-е", "query": "2000s indie rock revival" }
+                        }
+                    },
+                    "hard_metal": {
+                        "name": "Hard Rock & Metal",
+                        "children": {
+                            "70s": { "name": "70-е (Hard Rock)", "query": "70s hard rock deep purple black sabbath" },
+                            "80s": { "name": "80-е (Heavy & Thrash)", "query": "80s heavy metal thrash metallica" },
+                            "90s": { "name": "90-е (Nu-Metal)", "query": "90s nu-metal korn limp bizkit" }
+                        }
+                    },
+                    "punk": {
+                        "name": "Punk Rock",
+                        "children": {
+                            "70s": { "name": "70-е", "query": "70s punk rock ramones sex pistols" },
+                            "00s": { "name": "2000-е (Pop-punk)", "query": "2000s pop punk blink-182 sum 41" }
+                        }
+                    }
                 }
             },
             "rap": {
-                "name": "Рэп",
-                "decades": {
-                    "00s": { "name": "00-е: Каста, Баста", "query": "Русский рэп 2000-х" },
-                    "10s": { "name": "10-е: Скриптонит, Oxxxymiron", "query": "Русский рэп 2010-х" }
+                "name": "🎤 Рэп / Хип-хоп",
+                "children": {
+                    "oldschool": {
+                        "name": "Old School (80-90-е)",
+                        "children": {
+                            "boom_bap": { "name": "Boom Bap", "query": "90s boom bap wu-tang clan" },
+                            "g_funk": { "name": "G-Funk", "query": "90s g-funk snoop dogg dr. dre" }
+                        }
+                    },
+                    "modern": {
+                        "name": "Modern (00-20-е)",
+                        "children": {
+                            "trap": { "name": "Trap", "query": "2010s trap music" },
+                            "drill": { "name": "Drill", "query": "2020s drill music" }
+                        }
+                    },
+                    "lofi": {
+                        "name": "Lo-Fi & Chillhop",
+                        "query": "lo-fi hip hop radio"
+                    }
+                }
+            },
+            "electronic": {
+                "name": "🎧 Электроника",
+                "children": {
+                    "house": { "name": "House", "query": "classic house music" },
+                    "techno": { "name": "Techno", "query": "techno mix 2025" },
+                    "trance": { "name": "Trance", "query": "classic trance anthems" },
+                    "dnb": { "name": "Drum & Bass", "query": "liquid drum and bass" },
+                    "synthwave": { "name": "Synthwave", "query": "synthwave retrowave mix" }
+                }
+            },
+            "pop": {
+                "name": "💃 Поп",
+                "children": {
+                    "80s": { "name": "80-е", "query": "80s pop michael jackson madonna" },
+                    "90s": { "name": "90-е", "query": "90s pop hits" },
+                    "00s": { "name": "2000-е", "query": "2000s pop britney spears" }
+                }
+            },
+            "russian": {
+                "name": "🇷🇺 Русская музыка",
+                "children": {
+                    "rock": { "name": "Рок", "query": "русский рок" },
+                    "pop": { "name": "Поп", "query": "русская поп музыка" },
+                    "rap": { "name": "Рэп", "query": "русский рэп" }
                 }
             }
+        }
+    },
+    "moods": {
+        "name": "🌈 Настроения",
+        "children": {
+            "energy": { "name": "⚡ Энергия", "query": "high energy music" },
+            "chill": { "name": "😌 Чилл", "query": "chillout relaxing music" },
+            "focus": { "name": "🧠 Фокус", "query": "lo-fi hip hop for focus" }
+        }
+    },
+    "search_menu": {
+        "name": "🔎 Поиск",
+        "children": {
+            "artist": { "name": "👤 По Артисту", "action": "search_artist" },
+            "track": { "name": "🎵 По Треку", "action": "search_track" }
         }
     }
 }

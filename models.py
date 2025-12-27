@@ -11,19 +11,20 @@ class Source(Enum):
 
 
 class CallbackAction:
+    NAVIGATE = "nav"
+    START_RADIO = "radio"
+    SEARCH_ARTIST = "s_art"
+    SEARCH_TRACK = "s_trk"
+    
     PLAY = "play"
     DOWNLOAD = "dl"
     SKIP = "skip"
     STOP = "stop"
-    VOTE = "vote"
+    
     PAGE = "page"
     SELECT = "sel"
-    SEARCH = "search"
     CANCEL = "cancel"
     CONFIRM = "confirm"
-    ERA = "era"
-    SUBGENRE = "sub"
-    DECADE = "dec"
 
 
 @dataclass
