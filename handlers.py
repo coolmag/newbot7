@@ -110,15 +110,21 @@ async def stop_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def skip_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await context.application.radio_manager.skip(update.effective_chat.id)
 
-async def play_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def play_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Команда /play — начинает поиск трека."""
+    cancel_btn = InlineKeyboardButton(
+        "🔙 Отмена",
+        callback_data=VoteCallback(CallbackAction.NAVIGATE, "main_menu").to_callback_data()
+    )
+    await update.message.reply_text("🎵 Введите название трека:", reply_markup=InlineKeyboardMarkup([[cancel_btn]]))
+    return WAITING_TRACK
+
+async def radio_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Команда /radio — запускает случайное радио."""
     await update.message.reply_text("🎲 Запускаю случайную волну...")
     asyncio.create_task(context.application.radio_manager.start(
         chat_id=update.effective_chat.id, query="random"
     ))
-
-async def radio_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    markup = _generate_keyboard_from_path("main_menu", context.application.settings)
-    await update.message.reply_text("📻 Выберите станцию:", reply_markup=markup)
 
 async def unknown_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("🤔 Команда не распознана. Жми /start")
@@ -330,7 +336,7 @@ def setup_handlers(app: Application, radio: RadioManager, settings: Settings, do
         fallbacks=[
             CommandHandler('start', start),
         ],
-        per_message=False,
+        per_message=True,
         per_chat=True,
     )
     app.add_handler(conv_handler)
