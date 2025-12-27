@@ -17,9 +17,7 @@ from cache_service import CacheService
 logger = logging.getLogger(__name__)
 
 class SilentLogger:
-    def debug(self, msg: str):
-        if "rate limit" in msg.lower() or "http error 429" in msg.lower():
-            logger.warning(f"[yt-dlp] {msg}")
+    def debug(self, msg: str): pass
     def warning(self, msg: str): pass
     def error(self, msg: str): logger.error(f"[yt-dlp] {msg}")
 
@@ -27,7 +25,8 @@ class YouTubeDownloader:
     FORBIDDEN_WORDS = [
         'how to', 'tutorial', 'making of', 'fl studio', 'lesson', 'course', 'mix', 
         'playlist', 'live', 'concert', 'full album', 'dj set', 'remix', 'bootleg',
-        'mashup', 'megamix', 'continuous mix', 'non-stop', 'podcast'
+        'mashup', 'megamix', 'continuous mix', 'non-stop', 'podcast',
+        'backing track', 'karaoke'
     ]
 
     def __init__(self, settings: Settings, cache_service: CacheService):
@@ -45,89 +44,66 @@ class YouTubeDownloader:
             "logger": SilentLogger(),
             "postprocessors": [{'key': 'FFmpegExtractAudio', 'preferredcodec': 'mp3'}],
             "outtmpl": str(self._settings.DOWNLOADS_DIR / "%(id)s.%(ext)s"),
-            "extractor_args": {"youtube": {"player_client": ["android", "ios"]}},
-            "user_agent": "com.google.android.youtube/19.29.37 (Linux; U; Android 11; en_US; Pixel 5) gzip",
         }
 
     def _is_track_valid(self, entry: Dict, decade: Optional[str] = None, is_russian_query: bool = False) -> bool:
-        """
-        Проверяет трек по стоп-словам, длительности и, для русских запросов, по наличию кириллицы.
-        """
         if not entry or entry.get('resultType') not in ['song', 'video']: return False
-        
-        title = entry.get('title', '')
-        if any(word in title.lower() for word in self.FORBIDDEN_WORDS): return False
-        
+        title = entry.get('title', '').lower()
+        if any(word in title for word in self.FORBIDDEN_WORDS): return False
         duration_sec = entry.get('duration_seconds', 0)
         if not (45 < duration_sec < 900): return False
-
-        # "Кириллический фильтр" для русских жанров
         if is_russian_query:
             artist_list = entry.get('artists', [])
             artist_name = artist_list[0].get('name', '') if artist_list else ''
-            # Проверяем наличие хотя бы одной русской буквы
-            has_cyrillic = bool(re.search('[а-яА-ЯёЁ]', title + artist_name))
-            if not has_cyrillic:
-                logger.debug(f"Filtered out non-cyrillic track in RU genre: {title}")
+            if not bool(re.search('[а-яА-ЯёЁ]', title + artist_name)):
                 return False
-
         if decade:
             is_year_decade = len(decade) == 5 and decade.endswith('s') and decade[:4].isdigit()
             if is_year_decade:
                 year_str = entry.get('year')
-                if year_str and year_str.isdigit():
-                    year = int(year_str)
-                    start_year = int(decade[:4])
-                    if year < start_year:
-                        logger.debug(f"Filtered out '{title}' ({year}) as it's too old for decade {decade}.")
-                        return False
+                if year_str and year_str.isdigit() and int(year_str) < int(decade[:4]):
+                    return False
         return True
 
-    async def search(self, query: str, decade: Optional[str] = None, limit: int = 20) -> List[TrackInfo]:
+    async def search(self, query: str, search_mode: str = 'genre', decade: Optional[str] = None, limit: int = 20) -> List[TrackInfo]:
         async with self.search_semaphore:
-            cache_key = f"ytmusic_search_v8:{query.lower().strip()}:{decade}"
+            cache_key = f"yt_search_v9:{query.lower().strip()}:{search_mode}:{decade}"
             cached_tracks = await self._cache.get(cache_key)
             if cached_tracks is not None:
-                logger.info(f"[Search] Cache hit for '{query}' decade: {decade}")
                 return cached_tracks
 
-            logger.info(f"[Search] Cache miss for '{query}' decade: {decade}.")
-            
             is_russian_query = any(word in query.lower() for word in ['советск', 'русск', 'ссср'])
             
-            if is_russian_query:
-                search_templates = [f"{query} песня", f"{query} оригинал", query]
-            else:
-                search_templates = [f"{query} topic", query]
+            if search_mode == 'artist':
+                actual_query = f"{query} official songs"
+                yt_filter = "songs"
+            elif search_mode == 'track':
+                actual_query = f"{query} audio"
+                yt_filter = "songs"
+            else: # genre
+                actual_query = f"{query} topic"
+                yt_filter = "songs"
             
-            found_entries = []
+            logger.info(f"[Search] Performing search: query='{actual_query}', mode='{search_mode}'")
+            
             loop = asyncio.get_running_loop()
+            def do_search(q: str, f: str) -> List[Dict]:
+                try: return self._ytmusic.search(q, filter=f, limit=limit)
+                except Exception as e:
+                    logger.error(f"YTMusic search failed for '{q}': {e}")
+                    return []
 
-            for template in search_templates:
-                logger.debug(f"[Search] Trying query: '{template}'")
-                def do_search(q: str) -> List[Dict]:
-                    try: return self._ytmusic.search(q, filter="songs", limit=limit * 2)
-                    except Exception as e:
-                        logger.error(f"YTMusic search for '{q}' failed: {e}", exc_info=True)
-                        return []
-                
-                search_results = await loop.run_in_executor(None, do_search, template)
-                if search_results: found_entries.extend(search_results)
-                if len(found_entries) >= limit * 2:
-                    logger.info("Collected enough results, stopping further searches.")
-                    break
+            search_results = await loop.run_in_executor(None, do_search, actual_query, yt_filter)
+            valid_entries = [e for e in search_results if self._is_track_valid(e, decade, is_russian_query)]
             
-            valid_entries = [entry for entry in found_entries if self._is_track_valid(entry, decade=decade, is_russian_query=is_russian_query)]
-            
-            unique_tracks_dict = {entry['videoId']: self._parse_ytmusic_entry(entry) for entry in valid_entries}
-            final_tracks = list(unique_tracks_dict.values())[:limit]
+            final_tracks = [self._parse_ytmusic_entry(entry) for entry in valid_entries][:limit]
             
             await self._cache.set(cache_key, final_tracks, ttl=3600)
-            logger.info(f"[Search] Found {len(final_tracks)} filtered tracks for base query '{query}'")
+            logger.info(f"[Search] Found {len(final_tracks)} filtered tracks for '{query}'")
             return final_tracks
 
     def _parse_ytmusic_entry(self, entry: Dict) -> TrackInfo:
-        artists = ", ".join([artist['name'] for artist in entry.get('artists', [])])
+        artists = ", ".join([a['name'] for a in entry.get('artists', []) if a.get('name')])
         return TrackInfo(
             identifier=entry['videoId'], title=entry['title'], artist=artists,
             duration=int(entry.get('duration_seconds', 0)), source=Source.YOUTUBE,
@@ -135,12 +111,12 @@ class YouTubeDownloader:
         )
 
     async def get_track_info(self, video_id: str) -> Optional[TrackInfo]:
+        # This method remains largely the same
         cache_key = f"track_info:{video_id}"
         cached_info = await self._cache.get(cache_key)
         if cached_info: return cached_info
         logger.info(f"[TrackInfo] Cache miss. Fetching info for {video_id}")
         loop = asyncio.get_running_loop()
-        
         def do_extract_info():
             try:
                 with yt_dlp.YoutubeDL(self._get_dl_opts()) as ydl:
@@ -148,7 +124,6 @@ class YouTubeDownloader:
             except Exception as e:
                 logger.error(f"[TrackInfo] Failed for {video_id}: {e}")
                 return None
-        
         info = await loop.run_in_executor(None, do_extract_info)
         if not info: return None
         track_info = TrackInfo.from_yt_info(info)
@@ -156,6 +131,7 @@ class YouTubeDownloader:
         return track_info
 
     async def download(self, video_id: str) -> DownloadResult:
+        # This method remains largely the same
         async with self.semaphore:
             track_info = await self.get_track_info(video_id)
             if not track_info:
@@ -168,7 +144,6 @@ class YouTubeDownloader:
             
             logger.info(f"[Download] Starting download: {video_id}")
             loop = asyncio.get_running_loop()
-            
             def do_download():
                 try:
                     with yt_dlp.YoutubeDL(self._get_dl_opts()) as ydl:

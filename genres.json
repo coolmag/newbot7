@@ -1,4 +1,21 @@
 {
+    "main_menu": {
+        "buttons": [
+            { "text": "📁 Жанры и Эпохи", "action": "menu_eras" },
+            { "text": "🌈 По настроению", "action": "menu_moods" },
+            { "text": "👤 Найти Артиста", "action": "search_artist" },
+            { "text": "🎶 Найти Трек", "action": "search_track" },
+            { "text": "🎲 Случайная волна", "action": "random_radio" }
+        ]
+    },
+    "moods": {
+        "name": "🌈 По настроению",
+        "subgenres": {
+            "energy": { "name": "⚡ Энергия", "query": "High energy music hits" },
+            "chill": { "name": "😌 Чилл", "query": "Chillout lounge relaxing music" },
+            "focus": { "name": "🧠 Фокус", "query": "Music for concentration and focus" }
+        }
+    },
     "russian_music": {
         "name": "🇷🇺 Русская музыка",
         "subgenres": {
@@ -7,33 +24,22 @@
                 "decades": {
                     "1980s": { "name": "80-е: Золотой век", "query": "Русский рок 80-х золотые хиты" },
                     "1990s": { "name": "90-е: Рок-поп", "query": "Русский рок 90-х легенды" },
-                    "2000s": { "name": "00-е: Нашествие", "query": "Русский рок 2000-х хиты" },
-                    "2020s": { "name": "20-е: Инди-сцена", "query": "Современный русский инди рок 2025" }
+                    "2000s": { "name": "00-е: Нашествие", "query": "Русский рок 2000-х хиты" }
                 }
             },
             "estrada": {
                 "name": "🕺 Эстрада и Поп",
                 "decades": {
-                    "1970s": { "name": "70-е: Советские ВИА", "query": "Советские ВИА 70-х лучшее оригинал" },
+                    "1970s": { "name": "70-е: Советские ВИА", "query": "Советские ВИА 70-х оригинал" },
                     "1980s": { "name": "80-е: Дискотека СССР", "query": "Советская эстрада 80-х хиты" },
-                    "1990s": { "name": "90-е: Поп-сцена", "query": "Русские хиты 90-х поп" },
-                    "2000s": { "name": "00-е: Золотой граммофон", "query": "Русская поп музыка 2000-х" },
-                    "2020s": { "name": "20-е: Актуальный поп", "query": "Русский поп чарт 2025" }
+                    "1990s": { "name": "90-е: Поп-сцена", "query": "Русские хиты 90-х поп" }
                 }
             },
             "rap": {
                 "name": "🎧 Русский Рэп",
                 "decades": {
-                    "2000s": { "name": "00-е: Классика (Баста, Гуф)", "query": "Русский рэп 2000-х хиты" },
-                    "2010s": { "name": "10-е: Новая школа", "query": "Русский рэп 2010-х популярное" },
-                    "2020s": { "name": "20-е: Трэп и Дрилл", "query": "Русский хип-хоп 2025" }
-                }
-            },
-            "shanson": {
-                "name": "🚬 Шансон",
-                "decades": {
-                    "1990s": { "name": "90-е: Легенды", "query": "Легенды русского шансона 90-х" },
-                    "2000s": { "name": "00-е: Золотые хиты", "query": "Лучший русский шансон 2000-х" }
+                    "2000s": { "name": "00-е: Классика", "query": "Русский рэп 2000-х хиты" },
+                    "2010s": { "name": "10-е: Новая школа", "query": "Русский рэп 2010-х популярное" }
                 }
             }
         }
@@ -45,19 +51,15 @@
                 "name": "Classic & Modern Jazz",
                 "decades": {
                     "1950s": { "name": "50-е: Bebop & Cool", "query": "Classic Cool Jazz 50s" },
-                    "1960s": { "name": "60-е: Soul Jazz", "query": "Soul Jazz 1960s" },
-                    "1970s": { "name": "70-е: Jazz Fusion", "query": "Jazz Fusion 70s hits" },
-                    "1990s": { "name": "90-е: Acid Jazz", "query": "Acid Jazz 90s Groove" },
-                    "2020s": { "name": "20-е: Modern Jazz", "query": "Modern Jazz 2025" }
+                    "1970s": { "name": "70-е: Jazz Fusion", "query": "70s Jazz Fusion hits" },
+                    "1990s": { "name": "90-е: Acid Jazz", "query": "90s Acid Jazz Groove" }
                 }
             },
-            "funk_soul": {
+            "funk": {
                 "name": "Funk & Soul",
                 "decades": {
-                    "1960s": { "name": "60-е: Classic Soul", "query": "60s Soul Music Motown" },
-                    "1970s": { "name": "70-е: Pure Funk", "query": "70s Funk James Brown style" },
-                    "1980s": { "name": "80-е: Boogie & Disco", "query": "80s Soul Boogie Funk" },
-                    "2000s": { "name": "00-е: Neo-Soul", "query": "Neo-Soul R&B 2000s" }
+                    "1960s": { "name": "60-е: Soul & Motown", "query": "60s Soul Music classics" },
+                    "1970s": { "name": "70-е: Pure Funk", "query": "70s Funk James Brown style" }
                 }
             },
             "chill": {
@@ -73,20 +75,19 @@
         "name": "🎸 Мировой Рок",
         "subgenres": {
             "classic": {
-                "name": "Classic & Hard",
+                "name": "Classic & Hard Rock",
                 "decades": {
-                    "1960s": { "name": "60-е: Psychedelic", "query": "Psychedelic Rock 60s" },
-                    "1970s": { "name": "70-е: Hard Rock", "query": "Classic Hard Rock 70s" },
+                    "1960s": { "name": "60-е: Psychedelic", "query": "60s Psychedelic Rock" },
+                    "1970s": { "name": "70-е: Hard Rock", "query": "70s Classic Hard Rock" },
                     "1980s": { "name": "80-е: Heavy Metal", "query": "80s Heavy Metal Glam" }
                 }
             },
-            "alt_indie": {
+            "alt": {
                 "name": "Alternative & Indie",
                 "decades": {
                     "1990s": { "name": "90-е: Grunge", "query": "90s Grunge Alternative" },
                     "2000s": { "name": "00-е: Indie Rock", "query": "2000s Indie Rock Revival" },
-                    "2010s": { "name": "10-е: Post-Punk", "query": "Post-Punk Revival 2010s" },
-                    "2020s": { "name": "20-е: Modern Alt", "query": "Modern Alternative Rock 2025" }
+                    "2010s": { "name": "10-е: Post-Punk", "query": "Post-Punk Revival 2010s" }
                 }
             }
         }
@@ -99,8 +100,7 @@
                 "decades": {
                     "1970s": { "name": "70-е: Space Disco", "query": "70s Space Disco" },
                     "1980s": { "name": "80-е: Chicago House", "query": "80s Chicago House" },
-                    "1990s": { "name": "90-е: Eurodance", "query": "90s Eurodance hits" },
-                    "2000s": { "name": "00-е: Electro House", "query": "2000s Electro House" }
+                    "1990s": { "name": "90-е: Eurodance", "query": "90s Eurodance hits" }
                 }
             },
             "techno_bass": {

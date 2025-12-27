@@ -23,7 +23,7 @@ def get_now_playing_message(track: TrackInfo, genre_name: str, decade: Optional[
     icon = random.choice(["🎧", "🎵", "🎶", "📻", "💿"])
     title = track.title[:40].strip()
     artist = track.artist[:30].strip()
-    era_info = f" ({decade})" if decade else ""
+    era_info = f" ({decade})" if decade and "s" in decade else "" # Only add for actual decades
     return f"{icon} *{title}*\n👤 {artist}\n⏱ {format_duration(track.duration)} | 📻 _{genre_name.strip()}{era_info}_"
 
 @dataclass
@@ -76,7 +76,6 @@ class RadioSession:
             self.status_message = None
 
     async def _fill_playlist(self):
-        await self._update_status(f"🌌 Поиск новой музыки...\n\nПоток: _{self.display_name}_")
         logger.info(f"[{self.chat_id}] 🔍 Searching for '{self.query}', decade: {self.decade}")
         try:
             tracks = await self.downloader.search(self.query, decade=self.decade, limit=20)
@@ -98,12 +97,9 @@ class RadioSession:
                     await self._fill_playlist()
                 
                 if not self.playlist:
-                    logger.warning(f"[{self.chat_id}] Playlist empty. Trying emergency fallback...")
-                    await self._fill_emergency_playlist()
-                    if not self.playlist:
-                        logger.error(f"[{self.chat_id}] ❌ Emergency fallback also failed. Stopping.")
-                        await self._update_status(f"❌ Не удалось найти музыку для потока _{self.display_name}_. Радио остановлено.")
-                        break
+                    logger.error(f"[{self.chat_id}] ❌ Playlist is empty. Stopping.")
+                    await self._update_status(f"❌ Не удалось найти музыку для потока _{self.display_name}_. Радио остановлено.")
+                    break
 
                 track = self.playlist.pop(0)
                 self.played_ids.add(track.identifier)
@@ -134,11 +130,10 @@ class RadioSession:
     async def _play_track(self, track: TrackInfo) -> bool:
         result: Optional[DownloadResult] = None
         try:
-            # No need to send "Loading..." status, as the main loop already shows a search status
+            await self._update_status(f"🎶 Сейчас играет: *{track.title}*")
             result = await self.downloader.download(track.identifier)
-            if not result or not result.success:
-                logger.error(f"[{self.chat_id}] ❌ Download failed: {result.error if result else 'Unknown'}")
-                return False
+            if not result or not result.success: return False
+            
             caption = get_now_playing_message(track, self.display_name, self.decade)
             if result.file_id:
                 await self.bot.send_audio(self.chat_id, audio=result.file_id, caption=caption, parse_mode=ParseMode.MARKDOWN)
@@ -147,7 +142,7 @@ class RadioSession:
                     sent_message = await self.bot.send_audio(self.chat_id, audio=f, caption=caption, parse_mode=ParseMode.MARKDOWN)
                     if sent_message.audio: await self.downloader.cache_file_id(track.identifier, sent_message.audio.file_id)
             else: return False
-            await self._delete_status()
+            
             logger.info(f"[{self.chat_id}] ✅ Sent: {track.title}")
             return True
         except Exception as e:
@@ -157,16 +152,6 @@ class RadioSession:
             if result and result.file_path and os.path.exists(result.file_path):
                 try: os.unlink(result.file_path)
                 except OSError: pass
-
-    async def _fill_emergency_playlist(self):
-        """Fills playlist with popular tracks if the main search fails."""
-        fallbacks = ["Lo-Fi Hip Hop", "Top Hits 2025", "Classic Rock Radio"]
-        fallback_query = random.choice(fallbacks)
-        logger.info(f"[{self.chat_id}] Using emergency fallback: {fallback_query}")
-        tracks = await self.downloader.search(fallback_query, limit=10)
-        if tracks:
-            self.playlist.extend(tracks)
-            await self._update_status(f"🛰️ На волне: *{fallback_query}* (аварийный режим)")
 
 class RadioManager:
     def __init__(self, bot: Bot, settings: Settings, downloader: YouTubeDownloader):
@@ -186,14 +171,11 @@ class RadioManager:
             if query == "random":
                 query, decade, display_name = self._get_random_query()
 
-            display_name = display_name or query
-            
             session = RadioSession(
                 chat_id=chat_id, bot=self._bot, downloader=self._downloader, settings=self._settings,
-                query=query, display_name=display_name, decade=decade
+                query=query, display_name=(display_name or query), decade=decade
             )
             self._sessions[chat_id] = session
-            # The 'Tuning in...' message is now sent from the handler
             await session.start()
 
     async def stop(self, chat_id: int):
@@ -207,9 +189,11 @@ class RadioManager:
         for chat_id in list(self._sessions.keys()): await self.stop(chat_id)
 
     def _get_random_query(self) -> tuple[str, str, str]:
-        """Gets a random query from the entire 3-level genre structure."""
         try:
             era_key = random.choice(list(self._settings.GENRE_DATA.keys()))
+            if era_key in ["main_menu", "moods"]: # Skip special keys
+                return self._get_random_query()
+
             era_data = self._settings.GENRE_DATA[era_key]
             subgenre_key = random.choice(list(era_data["subgenres"].keys()))
             subgenre_data = era_data["subgenres"][subgenre_key]
@@ -220,5 +204,5 @@ class RadioManager:
             display_name = f"{subgenre_data['name']} ({decade_data['name']})"
             return (query, decade_key, display_name)
         except Exception as e:
-            logger.error(f"Failed to get random genre, using fallback: {e}")
+            logger.error(f"Failed to get random genre: {e}", exc_info=True)
             return ("80s synth pop", "1980s", "🎹 Synth-Pop (80-е)")
