@@ -159,13 +159,21 @@ async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
 async def search_artist_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     query_text = update.message.text
     # Remove the "waiting for input" message
-    await context.bot.delete_message(chat_id=update.effective_chat.id, message_id=update.message.reply_to_message.message_id)
+    try:
+        await context.bot.delete_message(chat_id=update.effective_chat.id, message_id=update.message.reply_to_message.message_id)
+    except Exception:
+        pass # Ignore if message cannot be deleted
+        
     await _send_artist_search_results(update, context, query_text=query_text, page=1)
     return MENU # Return to menu state to allow track selection or cancellation
 
 async def search_track_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     query_text = update.message.text
-    await context.bot.delete_message(chat_id=update.effective_chat.id, message_id=update.message.reply_to_message.message_id)
+    try:
+        await context.bot.delete_message(chat_id=update.effective_chat.id, message_id=update.message.reply_to_message.message_id)
+    except Exception:
+        pass
+
     msg = await update.message.reply_text(f"🔎 Ищу трек: *{query_text}*...", parse_mode=ParseMode.MARKDOWN)
     
     tracks = await context.application.downloader.search(query=query_text, search_mode='track', limit=1)
@@ -258,13 +266,13 @@ def setup_handlers(app: Application, radio: RadioManager, settings: Settings, do
     app.settings = settings
     
     # --- Global Handlers ---
-    # These handlers are registered first and will trigger regardless of conversation state.
     app.add_handler(CommandHandler("stop", stop_radio_handler))
     app.add_handler(CommandHandler("skip", skip_radio_handler))
     app.add_handler(CallbackQueryHandler(select_track_handler, pattern=f"^{CallbackAction.SELECT}:.*"))
+    app.add_handler(CallbackQueryHandler(stop_radio_handler, pattern=f"^{CallbackAction.STOP}:.*"))
+    app.add_handler(CallbackQueryHandler(skip_radio_handler, pattern=f"^{CallbackAction.SKIP}:.*"))
 
     # --- Conversation Handler ---
-    # This handler manages the main menu navigation and search states.
     conv_handler = ConversationHandler(
         entry_points=[
             CommandHandler('start', start),
@@ -275,7 +283,7 @@ def setup_handlers(app: Application, radio: RadioManager, settings: Settings, do
             WAITING_ARTIST: [MessageHandler(filters.TEXT & ~filters.COMMAND, search_artist_handler)],
             WAITING_TRACK: [MessageHandler(filters.TEXT & ~filters.COMMAND, search_track_handler)],
         },
-        fallbacks=[CommandHandler('start', start)], # Allows restarting the bot from any state
+        fallbacks=[CommandHandler('start', start)],
         per_message=False,
         conversation_timeout=3600 # 1 hour
     )

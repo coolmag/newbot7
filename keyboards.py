@@ -6,22 +6,29 @@ def get_track_search_keyboard(tracks: List[TrackInfo], page: int = 1) -> InlineK
     """Создаёт клавиатуру с результатами поиска треков."""
     buttons = []
     for i, track in enumerate(tracks, 1):
-        # Обрезаем текст, чтобы не выйти за лимит 64 байт в callback_data
-        artist = track.artist[:15].strip()
-        title = track.title[:20].strip()
+        # Форматируем длительность (мин:сек)
         duration_str = f"{track.duration // 60}:{track.duration % 60:02d}"
         
+        # Формируем текст кнопки: "1. Artist - Title (3:45)"
+        # Обрезаем, чтобы вместить полезную информацию и не выйти за лимиты
+        artist = track.artist[:15].strip()
+        title = track.title[:20].strip()
+        
         button_text = f"{i}. {artist} - {title} ({duration_str})"
+        
+        # Создаем callback с ID трека (action=sel)
         callback = VoteCallback(action=CallbackAction.SELECT, value=track.identifier)
         
         buttons.append([InlineKeyboardButton(button_text, callback_data=callback.to_callback_data())])
 
+    # Кнопка отмены
     cancel_cb = VoteCallback(action=CallbackAction.CANCEL, value="search")
     buttons.append([InlineKeyboardButton("❌ Закрыть поиск", callback_data=cancel_cb.to_callback_data())])
+    
     return InlineKeyboardMarkup(buttons)
 
 def get_radio_control_keyboard(chat_id: int) -> InlineKeyboardMarkup:
-    """Клавиатура управления радио для текущего чата."""
+    """Клавиатура управления радио для текущего чата (Кнопки под плеером)."""
     skip_cb = VoteCallback(action=CallbackAction.SKIP, value=str(chat_id))
     stop_cb = VoteCallback(action=CallbackAction.STOP, value=str(chat_id))
     
@@ -31,9 +38,10 @@ def get_radio_control_keyboard(chat_id: int) -> InlineKeyboardMarkup:
     ]])
 
 def get_confirmation_keyboard(action: str, value: str) -> InlineKeyboardMarkup:
-    """Клавиатура подтверждения (упаковываем extra-данные в value)."""
+    """Клавиатура подтверждения."""
     # Формат value: "action_type:original_value"
     confirm_val = f"{action}:{value}"
+    
     confirm_cb = VoteCallback(action=CallbackAction.CONFIRM, value=confirm_val)
     cancel_cb = VoteCallback(action=CallbackAction.CANCEL, value=action)
     
@@ -43,17 +51,20 @@ def get_confirmation_keyboard(action: str, value: str) -> InlineKeyboardMarkup:
     ]])
 
 def get_pagination_keyboard(current_page: int, total_pages: int, base_value: str) -> InlineKeyboardMarkup:
-    """Создаёт кнопки пагинации (упаковываем номер страницы в value)."""
+    """Создаёт кнопки пагинации."""
     buttons = []
-    # Формат value: "page_num:base_query"
+    
+    # Кнопка "Назад"
     if current_page > 1:
         prev_cb = VoteCallback(action=CallbackAction.PAGE, value=f"{current_page-1}:{base_value}")
-        buttons.append(InlineKeyboardButton("◀️ Назад", callback_data=prev_cb.to_callback_data()))
+        buttons.append(InlineKeyboardButton("◀️", callback_data=prev_cb.to_callback_data()))
     
-    buttons.append(InlineKeyboardButton(f"{current_page}/{total_pages}", callback_data="noop"))
+    # Индикатор страницы (неактивная кнопка)
+    buttons.append(InlineKeyboardButton(f"📄 {current_page}/{total_pages}", callback_data="noop"))
     
+    # Кнопка "Вперед"
     if current_page < total_pages:
         next_cb = VoteCallback(action=CallbackAction.PAGE, value=f"{current_page+1}:{base_value}")
-        buttons.append(InlineKeyboardButton("▶️ Вперёд", callback_data=next_cb.to_callback_data()))
+        buttons.append(InlineKeyboardButton("▶️", callback_data=next_cb.to_callback_data()))
     
     return InlineKeyboardMarkup([buttons])
