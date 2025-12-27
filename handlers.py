@@ -349,9 +349,9 @@ def setup_handlers(app: Application, radio: RadioManager, settings: Settings, do
     app.add_handler(CommandHandler("radio", radio_command))
     
     # 2. Кнопки плеера (глобальные)
-    app.add_handler(CallbackQueryHandler(stop_button, pattern=f"^{CallbackAction.STOP}:\.*))
-    app.add_handler(CallbackQueryHandler(skip_button, pattern=f"^{CallbackAction.SKIP}:\.*))
-    app.add_handler(CallbackQueryHandler(select_track_button, pattern=f"^{CallbackAction.SELECT}:\.*))
+    app.add_handler(CallbackQueryHandler(stop_button, pattern=f"^{CallbackAction.STOP}:.*)"))
+    app.add_handler(CallbackQueryHandler(skip_button, pattern=f"^{CallbackAction.SKIP}:.*)"))
+    app.add_handler(CallbackQueryHandler(select_track_button, pattern=f"^{CallbackAction.SELECT}:.*))
     
     # 3. Главный ConversationHandler (меню + поиск)
     conv_handler = ConversationHandler(
