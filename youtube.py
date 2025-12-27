@@ -44,6 +44,7 @@ class YouTubeDownloader:
             "logger": SilentLogger(),
             "postprocessors": [{'key': 'FFmpegExtractAudio', 'preferredcodec': 'mp3'}],
             "outtmpl": str(self._settings.DOWNLOADS_DIR / "%(id)s.%(ext)s"),
+            'cookiefile': 'cookies.txt', # Added to bypass 403 Forbidden errors from YouTube
         }
 
     def _is_track_valid(self, entry: Dict, decade: Optional[str] = None, is_russian_query: bool = False) -> bool:
@@ -135,7 +136,7 @@ class YouTubeDownloader:
         async with self.semaphore:
             track_info = await self.get_track_info(video_id)
             if not track_info:
-                return DownloadResult(success=False, error="Failed to get track info")
+                return DownloadResult(success=False, error_message="Failed to get track info")
             
             file_id_cache_key = f"file_id:{video_id}"
             cached_file_id = await self._cache.get(file_id_cache_key)
@@ -154,14 +155,14 @@ class YouTubeDownloader:
             try:
                 success = await asyncio.wait_for(loop.run_in_executor(None, do_download), timeout=300.0)
                 if not success:
-                    return DownloadResult(success=False, error="Download failed", track_info=track_info)
+                    return DownloadResult(success=False, error_message="Download failed", track_info=track_info)
             except asyncio.TimeoutError:
                 self._cleanup_partial(video_id)
-                return DownloadResult(success=False, error="Timeout", track_info=track_info)
+                return DownloadResult(success=False, error_message="Timeout", track_info=track_info)
 
             final_path = self._find_downloaded_file(video_id)
             if not final_path:
-                return DownloadResult(success=False, error="File not found", track_info=track_info)
+                return DownloadResult(success=False, error_message="File not found", track_info=track_info)
             
             return DownloadResult(success=True, file_path=final_path, track_info=track_info)
 

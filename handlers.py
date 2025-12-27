@@ -242,6 +242,16 @@ async def _send_track(context: ContextTypes.DEFAULT_TYPE, chat_id: int, video_id
 
 # +++ Application Setup +++
 
+async def stop_radio_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Wrapper to stop the radio for the current chat."""
+    await context.application.radio_manager.stop(update.effective_chat.id)
+    await update.message.reply_text("🛑 Радио остановлено.")
+
+async def skip_radio_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Wrapper to skip the current track for the current chat."""
+    await context.application.radio_manager.skip(update.effective_chat.id)
+    # No reply needed for skip, as the next track will be sent automatically.
+
 def setup_handlers(app: Application, radio: RadioManager, settings: Settings, downloader: YouTubeDownloader):
     app.downloader = downloader
     app.radio_manager = radio
@@ -249,8 +259,8 @@ def setup_handlers(app: Application, radio: RadioManager, settings: Settings, do
     
     # --- Global Handlers ---
     # These handlers are registered first and will trigger regardless of conversation state.
-    app.add_handler(CommandHandler("stop", radio.stop))
-    app.add_handler(CommandHandler("skip", radio.skip))
+    app.add_handler(CommandHandler("stop", stop_radio_handler))
+    app.add_handler(CommandHandler("skip", skip_radio_handler))
     app.add_handler(CallbackQueryHandler(select_track_handler, pattern=f"^{CallbackAction.SELECT}:.*"))
 
     # --- Conversation Handler ---
