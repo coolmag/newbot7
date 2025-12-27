@@ -25,7 +25,7 @@ async def _send_track(
     video_id: str, 
     downloader: YouTubeDownloader
 ) -> bool:
-    # (Implementation is correct and does not need changes)
+    # This function is self-contained and correct.
     download_result = None
     try:
         download_result = await downloader.download(video_id)
@@ -65,10 +65,10 @@ async def _send_track(
             except OSError as e:
                 logger.warning(f"Failed to clean up file in _send_track: {e}")
 
-# +++ Keyboard Generators (NEW STRUCTURE) +++
+# +++ Keyboard Generators (3-LEVEL STRUCTURE) +++
 
 def _generate_era_keyboard(settings: Settings) -> InlineKeyboardMarkup:
-    """Generates the top-level Era selection keyboard."""
+    """Level 1: Generates the top-level Era selection keyboard."""
     buttons = [
         InlineKeyboardButton(
             data["name"], 
@@ -79,17 +79,28 @@ def _generate_era_keyboard(settings: Settings) -> InlineKeyboardMarkup:
     keyboard.append([InlineKeyboardButton("❌ Закрыть", callback_data=VoteCallback(action=CallbackAction.CANCEL, value="menu").to_callback_data())])
     return InlineKeyboardMarkup(keyboard)
 
-def _generate_decade_keyboard(settings: Settings, era_key: str) -> InlineKeyboardMarkup:
-    """Generates the second-level Decade selection keyboard for a given Era."""
+def _generate_subgenre_keyboard(settings: Settings, era_key: str) -> InlineKeyboardMarkup:
+    """Level 2: Generates the Subgenre selection keyboard for a given Era."""
     buttons = []
-    era_data = settings.GENRE_DATA.get(era_key, {})
-    decades = era_data.get("decades", {})
-    for decade_key, decade_data in decades.items():
-        callback_data = VoteCallback(action=CallbackAction.DECADE, value=f"{era_key}:{decade_key}").to_callback_data()
-        buttons.append(InlineKeyboardButton(decade_data["name"], callback_data=callback_data))
+    subgenres = settings.GENRE_DATA[era_key].get("subgenres", {})
+    for sub_key, sub_data in subgenres.items():
+        callback_data = VoteCallback(action=CallbackAction.SUBGENRE, value=f"{era_key}:{sub_key}").to_callback_data()
+        buttons.append(InlineKeyboardButton(sub_data["name"], callback_data=callback_data))
 
     keyboard = [buttons[i:i + 2] for i in range(0, len(buttons), 2)]
     keyboard.append([InlineKeyboardButton("◀️ Назад", callback_data=VoteCallback(action=CallbackAction.ERA, value="main_menu").to_callback_data())])
+    return InlineKeyboardMarkup(keyboard)
+
+def _generate_decade_keyboard(settings: Settings, era_key: str, subgenre_key: str) -> InlineKeyboardMarkup:
+    """Level 3: Generates the Decade selection keyboard for a given Subgenre."""
+    buttons = []
+    decades = settings.GENRE_DATA[era_key]["subgenres"][subgenre_key].get("decades", {})
+    for decade_key, decade_data in decades.items():
+        callback_data = VoteCallback(action=CallbackAction.DECADE, value=f"{era_key}:{subgenre_key}:{decade_key}").to_callback_data()
+        buttons.append(InlineKeyboardButton(decade_data["name"], callback_data=callback_data))
+
+    keyboard = [buttons[i:i + 2] for i in range(0, len(buttons), 2)]
+    keyboard.append([InlineKeyboardButton("◀️ Назад", callback_data=VoteCallback(action=CallbackAction.SUBGENRE, value=f"{era_key}").to_callback_data())])
     return InlineKeyboardMarkup(keyboard)
 
 # +++ Command and Callback Handlers +++
@@ -98,10 +109,7 @@ def setup_handlers(app: Application, radio: RadioManager, settings: Settings, do
     
     async def start_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         text = f"👋 *Привет, {update.effective_user.first_name}!* Я — музыкальная машина времени.\n\n👇 Выбери эпоху:"
-        await update.effective_message.reply_text(
-            text, parse_mode=ParseMode.MARKDOWN,
-            reply_markup=_generate_era_keyboard(settings)
-        )
+        await update.effective_message.reply_text(text, parse_mode=ParseMode.MARKDOWN, reply_markup=_generate_era_keyboard(settings))
 
     async def search_or_play_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         command = update.message.text.split()[0].lower()
@@ -109,22 +117,18 @@ def setup_handlers(app: Application, radio: RadioManager, settings: Settings, do
         if not query:
             await update.message.reply_text(f"💬 Укажите запрос, например: `{command} Queen`")
             return
-
         search_msg = await update.message.reply_text(f"🔎 Ищу: `{query}`...", parse_mode=ParseMode.MARKDOWN)
         tracks = await downloader.search(query, limit=10)
-
         if not tracks:
             await search_msg.edit_text("😕 Ничего не найдено.")
             return
-
-        text = f"**Результаты по запросу \"{query}\":**\n\n" + "\n".join(
-            [f"{i}. {t.artist} - {t.title} ({t.duration // 60}:{t.duration % 60:02d})" for i, t in enumerate(tracks, 1)]
-        )
+        text = f"**Результаты по запросу "{query}":**\n\n" + "\n".join([f"{i}. {t.artist} - {t.title} ({t.duration // 60}:{t.duration % 60:02d})" for i, t in enumerate(tracks, 1)])
         await search_msg.edit_text(text, parse_mode=ParseMode.MARKDOWN, reply_markup=get_track_search_keyboard(tracks))
 
     async def radio_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-        # This command can be used for direct queries, bypassing the menu
-        await radio.start(chat_id=update.effective_chat.id, query=" ".join(context.args) or "random")
+        context.application.create_task(
+             radio.start(chat_id=update.effective_chat.id, query="random")
+        )
 
     async def stop_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await radio.stop(update.effective_chat.id)
@@ -136,11 +140,8 @@ def setup_handlers(app: Application, radio: RadioManager, settings: Settings, do
     async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         query = update.callback_query
         await query.answer()
-        
         callback = VoteCallback.from_callback_data(query.data)
-        if not callback:
-            logger.warning(f"Could not parse callback data: {query.data}")
-            return
+        if not callback: return
 
         chat_id = query.message.chat.id
 
@@ -150,43 +151,49 @@ def setup_handlers(app: Application, radio: RadioManager, settings: Settings, do
             else:
                 era_key = callback.value
                 era_name = settings.GENRE_DATA.get(era_key, {}).get("name", "Музыка")
-                await query.edit_message_text(f"🕰️ *{era_name}*\n\nВыберите десятилетие:", parse_mode=ParseMode.MARKDOWN, reply_markup=_generate_decade_keyboard(settings, era_key))
+                await query.edit_message_text(f"🎧 *{era_name}*\n\nВыберите поджанр:", parse_mode=ParseMode.MARKDOWN, reply_markup=_generate_subgenre_keyboard(settings, era_key))
+
+        elif callback.action == CallbackAction.SUBGENRE:
+            try:
+                era_key, subgenre_key = callback.value.split(":")
+                subgenre_name = settings.GENRE_DATA[era_key]["subgenres"][subgenre_key].get("name", "Музыка")
+                await query.edit_message_text(f"🕰️ *{subgenre_name}*\n\nВыберите десятилетие:", parse_mode=ParseMode.MARKDOWN, reply_markup=_generate_decade_keyboard(settings, era_key, subgenre_key))
+            except (ValueError, KeyError) as e:
+                logger.error(f"Invalid SUBGENRE callback: {callback.value} - {e}")
+                await query.edit_message_text("❌ Меню устарело. Пожалуйста, используйте /start.")
 
         elif callback.action == CallbackAction.DECADE:
             try:
-                era_key, decade_key = callback.value.split(":")
-                
+                era_key, subgenre_key, decade_key = callback.value.split(":")
                 era_data = settings.GENRE_DATA[era_key]
-                decade_data = era_data["decades"][decade_key]
+                subgenre_data = era_data["subgenres"][subgenre_key]
+                decade_data = subgenre_data["decades"][decade_key]
                 
-                display_name = f"{era_data['name']} ({decade_data['name']})"
+                search_query = decade_data["query"]
+                display_name = f"{subgenre_data['name']} ({decade_data['name']})"
                 
                 await query.edit_message_text(f"🛰️ Настраиваюсь на волну: *{display_name}*...", parse_mode=ParseMode.MARKDOWN)
-                await radio.start(
-                    chat_id=chat_id, 
-                    era_key=era_key, 
-                    decade_key=decade_key, 
-                    display_name=display_name
+                context.application.create_task(
+                    radio.start(chat_id=chat_id, query=search_query, decade=decade_key, display_name=display_name)
                 )
             except (ValueError, KeyError, IndexError) as e:
-                logger.error(f"Invalid DECADE callback value: {callback.value} - {e}")
-                await query.edit_message_text("❌ Меню устарело. Пожалуйста, используйте /start, чтобы открыть актуальное меню.")
+                logger.error(f"Invalid DECADE callback: {callback.value} - {e}")
+                await query.edit_message_text("❌ Меню устарело. Пожалуйста, используйте /start.")
 
         elif callback.action == CallbackAction.SELECT:
             await radio.stop(chat_id)
             await query.edit_message_text(f"⏳ Готовлю выбранный трек к отправке...")
-            if await _send_track(context, chat_id, callback.value, downloader):
-                await query.message.delete()
+            context.application.create_task(
+                _send_track(context, chat_id, callback.value, downloader)
+            )
+            # await query.message.delete() # Don't delete, so user can see what was chosen
         
-        elif callback.action == CallbackAction.CANCEL:
-            await query.message.delete()
+        elif callback.action == CallbackAction.CANCEL: await query.message.delete()
         elif callback.action == CallbackAction.STOP:
             await radio.stop(chat_id)
-            try:
-                await query.edit_message_text("🛑 Радио остановлено.")
+            try: await query.edit_message_text("🛑 Радио остановлено.")
             except BadRequest: pass
-        elif callback.action == CallbackAction.SKIP:
-            await radio.skip(chat_id)
+        elif callback.action == CallbackAction.SKIP: await radio.skip(chat_id)
 
     app.add_handler(CommandHandler("start", start_cmd))
     app.add_handler(CommandHandler(["play", "search"], search_or_play_cmd))

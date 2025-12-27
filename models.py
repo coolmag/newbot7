@@ -17,17 +17,16 @@ class CallbackAction:
     SKIP = "skip"
     STOP = "stop"
     VOTE = "vote"
-    GENRE = "genre" # DEPRECATED, will be removed
-    RADIO = "radio" # DEPRECATED, will be removed
     PAGE = "page"
     SELECT = "sel"
     SEARCH = "search"
     CANCEL = "cancel"
     CONFIRM = "confirm"
     
-    # New actions for Era -> Decade flow
+    # New actions for Era -> Subgenre -> Decade flow
     ERA = "era"
-    DECADE = "decade"
+    SUBGENRE = "sub"
+    DECADE = "dec"
 
 
 @dataclass
@@ -122,6 +121,19 @@ class TrackInfo:
         
         # Получаем миниатюру
         thumbnail = info.get('thumbnail')
+        
+        # Парсим исполнителя и название из заголовка, если нужно
+        if " - " in title and artist in ["Unknown", "Various Artists"]:
+            try:
+                parts = title.split(" - ", 1)
+                artist_candidate = parts[0].strip()
+                title_candidate = parts[1].strip()
+                # Простая эвристика, чтобы не парсить неверно
+                if 0 < len(artist_candidate) < 50:
+                    artist = artist_candidate
+                    title = title_candidate
+            except Exception:
+                pass # Оставляем как есть в случае ошибки
         
         return cls(
             identifier=video_id,

@@ -93,40 +93,65 @@ class YouTubeDownloader:
         return True
 
     async def search(self, query: str, decade: Optional[str] = None, limit: int = 20) -> List[TrackInfo]:
-        """Поиск треков с использованием YTMusic, фильтрацией и кэшированием."""
+        """
+        Поиск треков с использованием YTMusic, с несколькими попытками и "человечными" запросами.
+        """
         async with self.search_semaphore:
-            refined_query = f"{query} {decade}" if decade else query
-            cache_key = f"ytmusic_search_v3:{refined_query.lower().strip()}"
+            # Ключ кэша основан на исходном запросе, а не на каждом варианте
+            cache_key = f"ytmusic_search_v4:{query.lower().strip()}:{decade}"
             
             cached_tracks = await self._cache.get(cache_key)
             if cached_tracks is not None:
-                logger.info(f"[Search] Cache hit for query: '{refined_query}'")
+                logger.info(f"[Search] Cache hit for '{query}' decade: {decade}")
                 return cached_tracks
 
-            logger.info(f"[Search] Cache miss. Querying YTMusic API for: '{refined_query}'")
-            
-            loop = asyncio.get_running_loop()
-            
-            def do_search() -> List[Dict]:
-                try:
-                    # Ищем с запасом, чтобы после фильтрации что-то осталось
-                    return self._ytmusic.search(refined_query, filter="songs", limit=limit * 2)
-                except Exception as e:
-                    logger.error(f"YTMusic search failed: {e}", exc_info=True)
-                    return []
+            logger.info(f"[Search] Cache miss for '{query}' decade: {decade}. Starting multi-layered search.")
 
-            search_results = await loop.run_in_executor(None, do_search)
+            # Определяем шаблоны для поисковых запросов
+            if decade:
+                search_templates = [
+                    f"{query} {decade} hits",
+                    f"{query} best of {decade}",
+                    f"{query} {decade}",
+                ]
+            else:
+                search_templates = [query]
             
-            # Фильтруем результаты перед парсингом и кэшированием
-            valid_entries = [entry for entry in search_results if self._is_track_valid(entry, decade=decade)]
+            found_entries = []
+            loop = asyncio.get_running_loop()
+
+            for template in search_templates:
+                logger.debug(f"[Search] Trying query template: '{template}'")
+
+                def do_search(q: str) -> List[Dict]:
+                    try:
+                        return self._ytmusic.search(q, filter="songs", limit=limit * 2)
+                    except Exception as e:
+                        logger.error(f"YTMusic search failed for '{q}': {e}", exc_info=True)
+                        return []
+                
+                search_results = await loop.run_in_executor(None, do_search, template)
+                
+                if search_results:
+                    found_entries.extend(search_results)
+                
+                # Если уже набрали достаточно, можно остановиться
+                if len(found_entries) >= limit * 2:
+                    logger.info(f"Collected enough results ({len(found_entries)}), stopping further searches.")
+                    break
             
-            tracks = [self._parse_ytmusic_entry(entry) for entry in valid_entries][:limit]
+            # Фильтруем все найденные результаты
+            valid_entries = [entry for entry in found_entries if self._is_track_valid(entry, decade=decade)]
             
-            # Кэшируем отфильтрованный результат на 1 час
-            await self._cache.set(cache_key, tracks, ttl=3600)
+            # Дедупликация и обрезка до лимита
+            unique_tracks_dict = {entry['videoId']: self._parse_ytmusic_entry(entry) for entry in valid_entries}
+            final_tracks = list(unique_tracks_dict.values())[:limit]
             
-            logger.info(f"[Search] Found and filtered {len(tracks)} tracks for query '{refined_query}'")
-            return tracks
+            # Кэшируем финальный результат
+            await self._cache.set(cache_key, final_tracks, ttl=3600)
+            
+            logger.info(f"[Search] Found a total of {len(final_tracks)} filtered tracks for base query '{query}'")
+            return final_tracks
 
     def _parse_ytmusic_entry(self, entry: Dict) -> TrackInfo:
         """Парсит результат поиска из YTMusic."""
