@@ -36,16 +36,41 @@ class YouTubeDownloader:
         self._ytmusic = YTMusic()
         self.semaphore = asyncio.Semaphore(3)
         self.search_semaphore = asyncio.Semaphore(5)
+        
+        # 1. Достаем куки из переменной Railway (назови её там YOUTUBE_COOKIES)
+        cookies_content = os.getenv("YOUTUBE_COOKIES")
+        cookie_file_path = None
+        
+        if cookies_content:
+            # Создаем файл cookies.txt на лету
+            cookie_file_path = "cookies.txt"
+            with open(cookie_file_path, "w", encoding="utf-8") as f:
+                f.write(cookies_content)
+            logger.info("🍪 Куки успешно загружены из переменной в файл!")
+        else:
+            logger.warning("⚠️ Переменная YOUTUBE_COOKIES не найдена, пробуем без кук.")
+
+        # 2. Настраиваем yt-dlp
+        self.ydl_opts = {
+            "quiet": True,
+            "no_warnings": True,
+            "noplaylist": True,
+            "format": "bestaudio/best",
+            "logger": SilentLogger(),
+            "postprocessors": [{
+                'key': 'FFmpegExtractAudio',
+                'preferredcodec': 'mp3',
+                'preferredquality': '192',
+            }],
+            "outtmpl": str(self._settings.DOWNLOADS_DIR / "%(id)s.%(ext)s"),
+            'nocheckcertificate': True, # Railway fix
+        }
+        if cookie_file_path:
+            self.ydl_opts['cookiefile'] = cookie_file_path
+
         logger.info("YouTubeDownloader initialized with ytmusicapi and caching")
 
-    def _get_dl_opts(self) -> Dict[str, Any]:
-        return {
-            "quiet": True, "no_warnings": True, "noplaylist": True, "format": "bestaudio/best",
-            "logger": SilentLogger(),
-            "postprocessors": [{'key': 'FFmpegExtractAudio', 'preferredcodec': 'mp3'}],
-            "outtmpl": str(self._settings.DOWNLOADS_DIR / "%(id)s.%(ext)s"),
-            'cookiefile': 'cookies.txt', # Added to bypass 403 Forbidden errors from YouTube
-        }
+    # The _get_dl_opts method is removed as its functionality is now integrated into __init__
 
     def _is_track_valid(self, entry: Dict, decade: Optional[str] = None, is_russian_query: bool = False) -> bool:
         if not entry or entry.get('resultType') not in ['song', 'video']: return False
@@ -120,7 +145,7 @@ class YouTubeDownloader:
         loop = asyncio.get_running_loop()
         def do_extract_info():
             try:
-                with yt_dlp.YoutubeDL(self._get_dl_opts()) as ydl:
+                with yt_dlp.YoutubeDL(self.ydl_opts) as ydl:
                     return ydl.extract_info(video_id, download=False)
             except Exception as e:
                 logger.error(f"[TrackInfo] Failed for {video_id}: {e}")
@@ -147,7 +172,7 @@ class YouTubeDownloader:
             loop = asyncio.get_running_loop()
             def do_download():
                 try:
-                    with yt_dlp.YoutubeDL(self._get_dl_opts()) as ydl:
+                    with yt_dlp.YoutubeDL(self.ydl_opts) as ydl:
                         ydl.download([video_id])
                     return True
                 except Exception: return False
