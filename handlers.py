@@ -241,6 +241,6 @@ def setup_handlers(app: Application, radio: RadioManager, settings: Settings, do
     app.add_handler(CommandHandler("stop", stop_radio))
     app.add_handler(CommandHandler("skip", skip_track))
     # Direct search not part of conversation
-    app.add_handler(CommandHandler(["play", "search"], search_or_play_cmd))
+    # app.add_handler(CommandHandler(["play", "search"], search_or_play_cmd))
     # Direct track selection from outside the main menu conversation
     app.add_handler(CallbackQueryHandler(select_track_handler, pattern=f"^{CallbackAction.SELECT}:.*"))
