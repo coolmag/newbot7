@@ -19,10 +19,8 @@ class SilentLogger:
     def debug(self, msg: str):
         if "rate limit" in msg.lower() or "http error 429" in msg.lower():
             logger.warning(f"[yt-dlp] {msg}")
-    def warning(self, msg: str):
-        pass
-    def error(self, msg: str):
-        logger.error(f"[yt-dlp] {msg}")
+    def warning(self, msg: str): pass
+    def error(self, msg: str): logger.error(f"[yt-dlp] {msg}")
 
 class YouTubeDownloader:
     FORBIDDEN_WORDS = [
@@ -35,31 +33,26 @@ class YouTubeDownloader:
         self._settings = settings
         self._cache = cache_service
         self._settings.DOWNLOADS_DIR.mkdir(exist_ok=True)
-        
         self._ytmusic = YTMusic()
-        self.semaphore = asyncio.Semaphore(3)  # для скачиваний
-        self.search_semaphore = asyncio.Semaphore(5)  # для поиска
-        
+        self.semaphore = asyncio.Semaphore(3)
+        self.search_semaphore = asyncio.Semaphore(5)
         logger.info("YouTubeDownloader initialized with ytmusicapi and caching")
 
     def _get_dl_opts(self) -> Dict[str, Any]:
         return {
-            "quiet": True,
-            "no_warnings": True,
-            "noplaylist": True,
-            "format": "bestaudio/best",
+            "quiet": True, "no_warnings": True, "noplaylist": True, "format": "bestaudio/best",
             "logger": SilentLogger(),
-            "postprocessors": [{
-                'key': 'FFmpegExtractAudio',
-                'preferredcodec': 'mp3',
-            }],
+            "postprocessors": [{'key': 'FFmpegExtractAudio', 'preferredcodec': 'mp3'}],
             "outtmpl": str(self._settings.DOWNLOADS_DIR / "%(id)s.%(ext)s"),
             "extractor_args": {"youtube": {"player_client": ["android", "ios"]}},
             "user_agent": "com.google.android.youtube/19.29.37 (Linux; U; Android 11; en_US; Pixel 5) gzip",
         }
 
     def _is_track_valid(self, entry: Dict, decade: Optional[str] = None) -> bool:
-        """Проверяет, является ли результат поиска валидным треком."""
+        """
+        Проверяет, является ли результат поиска валидным треком.
+        Фильтрация по году теперь "мягкая".
+        """
         if not entry or entry.get('resultType') not in ['song', 'video']:
             return False
 
@@ -69,65 +62,65 @@ class YouTubeDownloader:
             return False
         
         duration_sec = entry.get('duration_seconds', 0)
-        if not duration_sec or not (60 < duration_sec < 720): # 12 минут max
+        if not duration_sec or not (60 < duration_sec < 720):
             logger.debug(f"Filtered out '{title}' due to duration: {duration_sec}s.")
             return False
             
         if decade:
             year_str = entry.get('year')
+            # Если года нет, мы не можем быть уверены, поэтому пропускаем трек.
+            # Это лучше, чем засорять эфир нерелевантной музыкой.
             if not year_str or not year_str.isdigit():
                 logger.debug(f"Filtered out '{title}' as it has no year for decade filtering.")
-                return False # У трека нет года, а мы фильтруем по нему
+                return False
             
             try:
                 year = int(year_str)
                 start_year = int(decade[:4])
-                end_year = start_year + 9
-                if not (start_year <= year <= end_year):
-                    logger.debug(f"Filtered out '{title}' ({year}) as it's outside decade {decade}.")
+                
+                # Отсеиваем треки, которые ТОЧНО старше искомого десятилетия
+                if year < start_year:
+                    logger.debug(f"Filtered out '{title}' ({year}) as it's too old for decade {decade}.")
                     return False
+                # Все, что новее (ремастеры) или в рамках десятилетия - пропускаем.
             except (ValueError, IndexError):
-                logger.warning(f"Could not parse decade: {decade}")
-                return False # Невалидный формат десятилетия
+                logger.warning(f"Could not parse decade for year validation: {decade}")
+                return False
 
         return True
 
     async def search(self, query: str, decade: Optional[str] = None, limit: int = 20) -> List[TrackInfo]:
         """
-        Поиск треков с использованием YTMusic, с несколькими попытками и "человечными" запросами.
+        Поиск треков с использованием YTMusic, с отказоустойчивостью и "человечными" запросами.
         """
         async with self.search_semaphore:
-            # Ключ кэша основан на исходном запросе, а не на каждом варианте
-            cache_key = f"ytmusic_search_v4:{query.lower().strip()}:{decade}"
+            # Ключ кэша зависит от точного запроса и десятилетия
+            cache_key = f"ytmusic_search_v5:{query.lower().strip()}:{decade}"
             
             cached_tracks = await self._cache.get(cache_key)
             if cached_tracks is not None:
                 logger.info(f"[Search] Cache hit for '{query}' decade: {decade}")
                 return cached_tracks
 
-            logger.info(f"[Search] Cache miss for '{query}' decade: {decade}. Starting multi-layered search.")
+            logger.info(f"[Search] Cache miss for '{query}' decade: {decade}. Starting search.")
 
-            # Определяем шаблоны для поисковых запросов
-            if decade:
-                search_templates = [
-                    f"{query} {decade} hits",
-                    f"{query} best of {decade}",
-                    f"{query} {decade}",
-                ]
-            else:
-                search_templates = [query]
+            search_templates = [
+                f"{query} hits",
+                f"{query} best of",
+                query # Самый широкий запрос как фоллбэк
+            ]
             
             found_entries = []
             loop = asyncio.get_running_loop()
 
             for template in search_templates:
-                logger.debug(f"[Search] Trying query template: '{template}'")
+                logger.debug(f"[Search] Trying query: '{template}'")
 
                 def do_search(q: str) -> List[Dict]:
                     try:
                         return self._ytmusic.search(q, filter="songs", limit=limit * 2)
                     except Exception as e:
-                        logger.error(f"YTMusic search failed for '{q}': {e}", exc_info=True)
+                        logger.error(f"YTMusic search for '{q}' failed: {e}", exc_info=True)
                         return []
                 
                 search_results = await loop.run_in_executor(None, do_search, template)
@@ -135,33 +128,26 @@ class YouTubeDownloader:
                 if search_results:
                     found_entries.extend(search_results)
                 
-                # Если уже набрали достаточно, можно остановиться
                 if len(found_entries) >= limit * 2:
-                    logger.info(f"Collected enough results ({len(found_entries)}), stopping further searches.")
+                    logger.info("Collected enough results, stopping further searches.")
                     break
             
-            # Фильтруем все найденные результаты
             valid_entries = [entry for entry in found_entries if self._is_track_valid(entry, decade=decade)]
             
-            # Дедупликация и обрезка до лимита
             unique_tracks_dict = {entry['videoId']: self._parse_ytmusic_entry(entry) for entry in valid_entries}
             final_tracks = list(unique_tracks_dict.values())[:limit]
             
-            # Кэшируем финальный результат
             await self._cache.set(cache_key, final_tracks, ttl=3600)
             
-            logger.info(f"[Search] Found a total of {len(final_tracks)} filtered tracks for base query '{query}'")
+            logger.info(f"[Search] Found {len(final_tracks)} filtered tracks for base query '{query}'")
             return final_tracks
 
     def _parse_ytmusic_entry(self, entry: Dict) -> TrackInfo:
         """Парсит результат поиска из YTMusic."""
         artists = ", ".join([artist['name'] for artist in entry.get('artists', [])])
         return TrackInfo(
-            identifier=entry['videoId'],
-            title=entry['title'],
-            artist=artists,
-            duration=int(entry.get('duration_seconds', 0)),
-            source=Source.YOUTUBE,
+            identifier=entry['videoId'], title=entry['title'], artist=artists,
+            duration=int(entry.get('duration_seconds', 0)), source=Source.YOUTUBE,
             thumbnail_url=entry['thumbnails'][-1]['url'] if entry.get('thumbnails') else None
         )
 
@@ -170,11 +156,9 @@ class YouTubeDownloader:
         cache_key = f"track_info:{video_id}"
         cached_info = await self._cache.get(cache_key)
         if cached_info:
-            logger.debug(f"[TrackInfo] Cache hit for {video_id}")
             return cached_info
 
         logger.info(f"[TrackInfo] Cache miss. Fetching info for {video_id}")
-        
         loop = asyncio.get_running_loop()
         
         def do_extract_info():
@@ -184,40 +168,30 @@ class YouTubeDownloader:
                 with yt_dlp.YoutubeDL(opts) as ydl:
                     return ydl.extract_info(video_id, download=False)
             except Exception as e:
-                logger.error(f"[TrackInfo] Failed to extract info for {video_id}: {e}")
+                logger.error(f"[TrackInfo] Failed for {video_id}: {e}")
                 return None
         
         info = await loop.run_in_executor(None, do_extract_info)
-        
-        if not info:
-            return None
+        if not info: return None
         
         track_info = TrackInfo.from_yt_info(info)
-        await self._cache.set(cache_key, track_info, ttl=86400) # Кэш на 24 часа
+        await self._cache.set(cache_key, track_info, ttl=86400)
         return track_info
 
     async def download(self, video_id: str) -> DownloadResult:
         """Скачивание трека с проверкой кэша file_id."""
         async with self.semaphore:
-            # 1. Получаем актуальную информацию о треке
             track_info = await self.get_track_info(video_id)
             if not track_info:
                 return DownloadResult(success=False, error="Failed to get track info")
             
-            # 2. Проверяем кэш file_id
             file_id_cache_key = f"file_id:{video_id}"
             cached_file_id = await self._cache.get(file_id_cache_key)
             if cached_file_id:
                 logger.info(f"[Download] file_id cache hit for {video_id}")
-                return DownloadResult(
-                    success=True,
-                    file_id=cached_file_id,
-                    track_info=track_info
-                )
+                return DownloadResult(success=True, file_id=cached_file_id, track_info=track_info)
             
-            # 3. Если в кэше нет - скачиваем
             logger.info(f"[Download] Starting download: {video_id}")
-            
             loop = asyncio.get_running_loop()
             
             def do_download():
@@ -232,7 +206,7 @@ class YouTubeDownloader:
             try:
                 success = await asyncio.wait_for(loop.run_in_executor(None, do_download), timeout=300.0)
                 if not success:
-                    return DownloadResult(success=False, error="Download failed internally", track_info=track_info)
+                    return DownloadResult(success=False, error="Download failed", track_info=track_info)
             except asyncio.TimeoutError:
                 logger.error(f"[Download] Timeout: {video_id}")
                 self._cleanup_partial(video_id)
@@ -240,7 +214,7 @@ class YouTubeDownloader:
 
             final_path = self._find_downloaded_file(video_id)
             if not final_path:
-                return DownloadResult(success=False, error="File not found after download", track_info=track_info)
+                return DownloadResult(success=False, error="File not found", track_info=track_info)
             
             logger.info(f"[Download] Success: {video_id}")
             return DownloadResult(success=True, file_path=final_path, track_info=track_info)
@@ -248,7 +222,7 @@ class YouTubeDownloader:
     async def cache_file_id(self, video_id: str, file_id: str):
         """Сохраняет Telegram file_id в кэш навсегда."""
         cache_key = f"file_id:{video_id}"
-        await self._cache.set(cache_key, file_id, ttl=0) # 0 = вечно
+        await self._cache.set(cache_key, file_id, ttl=0)
         logger.info(f"Cached file_id for {video_id}")
 
     def _find_downloaded_file(self, video_id: str) -> Optional[Path]:
