@@ -10,60 +10,6 @@ class Source(Enum):
     SOUNDCLOUD = "soundcloud"
 
 
-class CallbackAction:
-    """Константы для действий кнопок."""
-    NAVIGATE = "nav"
-    START_RADIO = "radio"
-    SEARCH_ARTIST = "s_art"
-    SEARCH_TRACK = "s_trk"
-    
-    PLAY = "play"
-    DOWNLOAD = "dl"
-    SKIP = "skip"
-    STOP = "stop"
-    
-    PAGE = "page"
-    SELECT = "sel"
-    CANCEL = "cancel"
-    CONFIRM = "confirm"
-    
-    # Разделитель — теперь это class-level константа
-    SEP = ":"
-
-
-@dataclass
-class VoteCallback:
-    """Упаковка/распаковка данных кнопки."""
-    action: str
-    value: str
-    
-    def to_callback_data(self) -> str:
-        """Упаковывает action:value в строку для кнопки."""
-        data = f"{self.action}{CallbackAction.SEP}{self.value}"
-        
-        # Защита от лимита Telegram (64 байта)
-        if len(data.encode('utf-8')) > 64:
-            max_value_len = 64 - len(self.action) - 1
-            truncated_value = self.value[:max_value_len]
-            data = f"{self.action}{CallbackAction.SEP}{truncated_value}"
-        
-        return data
-    
-    @classmethod
-    def from_callback_data(cls, data: str) -> Optional["VoteCallback"]:
-        """Распаковывает строку обратно в объект."""
-        if not data:
-            return None
-        
-        # Используем константу из CallbackAction
-        parts = data.split(CallbackAction.SEP, 1)
-        
-        if len(parts) != 2:
-            return None
-        
-        return cls(action=parts[0], value=parts[1])
-
-
 @dataclass
 class TrackInfo:
     identifier: str
