@@ -134,11 +134,20 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             logger.warning(f"Could not resolve radio query for path: {path_str}. Falling back to '{search_query}'")
 
         await query.edit_message_text(f"🎵 Запускаю: *{path[-1]}*...", parse_mode=ParseMode.MARKDOWN)
-        await context.application.radio_manager.start(
-            query.message.chat_id, 
-            str(search_query), 
-            message_id=query.message.message_id
-        )
+        asyncio.create_task(context.application.radio_manager.start(
+            chat_id=query.message.chat_id, 
+            query=str(search_query)
+            # Removed message_id= and chat.type
+        ))
+        return MENU
+
+    # Случайный микс - ADDED THIS BLOCK BACK
+    if data == "play_random":
+        await query.edit_message_text("🎲 Случайная волна...")
+        asyncio.create_task(context.application.radio_manager.start(
+            chat_id=query.message.chat_id, 
+            query="top 50 global hits" # Removed message_id= and chat.type
+        ))
         return MENU
 
     # Пагинация поиска
