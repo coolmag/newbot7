@@ -153,10 +153,20 @@ class RadioSession:
             caption = get_now_playing_message(track, self.display_name, self.decade)
             
             markup = None
-            if self.chat_type != ChatType.CHANNEL:
-                markup = InlineKeyboardMarkup([
-                    [InlineKeyboardButton("🎧 Открыть плеер", web_app=WebAppInfo(url=self.settings.BASE_URL))]
-                ])
+            base_url = self.settings.BASE_URL.strip() if self.settings.BASE_URL else ""
+
+            # ИСПРАВЛЕНИЕ: Логика создания кнопки
+            if base_url.startswith("https") and self.chat_type != ChatType.CHANNEL:
+                # WebApp кнопка разрешена только в приватных чатах
+                if self.chat_type == ChatType.PRIVATE:
+                    markup = InlineKeyboardMarkup([
+                        [InlineKeyboardButton("🎧 Открыть плеер", web_app=WebAppInfo(url=base_url))]
+                    ])
+                # В группах/супергруппах используем обычную ссылку, чтобы избежать Button_type_invalid
+                elif self.chat_type in [ChatType.GROUP, ChatType.SUPERGROUP]:
+                    markup = InlineKeyboardMarkup([
+                        [InlineKeyboardButton("🔗 Открыть плеер", url=base_url)]
+                    ])
 
             if result.file_id:
                 await self.bot.send_audio(self.chat_id, audio=result.file_id, caption=caption, parse_mode=ParseMode.MARKDOWN, reply_markup=markup)
