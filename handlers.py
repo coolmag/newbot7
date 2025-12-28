@@ -27,29 +27,37 @@ logger = logging.getLogger("handlers")
 # ==================== КОМАНДЫ ====================
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Обрабатывает команду /start, отображая главное меню."""
-    text = "🎧 *Музыкальный комбайн*\n\nВыберите категорию в меню или откройте веб-плеер."
-    
-    # Добавляем кнопку для веб-плеера прямо в стартовое сообщение
-    settings: Settings = context.application.settings
+    """Обрабатывает команду /start, отображая главное меню жанров."""
+    text = "🎧 *Музыкальный комбайн*\n\nНажмите кнопку ниже, чтобы открыть меню жанров."
     markup = InlineKeyboardMarkup([
-        [InlineKeyboardButton("🎧 Открыть веб-плеер", web_app=WebAppInfo(url=settings.WEBHOOK_URL))],
         [InlineKeyboardButton("🗂 Открыть меню жанров", callback_data="main_menu_genres")]
     ])
 
+    # Если это callback (например, возврат в меню), редактируем сообщение
     if update.callback_query:
         await update.callback_query.answer()
         await update.callback_query.edit_message_text(
             text, parse_mode=ParseMode.MARKDOWN, reply_markup=markup
         )
+    # Если это команда /start, отправляем новое сообщение
     elif update.message:
         await update.message.reply_text(
             text, parse_mode=ParseMode.MARKDOWN, reply_markup=markup
         )
 
 async def player_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Отправляет кнопку для запуска веб-плеера (дублирует часть /start)."""
-    await start(update, context)
+    """Отправляет кнопку для запуска веб-плеера."""
+    settings: Settings = context.application.settings
+    text = "👇 Нажмите кнопку ниже, чтобы открыть полнофункциональный веб-плеер."
+    markup = InlineKeyboardMarkup([
+        [InlineKeyboardButton("🎧 Открыть плеер", web_app=WebAppInfo(url=settings.WEBHOOK_URL))]
+    ])
+    if update.message:
+        await update.message.reply_text(text, reply_markup=markup)
+    # Если это был callback, то просто отвечаем, т.к. нельзя отредактировать сообщение добавив web_app кнопку
+    elif update.callback_query:
+        await update.callback_query.answer("Используйте команду /player для получения новой кнопки.")
+
 
 async def stop_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Останавливает воспроизведение радио."""
