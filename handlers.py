@@ -13,7 +13,7 @@ from telegram.ext import (
 )
 
 from radio import RadioManager
-from config import Settings
+from config import Settings, MUSIC_CATALOG
 from youtube import YouTubeDownloader
 from keyboards import (
     get_track_search_keyboard, 
@@ -99,7 +99,14 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             return MENU
             
         path = path_str.split('|')
-        
+        current_level = MUSIC_CATALOG
+        try:
+            for p in path: # Corrected from path[:-1]
+                current_level = current_level[p]
+        except (KeyError, TypeError):
+            await query.edit_message_text("❌ Ошибка в структуре меню!", reply_markup=get_main_menu_keyboard())
+            return MENU
+
         await query.edit_message_text(
             f"💿 *{path[-1]}:*",
             parse_mode=ParseMode.MARKDOWN,
@@ -118,7 +125,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         path = path_str.split('|')
         search_query = " ".join(path) # Fallback to path if lookup fails
         
-        current_level = context.application.settings.MUSIC_CATALOG
+        current_level = MUSIC_CATALOG # CORRECTED LINE
         try:
             for p in path[:-1]:
                 current_level = current_level[p]
