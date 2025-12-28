@@ -1,33 +1,145 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-  <title>🎧 CoolMag Radio</title>
-
-  <link rel="stylesheet" href="/webapp/style.css?v=7.1" />
-  <link rel="icon" href="/webapp/favicon.svg" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Solar Radio</title>
+    <link rel="icon" type="image/png" href="favicon.png">
+    <link rel="stylesheet" href="style.css?v=5.0">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
-
 <body>
-  <div id="visualizer"></div>
+    <div id="visualizer"></div>
+    <!-- MAIN PLAYER SCREEN -->
+    <div class="screen screen-player active" id="screen-player">
+        <div class="player-container">
+            <!-- Header -->
+            <div class="header">
+                <span class="material-icons-round header-btn" id="btn-genres">apps</span>
+                <div class="live-badge">
+                    <span class="live-dot"></span>
+                    <span id="current-genre">SOLAR RADIO</span>
+                </div>
+                <span class="material-icons-round header-btn" id="btn-playlist">queue_music</span>
+            </div>
 
-  <div id="player-ui">
-    <h1>🎵 CoolMag Radio</h1>
-    <div class="controls">
-      <button id="playBtn">▶️ Play</button>
-      <button id="pauseBtn">⏸ Pause</button>
-      <button id="nextBtn">⏭ Next</button>
-      <button id="playlistBtn">📜 Classic Rock</button>
+            <!-- Vinyl Player -->
+            <div class="vinyl-player">
+                <div class="sun-rays" id="sun-rays"></div>
+                <div class="vinyl-container">
+                    <div class="vinyl-glow" id="vinyl-glow"></div>
+                    <div class="vinyl-record" id="vinyl-record">
+                        <div class="vinyl-grooves"></div>
+                        <div class="vinyl-label">
+                            <div class="vinyl-label-text">SOLAR<br>RADIO</div>
+                        </div>
+                        <div class="vinyl-hole"></div>
+                    </div>
+                </div>
+                <div class="tonearm" id="tonearm"></div>
+            </div>
+
+            <div class="track-info">
+                <div class="title" id="track-title">Загрузка...</div>
+                <div class="artist" id="track-artist">Выберите жанр</div>
+            </div>
+
+            <div class="progress-section">
+                <div class="progress-bar" id="progress-container">
+                    <div class="progress-buffered" id="progress-buffered"></div>
+                    <div class="progress-fill" id="progress-bar"></div>
+                    <div class="progress-handle" id="progress-handle"></div>
+                </div>
+                <div class="time-display">
+                    <span id="curr-time">0:00</span>
+                    <span id="dur-time">0:00</span>
+                </div>
+            </div>
+
+            <div class="controls">
+                <button class="ctrl-btn ctrl-btn-small" id="btn-rewind"><span class="material-icons-round">replay_10</span></button>
+                <button class="ctrl-btn" id="btn-prev"><span class="material-icons-round">skip_previous</span></button>
+                <button class="ctrl-btn ctrl-btn-main" id="btn-play-pause"><span class="material-icons-round" id="icon-play">play_arrow</span></button>
+                <button class="ctrl-btn" id="btn-next"><span class="material-icons-round">skip_next</span></button>
+                <button class="ctrl-btn ctrl-btn-small" id="btn-forward"><span class="material-icons-round">forward_10</span></button>
+            </div>
+            
+            <div class="extra-controls">
+                <div class="speed-control">
+                    <span class="material-icons-round">speed</span>
+                    <select id="playback-speed">
+                        <option value="0.5">0.5x</option>
+                        <option value="1" selected>1x</option>
+                        <option value="1.5">1.5x</option>
+                        <option value="2">2x</option>
+                    </select>
+                </div>
+            </div>
+        </div>
     </div>
-    <audio id="player" preload="none" controls></audio>
-    <div id="playlist"></div>
-  </div>
 
-  <!-- Telegram WebApp API -->
-  <script src="/webapp/js/telegram-web-app.js"></script>
-  
-  <!-- Main App Logic -->
-  <script type="module" src="/webapp/js/main.js?v=7.1"></script>
+    <!-- GENRE PICKER DRAWER -->
+    <div class="drawer genre-drawer" id="screen-genres">
+        <div class="drawer-handle"></div>
+        <div class="drawer-header">
+            <span class="material-icons-round header-btn" id="btn-back-player">arrow_back</span>
+            <h2>Choose Genre</h2>
+            <span class="material-icons-round header-btn" style="opacity:0">x</span>
+        </div>
+        <div class="drawer-content genres-container">
+            <div class="search-box">
+                <span class="material-icons-round">search</span>
+                <input type="text" id="genre-search" placeholder="Search genres, artists, or tracks...">
+            </div>
+
+            <div class="section">
+                <div class="section-title">🔥 Trending Now</div>
+                <div class="chips-row" id="trending-chips"></div>
+            </div>
+
+            <div class="section">
+                <div class="section-title">📅 By Decade</div>
+                <div class="chips-row" id="decade-chips"></div>
+            </div>
+
+            <div class="section">
+                <div class="section-title">😊 By Mood</div>
+                <div class="chips-row" id="mood-chips"></div>
+            </div>
+
+            <div class="section">
+                <div class="section-title">🎵 All Genres</div>
+                <div class="genre-grid" id="genre-grid"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SUBGENRE DRAWER -->
+    <div class="drawer" id="subgenre-drawer">
+        <div class="drawer-handle"></div>
+        <div class="drawer-header">
+            <span class="drawer-icon" id="drawer-icon">🎵</span>
+            <h3 id="drawer-title">Genre</h3>
+        </div>
+        <div class="subgenre-list" id="subgenre-list"></div>
+    </div>
+
+    <!-- PLAYLIST DRAWER -->
+    <div class="drawer" id="playlist-drawer">
+        <div class="drawer-handle"></div>
+        <div class="drawer-header">
+            <span class="material-icons-round" style="color: var(--sun-mid)">queue_music</span>
+            <h3>Up Next</h3>
+        </div>
+        <div id="playlist-content" class="playlist-items">
+            Loading...
+        </div>
+    </div>
+
+    <div class="overlay" id="overlay"></div>
+
+    <audio id="audio-player" crossorigin="anonymous" playsinline></audio>
+    <script type="module" src="js/main.js"></script>
 </body>
 </html>
