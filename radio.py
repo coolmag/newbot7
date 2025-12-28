@@ -6,7 +6,7 @@ from typing import List, Optional, Dict, Set
 from dataclasses import dataclass, field
 
 from telegram import Bot, Message, InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
-from telegram.constants import ParseMode
+from telegram.constants import ParseMode, ChatType
 from telegram.error import BadRequest
 
 from config import Settings, MUSIC_CATALOG
@@ -34,6 +34,7 @@ class RadioSession:
     settings: Settings
     query: str
     display_name: str
+    chat_type: Optional[str] = None
     decade: Optional[str] = None
     
     is_running: bool = field(init=False, default=False)
@@ -151,10 +152,11 @@ class RadioSession:
             
             caption = get_now_playing_message(track, self.display_name, self.decade)
             
-            # Create the WebApp button
-            markup = InlineKeyboardMarkup([
-                [InlineKeyboardButton("🎧 Открыть плеер", web_app=WebAppInfo(url=self.settings.WEBHOOK_URL))]
-            ])
+            markup = None
+            if self.chat_type != ChatType.CHANNEL:
+                markup = InlineKeyboardMarkup([
+                    [InlineKeyboardButton("🎧 Открыть плеер", web_app=WebAppInfo(url=self.settings.BASE_URL))]
+                ])
 
             if result.file_id:
                 await self.bot.send_audio(self.chat_id, audio=result.file_id, caption=caption, parse_mode=ParseMode.MARKDOWN, reply_markup=markup)
@@ -182,7 +184,7 @@ class RadioManager:
         self._locks.setdefault(chat_id, asyncio.Lock())
         return self._locks[chat_id]
 
-    async def start(self, chat_id: int, query: str, display_name: Optional[str] = None, decade: Optional[str] = None):
+    async def start(self, chat_id: int, query: str, chat_type: Optional[str] = None, display_name: Optional[str] = None, decade: Optional[str] = None):
         async with self._get_lock(chat_id):
             if chat_id in self._sessions:
                 await self._sessions[chat_id].stop()
@@ -192,7 +194,7 @@ class RadioManager:
 
             session = RadioSession(
                 chat_id=chat_id, bot=self._bot, downloader=self._downloader, settings=self._settings,
-                query=query, display_name=(display_name or query), decade=decade
+                query=query, display_name=(display_name or query), decade=decade, chat_type=chat_type
             )
             self._sessions[chat_id] = session
             await session.start()
@@ -214,10 +216,15 @@ class RadioManager:
         """Gets a random query from the MUSIC_CATALOG."""
         try:
             all_queries = []
-            for sub_items in MUSIC_CATALOG.values():
-                for sub_name, query_or_dict in sub_items.items():
-                    if isinstance(query_or_dict, str):
-                        all_queries.append((sub_name, query_or_dict))
+            # Make the flattening recursive to handle any depth
+            def _flatten_queries(catalog_level: dict):
+                for name, value in catalog_level.items():
+                    if isinstance(value, dict):
+                        _flatten_queries(value)
+                    elif isinstance(value, str):
+                        all_queries.append((name, value))
+
+            _flatten_queries(MUSIC_CATALOG)
             
             if not all_queries:
                 raise ValueError("No valid queries found in MUSIC_CATALOG")

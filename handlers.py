@@ -6,7 +6,7 @@ from math import ceil
 from typing import Optional
 
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
-from telegram.constants import ParseMode
+from telegram.constants import ParseMode, ChatType
 from telegram.ext import (
     Application, CommandHandler, ContextTypes, CallbackQueryHandler,
     MessageHandler, filters
@@ -45,10 +45,15 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def player_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Отправляет кнопку для запуска веб-плеера."""
+    # This command is now only for private/group chats as WebApp buttons don't work in channels.
+    if update.message.chat.type == ChatType.CHANNEL:
+        await update.message.reply_text("Веб-плеер не поддерживается в каналах.")
+        return
+
     settings: Settings = context.application.settings
     text = "👇 Нажмите кнопку ниже, чтобы открыть полнофункциональный веб-плеер."
     markup = InlineKeyboardMarkup([
-        [InlineKeyboardButton("🎧 Открыть плеер", web_app=WebAppInfo(url=settings.WEBHOOK_URL))]
+        [InlineKeyboardButton("🎧 Открыть плеер", web_app=WebAppInfo(url=settings.BASE_URL))]
     ])
     await update.message.reply_text(text, reply_markup=markup)
 
@@ -77,7 +82,8 @@ async def play_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     if tracks:
         await msg.delete()
-        await _send_track(context, update.effective_chat.id, tracks[0].identifier)
+        chat_type = update.message.chat.type
+        await _send_track(context, update.effective_chat.id, tracks[0].identifier, chat_type)
     else:
         await msg.edit_text("😕 Ничего не найдено.")
 
@@ -85,7 +91,9 @@ async def radio_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Команда /radio — запускает случайное радио."""
     await update.message.reply_text("🎲 Запускаю случайную волну...")
     asyncio.create_task(context.application.radio_manager.start(
-        chat_id=update.effective_chat.id, query="random"
+        chat_id=update.effective_chat.id, 
+        query="random",
+        chat_type=update.message.chat.type
     ))
 
 async def unknown_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -147,6 +155,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
             
         path = path_str.split('|')
+        chat_type = query.message.chat.type
         
         try:
             current_level = MUSIC_CATALOG
@@ -159,23 +168,27 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         await query.edit_message_text(f"🎵 Запускаю: *{path[-1]}*...", parse_mode=ParseMode.MARKDOWN)
         asyncio.create_task(context.application.radio_manager.start(
-            chat_id=query.message.chat_id, 
-            query=str(search_query)
+            chat_id=query.message.chat.id, 
+            query=str(search_query),
+            chat_type=chat_type
         ))
 
     elif data == "play_random":
         logger.info("[CALLBACK] Branch: play_random")
+        chat_type = query.message.chat.type
         await query.edit_message_text("🎲 Случайная волна...")
         asyncio.create_task(context.application.radio_manager.start(
-            chat_id=query.message.chat_id, 
-            query="top 50 global hits"
+            chat_id=query.message.chat.id, 
+            query="top 50 global hits",
+            chat_type=chat_type
         ))
 
     elif data.startswith("sel_track|"):
         logger.info(f"[CALLBACK] Branch: sel_track| with video_id '{data}'")
         video_id = data.split("|", 1)[1]
+        chat_type = query.message.chat.type
         await query.edit_message_text("⏳ Загружаю трек...")
-        await _send_track(context, query.message.chat_id, video_id)
+        await _send_track(context, query.message.chat_id, video_id, chat_type)
         await start(update, context)
 
     elif data == "noop":
@@ -188,8 +201,8 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # ==================== HELPERS ====================
 
-async def _send_track(context: ContextTypes.DEFAULT_TYPE, chat_id: int, video_id: str):
-    """Загружает и отправляет трек пользователю с кнопкой веб-плеера."""
+async def _send_track(context: ContextTypes.DEFAULT_TYPE, chat_id: int, video_id: str, chat_type: str):
+    """Загружает и отправляет трек пользователю с кнопкой веб-плеера (если разрешено)."""
     dl = context.application.downloader
     settings: Settings = context.application.settings
     res = await dl.download(video_id)
@@ -198,9 +211,11 @@ async def _send_track(context: ContextTypes.DEFAULT_TYPE, chat_id: int, video_id
         await context.bot.send_message(chat_id, f"❌ Ошибка загрузки: {res.error_message}")
         return
 
-    markup = InlineKeyboardMarkup([
-        [InlineKeyboardButton("🎧 Открыть плеер", web_app=WebAppInfo(url=settings.WEBHOOK_URL))]
-    ])
+    markup = None
+    if chat_type != ChatType.CHANNEL:
+        markup = InlineKeyboardMarkup([
+            [InlineKeyboardButton("🎧 Открыть плеер", web_app=WebAppInfo(url=settings.BASE_URL))]
+        ])
 
     try:
         if res.file_id:
