@@ -543,3 +543,33 @@ body {
         justify-content: center;
     }
 }
+
+/* Glassmorphism 2.0 */
+.player-container {
+    background: linear-gradient(135deg, rgba(15, 15, 25, 0.8), rgba(5, 5, 10, 0.9));
+    border: 1px solid rgba(0, 243, 255, 0.15);
+    box-shadow: 0 0 100px rgba(0, 0, 0, 1), 0 0 40px rgba(0, 243, 255, 0.1);
+}
+
+/* Реалистичный терминал плейлиста */
+.playlist-terminal {
+    background: #000 !important;
+    border: 1px solid var(--neon-primary);
+    position: relative;
+    overflow: hidden;
+}
+
+.playlist-terminal::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(0deg, rgba(0, 255, 65, 0.03) 0px, transparent 2px);
+    pointer-events: none;
+}
+
+/* Кнопки Singularity */
+.singularity {
+    background: radial-gradient(circle, #fff 0%, var(--quantum-blue) 100%);
+    box-shadow: 0 0 30px var(--quantum-blue), inset 0 0 20px rgba(255,255,255,0.5);
+    transition: 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
