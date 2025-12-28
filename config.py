@@ -28,9 +28,16 @@ MUSIC_CATALOG = {
         "📱 10-е": "2010s greatest hits -mix -playlist",
     },
     "🎸 Рок": {
-        "Classic Rock": "classic rock anthems 70s 80s -mix -playlist",
+        "Classic Rock": {
+            "🦰 70-е": "70s classic rock anthems",
+            "👨‍🎤 80-е": "80s classic rock anthems",
+        },
+        "Alternative & Indie": {
+            "🤘 Все подряд": "90s 2000s alternative rock indie -mix -playlist",
+            "🎸 90-е": "90s alternative rock indie",
+            "✨ 00-е": "2000s alternative rock indie",
+        },
         "Hard Rock & Metal": "hard rock heavy metal -mix -playlist",
-        "Alternative & Indie": "90s 2000s alternative rock indie -mix -playlist",
         "Punk Rock": "punk rock classics ramones misfits -mix -playlist",
     },
     "🎤 Хип-хоп": {
@@ -47,7 +54,16 @@ MUSIC_CATALOG = {
     },
     "✨ Поп": {
         "80s Synth-Pop": "synth-pop 80s hits -mix -playlist",
-        "90s & 00s Pop": "90s 2000s pop hits -mix -playlist",
+        "90s Pop": {
+             "💖 Все подряд": "90s pop hits",
+             "🇷🇺 Русская": "русская поп-музыка 90-х",
+             "🌍 Зарубежная": "90s foreign pop hits",
+        },
+        "00s Pop": {
+             "🔥 Все подряд": "2000s pop hits",
+             "🇷🇺 Русская": "русская поп-музыка 2000-х",
+             "🌍 Зарубежная": "foreign pop hits 2000s",
+        },
         "Modern Pop": "today's top pop hits -mix -playlist",
     },
 }
