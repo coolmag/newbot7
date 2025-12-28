@@ -28,8 +28,14 @@ logger = logging.getLogger("handlers")
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Обрабатывает команду /start, отображая главное меню и кнопку плеера."""
-    # Получаем настройки для доступа к BASE_URL
+    if not hasattr(context.application, 'settings'):
+        logger.error("❌ Settings not found in application context")
+        await update.message.reply_text("Ошибка конфигурации бота.")
+        return
+
     settings: Settings = context.application.settings
+    # Очищаем URL от пробелов, если они есть
+    base_url = settings.BASE_URL.strip() if settings.BASE_URL else ""
     
     text = (
         "🎧 *Музыкальный комбайн*\n\n"
@@ -39,36 +45,59 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/radio - случайная волна"
     )
     
-    # ВОТ ЗДЕСЬ БЫЛА ПРОБЛЕМА: Добавлена кнопка запуска WebApp
-    keyboard = [
-        [InlineKeyboardButton("🎧 Открыть плеер", web_app=WebAppInfo(url=settings.BASE_URL))],
-        [InlineKeyboardButton("🗂 Открыть меню жанров", callback_data="main_menu_genres")]
-    ]
+    keyboard = []
+    
+    # Логика добавления кнопки плеера
+    if base_url and base_url.startswith("https"):
+        # WebApp кнопка работает ТОЛЬКО в личных чатах
+        if update.effective_chat.type == ChatType.PRIVATE:
+            keyboard.append([InlineKeyboardButton("🎧 Открыть плеер", web_app=WebAppInfo(url=base_url))])
+        else:
+            # В группах даем обычную ссылку, чтобы не было ошибки Button_type_invalid
+            keyboard.append([InlineKeyboardButton("🎧 Открыть плеер (в браузере)", url=base_url)])
+    
+    # Кнопка меню жанров (работает везде)
+    keyboard.append([InlineKeyboardButton("🗂 Открыть меню жанров", callback_data="main_menu_genres")])
     
     markup = InlineKeyboardMarkup(keyboard)
 
-    if update.callback_query:
-        await update.callback_query.answer()
-        await update.callback_query.edit_message_text(
-            text, parse_mode=ParseMode.MARKDOWN, reply_markup=markup
-        )
-    elif update.message:
-        await update.message.reply_text(
-            text, parse_mode=ParseMode.MARKDOWN, reply_markup=markup
-        )
+    try:
+        if update.callback_query:
+            await update.callback_query.answer()
+            await update.callback_query.edit_message_text(
+                text, parse_mode=ParseMode.MARKDOWN, reply_markup=markup
+            )
+        elif update.message:
+            await update.message.reply_text(
+                text, parse_mode=ParseMode.MARKDOWN, reply_markup=markup
+            )
+    except Exception as e:
+        logger.error(f"Error in /start: {e}", exc_info=True)
 
 async def player_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Отправляет кнопку для запуска веб-плеера."""
-    # This command is now only for private/group chats as WebApp buttons don't work in channels.
-    if update.message.chat.type == ChatType.CHANNEL:
-        await update.message.reply_text("Веб-плеер не поддерживается в каналах.")
+    if update.effective_chat.type == ChatType.CHANNEL:
         return
 
     settings: Settings = context.application.settings
-    text = "👇 Нажмите кнопку ниже, чтобы открыть полнофункциональный веб-плеер."
-    markup = InlineKeyboardMarkup([
-        [InlineKeyboardButton("🎧 Открыть плеер", web_app=WebAppInfo(url=settings.BASE_URL))]
-    ])
+    base_url = settings.BASE_URL.strip() if settings.BASE_URL else ""
+    
+    if not base_url or not base_url.startswith("https"):
+        await update.message.reply_text("⚠️ URL плеера не настроен.")
+        return
+
+    text = "👇 Нажмите кнопку ниже, чтобы открыть плеер."
+    
+    # Та же логика безопасности
+    if update.effective_chat.type == ChatType.PRIVATE:
+        markup = InlineKeyboardMarkup([
+            [InlineKeyboardButton("🎧 Открыть плеер", web_app=WebAppInfo(url=base_url))]
+        ])
+    else:
+        markup = InlineKeyboardMarkup([
+            [InlineKeyboardButton("🔗 Открыть плеер", url=base_url)]
+        ])
+        
     await update.message.reply_text(text, reply_markup=markup)
 
 async def stop_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -92,14 +121,19 @@ async def play_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     msg = await update.message.reply_text(f"🔎 Ищу: *{query_text}*...", parse_mode=ParseMode.MARKDOWN)
     
-    tracks = await context.application.downloader.search(query=query_text, search_mode='track', limit=1)
-    
-    if tracks:
-        await msg.delete()
-        chat_type = update.message.chat.type
-        await _send_track(context, update.effective_chat.id, tracks[0].identifier, chat_type)
-    else:
-        await msg.edit_text("😕 Ничего не найдено.")
+    try:
+        tracks = await context.application.downloader.search(query=query_text, search_mode='track', limit=1)
+        
+        if tracks:
+            await msg.delete()
+            # Передаем ChatType, чтобы внутри _send_track тоже была проверка
+            chat_type = update.effective_chat.type
+            await _send_track(context, update.effective_chat.id, tracks[0].identifier, chat_type)
+        else:
+            await msg.edit_text("😕 Ничего не найдено.")
+    except Exception as e:
+        logger.error(f"Error in /play: {e}", exc_info=True)
+        await msg.edit_text("❌ Ошибка поиска.")
 
 async def radio_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Команда /radio — запускает случайное радио."""
@@ -125,11 +159,9 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logger.info(f"[CALLBACK] Received data: '{data}'")
 
     if data == "main_menu_start":
-        logger.info("[CALLBACK] Branch: main_menu_start")
         await start(update, context)
     
     elif data == "main_menu_genres":
-        logger.info("[CALLBACK] Branch: main_menu_genres")
         markup = get_main_menu_keyboard()
         await query.edit_message_text(
             "🗂 *Каталог жанров:*",
@@ -138,21 +170,18 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         
     elif data.startswith("cat|"):
-        logger.info(f"[CALLBACK] Branch: cat| with path '{data}'")
-        path_str = data.removeprefix("cat|")
+        path_str = data[4:] 
         if not path_str:
             await start(update, context)
             return
 
         path = path_str.split('|')
-        
         try:
             current_level = MUSIC_CATALOG
             for p in path:
                 current_level = current_level[p]
         except KeyError:
-            logger.error(f"Invalid path in callback: {path_str}")
-            await query.edit_message_text("❌ Ошибка в структуре меню!", reply_markup=get_main_menu_keyboard())
+            await query.edit_message_text("❌ Ошибка меню", reply_markup=get_main_menu_keyboard())
             return
 
         await query.edit_message_text(
@@ -162,15 +191,12 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
     elif data.startswith("play_cat|"):
-        logger.info(f"[CALLBACK] Branch: play_cat| with path '{data}'")
-        path_str = data.removeprefix("play_cat|")
+        path_str = data[9:]
         if not path_str:
-            await query.edit_message_text("❗️Не удалось найти этот жанр.", reply_markup=get_main_menu_keyboard())
+            await query.edit_message_text("❗️Ошибка жанра", reply_markup=get_main_menu_keyboard())
             return
             
         path = path_str.split('|')
-        chat_type = query.message.chat.type
-        
         try:
             current_level = MUSIC_CATALOG
             for p in path[:-1]:
@@ -178,45 +204,35 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             search_query = current_level[path[-1]]
         except (KeyError, TypeError):
             search_query = " ".join(path) 
-            logger.warning(f"Could not resolve radio query for path: {path_str}. Falling back to '{search_query}'")
 
         await query.edit_message_text(f"🎵 Запускаю: *{path[-1]}*...", parse_mode=ParseMode.MARKDOWN)
         asyncio.create_task(context.application.radio_manager.start(
             chat_id=query.message.chat.id, 
             query=str(search_query),
-            chat_type=chat_type
+            chat_type=query.message.chat.type
         ))
 
     elif data == "play_random":
-        logger.info("[CALLBACK] Branch: play_random")
-        chat_type = query.message.chat.type
         await query.edit_message_text("🎲 Случайная волна...")
         asyncio.create_task(context.application.radio_manager.start(
             chat_id=query.message.chat.id, 
             query="top 50 global hits",
-            chat_type=chat_type
+            chat_type=query.message.chat.type
         ))
 
     elif data.startswith("sel_track|"):
-        logger.info(f"[CALLBACK] Branch: sel_track| with video_id '{data}'")
         video_id = data.split("|", 1)[1]
-        chat_type = query.message.chat.type
         await query.edit_message_text("⏳ Загружаю трек...")
-        await _send_track(context, query.message.chat_id, video_id, chat_type)
+        await _send_track(context, query.message.chat.id, video_id, query.message.chat.type)
         await start(update, context)
 
     elif data == "noop":
-        logger.info("[CALLBACK] Branch: noop")
         pass
-
-    else:
-        logger.warning(f"[CALLBACK] Unhandled callback data: '{data}'")
-
 
 # ==================== HELPERS ====================
 
 async def _send_track(context: ContextTypes.DEFAULT_TYPE, chat_id: int, video_id: str, chat_type: str):
-    """Загружает и отправляет трек пользователю с кнопкой веб-плеера (если разрешено)."""
+    """Загружает и отправляет трек пользователю."""
     dl = context.application.downloader
     settings: Settings = context.application.settings
     res = await dl.download(video_id)
@@ -226,10 +242,17 @@ async def _send_track(context: ContextTypes.DEFAULT_TYPE, chat_id: int, video_id
         return
 
     markup = None
-    if chat_type != ChatType.CHANNEL:
-        markup = InlineKeyboardMarkup([
-            [InlineKeyboardButton("🎧 Открыть плеер", web_app=WebAppInfo(url=settings.BASE_URL))]
-        ])
+    base_url = settings.BASE_URL.strip() if settings.BASE_URL else ""
+    
+    # Кнопка плеера под треком (WebApp только в ЛС)
+    if chat_type != ChatType.CHANNEL and base_url.startswith("https"):
+        if chat_type == ChatType.PRIVATE:
+            markup = InlineKeyboardMarkup([
+                [InlineKeyboardButton("🎧 Открыть плеер", web_app=WebAppInfo(url=base_url))]
+            ])
+        else:
+             # В группах кнопку WebApp для конкретного трека лучше не давать или давать ссылку
+             pass
 
     try:
         if res.file_id:
@@ -254,29 +277,22 @@ async def _send_track(context: ContextTypes.DEFAULT_TYPE, chat_id: int, video_id
                     await dl.cache_file_id(video_id, msg.audio.file_id)
     finally:
         if res.file_path and os.path.exists(res.file_path):
-            try: 
-                os.unlink(res.file_path)
-            except OSError as e:
-                logger.error(f"Ошибка удаления временного файла {res.file_path}: {e}")
+            try: os.unlink(res.file_path)
+            except OSError: pass
 
 # ==================== РЕГИСТРАЦИЯ ====================
 
 def setup_handlers(app: Application, radio: RadioManager, settings: Settings, downloader: YouTubeDownloader):
-    """Регистрирует все обработчики в приложении."""
     app.downloader = downloader
     app.radio_manager = radio
     app.settings = settings
     
-    # Команды
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("player", player_command))
     app.add_handler(CommandHandler("play", play_command))
     app.add_handler(CommandHandler("radio", radio_command))
     app.add_handler(CommandHandler("stop", stop_command))
     app.add_handler(CommandHandler("skip", skip_command))
-    
-    # Обработчик кнопок (единственный и главный)
     app.add_handler(CallbackQueryHandler(button_callback))
-    
-    # Обработка неизвестных команд (должна быть последней)
     app.add_handler(MessageHandler(filters.COMMAND, unknown_command))
+
