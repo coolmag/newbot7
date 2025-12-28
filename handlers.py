@@ -155,6 +155,100 @@ async def select_track_button(update: Update, context: ContextTypes.DEFAULT_TYPE
 
 # ==================== 4. НАВИГАЦИЯ ПО МЕНЮ ====================
 
+# Новый обработчик кнопок меню WebApp и жанров
+from keyboards import get_main_menu_keyboard, get_subcategory_keyboard
+from config import get_settings
+
+from keyboards import get_main_menu_keyboard, get_subcategory_keyboard
+from config import get_settings
+from telegram.constants import ChatType
+from logging import getLogger
+from config import get_settings
+from keyboards import get_main_menu_keyboard, get_subcategory_keyboard
+from radio import RadioManager
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+from typing import Optional
+from telegram import Update
+
+async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    query = update.callback_query
+    data = query.data
+
+    # Главное меню
+    if data == "main_menu":
+        await query.edit_message_text(
+            "💿 *Каталог жанров:*",
+            parse_mode=ParseMode.MARKDOWN,
+            reply_markup=get_main_menu_keyboard()
+        )
+        return
+
+    # Навигация по категориям и подкатегориям
+    if data.startswith("cat|"):
+        from keyboards import shorten_path # если есть, иначе заменить на правильный импорт
+        from keyboards import resolve_path
+        path_hash = data.removeprefix("cat|")
+        path_str = resolve_path(path_hash)
+        if not path_str:
+            await query.edit_message_text("❗️Меню устарело. Пожалуйста, откройте заново.")
+            return
+        path = path_str.split('|')
+        current_level = context.application.settings.MUSIC_CATALOG
+        try:
+            for p in path:
+                current_level = current_level[p]
+        except Exception:
+            await query.edit_message_text("❌ Ошибка в структуре меню!")
+            return
+        await query.edit_message_text(
+            f"💿 *{path[-1]}:",
+            parse_mode=ParseMode.MARKDOWN,
+            reply_markup=get_subcategory_keyboard(path_str)
+        )
+        return
+
+    # Запуск радио жанра
+    if data.startswith("play_cat|"):
+        from keyboards import resolve_path
+        path_hash = data.removeprefix("play_cat|")
+        path_str = resolve_path(path_hash)
+        if not path_str:
+            await query.edit_message_text("❗️Не удалось найти этот жанр. Открой меню заново.")
+            return
+        path = path_str.split('|')
+        current_level = context.application.settings.MUSIC_CATALOG
+        try:
+            for p in path[:-1]:
+                current_level = current_level[p]
+            search_query = current_level[path[-1]]
+        except Exception:
+            search_query = "top 50 hits"
+        await query.edit_message_text("🎵 Запускаю музыку...")
+        await context.application.radio_manager.start(query.message.chat_id, str(search_query), query.message.chat.type, message_id=query.message.message_id)
+        return
+
+    # Случайный микс
+    if data == "play_random":
+        await query.edit_message_text("🎲 Случайная волна...")
+        await context.application.radio_manager.start(query.message.chat_id, "top 50 global hits", query.message.chat.type, message_id=query.message.message_id)
+        return
+
+    # Обычные действия плеера
+    if data == "stop_radio":
+        await context.application.radio_manager.stop(query.message.chat_id)
+        await query.edit_message_text("🛑 Радио остановлено.")
+        return
+    if data == "skip_track":
+        await context.application.radio_manager.skip(query.message.chat_id)
+        await query.answer("⏭️")
+        return
+
+    # Нет действия
+    if data == "noop":
+        await query.answer()
+        return
+    await query.answer("Неизвестная команда (Версия меню может быть устарела)")
+
 async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     query = update.callback_query
     await query.answer()
@@ -341,8 +435,8 @@ def setup_handlers(app: Application, radio: RadioManager, settings: Settings, do
     )
     app.add_handler(conv_handler)
     
-    # 4. Fallback для потерянных кнопок
-    app.add_handler(CallbackQueryHandler(fallback_handler))
+    # 4. Наш главный обработчик меню!
+    app.add_handler(CallbackQueryHandler(button_callback))
     
     # 5. Неизвестные команды (в самом конце)
     app.add_handler(MessageHandler(filters.COMMAND, unknown_command))
