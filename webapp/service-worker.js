@@ -1,14 +1,14 @@
 const CACHE_NAME = 'aurora-player-v1';
 const ASSETS_TO_CACHE = [
-    '/',
-    '/index.html',
-    '/style.css',
-    '/js/main.js',
-    '/js/api.js',
-    '/js/player.js',
-    '/js/store.js',
-    '/js/ui.js',
-    '/js/visualizer.js'
+    './',
+    './index.html',
+    './style.css',
+    './js/main.js',
+    './js/api.js',
+    './js/player.js',
+    './js/store.js',
+    './js/ui.js',
+    './js/visualizer.js'
 ];
 
 // Install event: cache all static assets

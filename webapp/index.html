@@ -82,10 +82,10 @@
     </div>
 
     <audio id="audio-player" crossorigin="anonymous"></audio>
-    <script src="/js/main.js" type="module"></script>
+    <script src="js/main.js" type="module"></script>
     <script>
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/service-worker.js')
+            navigator.serviceWorker.register('service-worker.js')
               .then(reg => console.log('Service Worker: Registered'))
               .catch(err => console.error('Service Worker: Registration failed', err));
         }
