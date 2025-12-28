@@ -27,8 +27,8 @@ export function initializeEventListeners() {
     });
 
     // Управление плеером
-    if (elements.playBtn) {
-        elements.playBtn.onclick = () => player.togglePlay();
+    if (elements.btnPlayPause) {
+        elements.btnPlayPause.onclick = () => player.togglePlay();
     }
 
     safeBind('btn-next', 'click', () => player.playTrack(store.currentTrackIndex + 1));

@@ -17,8 +17,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const startAll = () => {
         initializeVisualizer(elements.audio); // Передаем audioElement
         document.removeEventListener('click', startAll); // Отписываемся после первого клика
-        // Возможно, здесь нужно сразу запустить плейлист по умолчанию
-        // player.playTrack(0); // Или что-то подобное, если плеер уже готов
     };
     document.addEventListener('click', startAll);
 });

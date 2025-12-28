@@ -1,12 +1,8 @@
 import * as THREE from 'three';
 
-let scene, camera, renderer, disc, tonearm, analyzer, dataArray;
+let scene, camera, renderer, disc, analyzer, dataArray;
 let isInitialized = false;
 
-/**
- * Архитектурно верная инициализация 3D сцены.
- * Используется WebGL2 и MeshStandardMaterial для реалистичных бликов.
- */
 export function initializeVisualizer(audioElement) {
     if (isInitialized || !audioElement) return;
 
@@ -18,7 +14,7 @@ export function initializeVisualizer(audioElement) {
 
     // Сцена
     scene = new THREE.Scene();
-    camera = new THREE.PerspectiveCamera(40, width / height, 0.1, 1000);
+    camera = new THREE.PerspectiveCamera(40, width / height, 0.1, 100);
     renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "high-performance" });
     renderer.setPixelRatio(window.devicePixelRatio);
     renderer.setSize(width, height);
@@ -28,8 +24,8 @@ export function initializeVisualizer(audioElement) {
     const geometry = new THREE.CylinderGeometry(2, 2, 0.08, 128);
     const material = new THREE.MeshStandardMaterial({ 
         color: 0x0a0a0a, 
-        roughness: 0.2, 
-        metalness: 0.8,
+        roughness: 0.15, 
+        metalness: 0.9,
         emissive: 0x000000 
     });
     disc = new THREE.Mesh(geometry, material);
@@ -38,20 +34,20 @@ export function initializeVisualizer(audioElement) {
 
     // Наклейка
     const labelGeo = new THREE.CircleGeometry(0.75, 64);
-    const labelMat = new THREE.MeshStandardMaterial({ color: 0xff0000, roughness: 0.5 });
+    const labelMat = new THREE.MeshStandardMaterial({ color: 0xcc0000, roughness: 0.8 });
     const label = new THREE.Mesh(labelGeo, labelMat);
     label.position.y = 0.05;
     label.rotation.x = -Math.PI / 2;
     disc.add(label);
 
-    // Освещение (Исправлено: clone().set -> position.set())
+    // Освещение (Architectural Studio Lighting)
     const mainLight = new THREE.PointLight(0xffffff, 200);
     mainLight.position.set(5, 5, 5);
     scene.add(mainLight);
 
-    const blueLight = new THREE.PointLight(0x00f2ff, 150);
-    blueLight.position.set(-5, 5, 2);
-    scene.add(blueLight);
+    const accentLight = new THREE.PointLight(0x00f2ff, 150);
+    accentLight.position.set(-3, 2, 4);
+    scene.add(accentLight);
 
     scene.add(new THREE.AmbientLight(0xffffff, 0.5));
 

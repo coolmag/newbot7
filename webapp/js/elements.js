@@ -1,8 +1,9 @@
 export const audio = document.getElementById('audio-player');
 
-// Top Nav elements
+// Top Bar elements
 export const btnGenres = document.getElementById('btn-genres');
 export const btnPlaylist = document.getElementById('btn-playlist');
+export const currentGenre = document.getElementById('current-genre');
 
 // Track Meta elements
 export const trackTitle = document.getElementById('track-title');
@@ -12,7 +13,7 @@ export const trackArtist = document.getElementById('track-artist');
 export const currTime = document.getElementById('curr-time');
 export const durTime = document.getElementById('dur-time');
 export const progressBar = document.getElementById('progress-bar');
-export const progressContainer = document.getElementById('progress-container'); // Changed from progress-track
+export const progressContainer = document.getElementById('seek-bar');
 
 // Main Actions elements
 export const btnPrev = document.getElementById('btn-prev');
