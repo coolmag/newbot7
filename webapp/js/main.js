@@ -1,171 +1,93 @@
-import { initializeAudioEngine } from './audio-engine.js';
+import store from './store.js';
+import * as elements from './elements.js';
+import * as api from './api.js';
+import * as player from './player.js';
 import { initializeVisualizer } from './visualizer.js';
-import { UIManager } from './ui-manager.js';
-import { TrackManager } from './track-manager.js';
 
-class NeoVinylPlayer {
+// --- UI Manager (реактивные обновления) ---
+class UIManager {
     constructor() {
-        this.state = {
-            isPlaying: false,
-            currentTrack: null,
-            volume: 0.7,
-            bass: 0.5,
-            treble: 0.5,
-            repeat: false,
-            shuffle: false,
-            spatialAudio: false
-        };
-        
-        this.audioEngine = null;
-        this.visualizer = null;
-        this.uiManager = null;
-        this.trackManager = null;
-        
-        this.init();
+        window.uiManager = this; // Доступ из store
     }
-    
-    async init() {
-        try {
-            // Инициализация менеджеров
-            this.trackManager = new TrackManager();
-            this.uiManager = new UIManager(this);
-            this.audioEngine = await initializeAudioEngine();
-            this.visualizer = await initializeVisualizer();
-            
-            // Загрузка треков
-            await this.trackManager.loadTracks();
-            this.uiManager.updatePlaylist(this.trackManager.tracks);
-            
-            // Установка начального трека
-            if (this.trackManager.tracks.length > 0) {
-                await this.loadTrack(this.trackManager.tracks[0]);
-            }
-            
-            this.bindEvents();
-            this.startVisualization();
-            
-            console.log('NeoVinyl Player initialized successfully');
-        } catch (error) {
-            console.error('Failed to initialize player:', error);
+    render(property, value) {
+        if (property === 'isPlaying') {
+            this.updatePlayButton(value);
         }
-    }
-    
-    async loadTrack(track) {
-        try {
-            this.state.currentTrack = track;
-            await this.audioEngine.loadTrack(track);
-            this.uiManager.updateTrackInfo(track);
-            
-            if (this.state.isPlaying) {
-                await this.audioEngine.play();
-            }
-        } catch (error) {
-            console.error('Error loading track:', error);
-        }
-    }
-    
-    async playPause() {
-        try {
-            if (this.state.isPlaying) {
-                await this.audioEngine.pause();
-            } else {
-                await this.audioEngine.play();
-            }
-            this.state.isPlaying = !this.state.isPlaying;
-            this.uiManager.updatePlayButton(this.state.isPlaying);
-        } catch (error) {
-            console.error('Play/Pause error:', error);
-        }
-    }
-    
-    async nextTrack() {
-        const nextTrack = this.trackManager.getNextTrack(
-            this.state.currentTrack,
-            this.state.shuffle
-        );
-        
-        if (nextTrack) {
-            await this.loadTrack(nextTrack);
-            if (this.state.isPlaying) {
-                await this.audioEngine.play();
+        if (property === 'playlist' || property === 'currentTrackIndex') {
+            this.updatePlaylist(store.playlist, store.currentTrackIndex);
+            if (store.currentTrackIndex !== -1) {
+                this.updateTrackInfo(store.playlist[store.currentTrackIndex]);
             }
         }
     }
-    
-    async prevTrack() {
-        const prevTrack = this.trackManager.getPrevTrack(
-            this.state.currentTrack
-        );
-        
-        if (prevTrack) {
-            await this.loadTrack(prevTrack);
-            if (this.state.isPlaying) {
-                await this.audioEngine.play();
-            }
-        }
+
+    updatePlayButton(isPlaying) {
+        const icon = document.getElementById('icon-play');
+        if (icon) icon.textContent = isPlaying ? 'pause_arrow' : 'play_arrow';
     }
-    
-    setVolume(value) {
-        this.state.volume = value;
-        this.audioEngine.setVolume(value);
-        this.uiManager.updateVolumeDisplay(value);
+
+    updateTrackInfo(track) {
+        if (!track) return;
+        elements.trackTitle.textContent = track.title;
+        elements.trackArtist.textContent = track.artist;
     }
-    
-    setBass(value) {
-        this.state.bass = value;
-        this.audioEngine.setBass(value);
-    }
-    
-    setTreble(value) {
-        this.state.treble = value;
-        this.audioEngine.setTreble(value);
-    }
-    
-    toggleShuffle() {
-        this.state.shuffle = !this.state.shuffle;
-        this.uiManager.updateShuffleButton(this.state.shuffle);
-    }
-    
-    toggleRepeat() {
-        this.state.repeat = !this.state.repeat;
-        this.uiManager.updateRepeatButton(this.state.repeat);
-    }
-    
-    bindEvents() {
-        document.getElementById('btn-play').addEventListener('click', 
-            () => this.playPause());
-        
-        document.getElementById('btn-next').addEventListener('click', 
-            () => this.nextTrack());
-        
-        document.getElementById('btn-prev').addEventListener('click', 
-            () => this.prevTrack());
-        
-        document.getElementById('btn-shuffle').addEventListener('click', 
-            () => this.toggleShuffle());
-        
-        document.getElementById('btn-repeat').addEventListener('click', 
-            () => this.toggleRepeat());
-        
-        document.getElementById('volume-knob').addEventListener('input', 
-            (e) => this.setVolume(e.target.value / 100));
-        
-        document.getElementById('bass-knob').addEventListener('input', 
-            (e) => this.setBass(e.target.value / 100));
-        
-        document.getElementById('treble-knob').addEventListener('input', 
-            (e) => this.setTreble(e.target.value / 100));
-    }
-    
-    startVisualization() {
-        this.visualizer.start(this.audioEngine.getAnalyserNode());
+
+    updatePlaylist(playlist, currentIndex) {
+        elements.playlistContainer.innerHTML = '';
+        playlist.forEach((track, index) => {
+            const item = document.createElement('div');
+            item.className = 'playlist-item' + (index === currentIndex ? ' active' : '');
+            item.textContent = `${track.artist} - ${track.title}`;
+            item.onclick = () => player.playTrack(index);
+            elements.playlistContainer.appendChild(item);
+        });
     }
 }
 
-// Инициализация при загрузке
+// --- Инициализация ---
 document.addEventListener('DOMContentLoaded', () => {
-    const player = new NeoVinylPlayer();
+    new UIManager();
+
+    // Загрузка жанров по умолчанию
+    (async () => {
+        const initialPlaylist = await api.fetchPlaylist("lofi hip hop");
+        store.playlist = initialPlaylist;
+    })();
+
+    // Основные слушатели событий
+    elements.playBtn.onclick = () => player.togglePlay();
+    elements.nextBtn.onclick = () => player.playTrack(store.currentTrackIndex + 1);
+    elements.prevBtn.onclick = () => player.playTrack(store.currentTrackIndex - 1);
     
-    // Экспорт для глобального доступа (если нужно)
-    window.NeoVinyl = player;
+    // Инициализация 3D сцены по первому клику
+    document.body.addEventListener('click', () => {
+        initializeVisualizer(elements.audio);
+    }, { once: true });
+
+    // Обновление прогресс-бара
+    elements.audio.addEventListener('timeupdate', () => {
+        const { currentTime, duration } = elements.audio;
+        if (duration) {
+            const progressPercent = (currentTime / duration) * 100;
+            elements.progressFill.style.width = `${progressPercent}%`;
+            elements.timeCurrent.textContent = formatTime(currentTime);
+            if (elements.timeTotal.textContent === '0:00') {
+                 elements.timeTotal.textContent = formatTime(duration);
+            }
+        }
+    });
+    
+    elements.progressContainer.onclick = (e) => {
+        const { duration } = elements.audio;
+        if (!duration) return;
+        const rect = elements.progressContainer.getBoundingClientRect();
+        const percent = (e.clientX - rect.left) / rect.width;
+        elements.audio.currentTime = percent * duration;
+    };
 });
+
+function formatTime(seconds) {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60).toString().padStart(2, '0');
+    return `${mins}:${secs}`;
+}
