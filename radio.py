@@ -124,9 +124,8 @@ class RadioSession:
                     if success:
                         error_streak = 0
                         self.tracks_played += 1
-                        # Wait for the track's duration or a skip event
-                        timeout = float(track.duration or 200) # Fallback to 200s if duration is 0
-                        await asyncio.wait_for(self.skip_event.wait(), timeout=timeout)
+                        # Wait for 90 seconds or a skip event
+                        await asyncio.wait_for(self.skip_event.wait(), timeout=90.0)
                     else: raise Exception("Play track failed")
                 except Exception as e:
                     error_streak += 1
