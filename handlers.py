@@ -43,6 +43,15 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             text, parse_mode=ParseMode.MARKDOWN, reply_markup=markup
         )
 
+async def player_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Отправляет кнопку для запуска веб-плеера."""
+    settings: Settings = context.application.settings
+    text = "👇 Нажмите кнопку ниже, чтобы открыть полнофункциональный веб-плеер."
+    markup = InlineKeyboardMarkup([
+        [InlineKeyboardButton("🎧 Открыть плеер", web_app=WebAppInfo(url=settings.WEBHOOK_URL))]
+    ])
+    await update.message.reply_text(text, reply_markup=markup)
+
 async def stop_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Останавливает воспроизведение радио."""
     await context.application.radio_manager.stop(update.effective_chat.id)
@@ -231,6 +240,7 @@ def setup_handlers(app: Application, radio: RadioManager, settings: Settings, do
     
     # Команды
     app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("player", player_command))
     app.add_handler(CommandHandler("play", play_command))
     app.add_handler(CommandHandler("radio", radio_command))
     app.add_handler(CommandHandler("stop", stop_command))

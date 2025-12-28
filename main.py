@@ -68,6 +68,7 @@ async def lifespan(app: FastAPI):
     await tg_app.initialize()
     await tg_app.bot.set_my_commands([
         ("start", "🗂 Открыть меню жанров"),
+        ("player", "🎧 Открыть веб-плеер"),
         ("play", "🔎 Поиск трека"),
         ("radio", "🎲 Случайное радио"),
         ("stop", "⏹️ Остановить"),
