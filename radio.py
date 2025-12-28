@@ -5,7 +5,7 @@ import os
 from typing import List, Optional, Dict, Set
 from dataclasses import dataclass, field
 
-from telegram import Bot, Message
+from telegram import Bot, Message, InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
 from telegram.constants import ParseMode
 from telegram.error import BadRequest
 
@@ -150,11 +150,17 @@ class RadioSession:
             if not result or not result.success: return False
             
             caption = get_now_playing_message(track, self.display_name, self.decade)
+            
+            # Create the WebApp button
+            markup = InlineKeyboardMarkup([
+                [InlineKeyboardButton("🎧 Открыть плеер", web_app=WebAppInfo(url=self.settings.WEBHOOK_URL))]
+            ])
+
             if result.file_id:
-                await self.bot.send_audio(self.chat_id, audio=result.file_id, caption=caption, parse_mode=ParseMode.MARKDOWN)
+                await self.bot.send_audio(self.chat_id, audio=result.file_id, caption=caption, parse_mode=ParseMode.MARKDOWN, reply_markup=markup)
             elif result.file_path and os.path.exists(result.file_path):
                 with open(result.file_path, 'rb') as f:
-                    msg = await self.bot.send_audio(self.chat_id, audio=f, caption=caption, parse_mode=ParseMode.MARKDOWN)
+                    msg = await self.bot.send_audio(self.chat_id, audio=f, caption=caption, parse_mode=ParseMode.MARKDOWN, reply_markup=markup)
                     if msg.audio: await self.downloader.cache_file_id(track.identifier, msg.audio.file_id)
             else: return False
             return True

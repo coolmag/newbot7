@@ -28,36 +28,20 @@ logger = logging.getLogger("handlers")
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Обрабатывает команду /start, отображая главное меню жанров."""
-    text = "🎧 *Музыкальный комбайн*\n\nНажмите кнопку ниже, чтобы открыть меню жанров."
+    text = "🎧 *Музыкальный комбайн*\n\nНажмите кнопку ниже, чтобы открыть меню жанров или воспользуйтесь командами:\n\n/play `<название>` - поиск трека\n/radio - случайная волна"
     markup = InlineKeyboardMarkup([
         [InlineKeyboardButton("🗂 Открыть меню жанров", callback_data="main_menu_genres")]
     ])
 
-    # Если это callback (например, возврат в меню), редактируем сообщение
     if update.callback_query:
         await update.callback_query.answer()
         await update.callback_query.edit_message_text(
             text, parse_mode=ParseMode.MARKDOWN, reply_markup=markup
         )
-    # Если это команда /start, отправляем новое сообщение
     elif update.message:
         await update.message.reply_text(
             text, parse_mode=ParseMode.MARKDOWN, reply_markup=markup
         )
-
-async def player_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Отправляет кнопку для запуска веб-плеера."""
-    settings: Settings = context.application.settings
-    text = "👇 Нажмите кнопку ниже, чтобы открыть полнофункциональный веб-плеер."
-    markup = InlineKeyboardMarkup([
-        [InlineKeyboardButton("🎧 Открыть плеер", web_app=WebAppInfo(url=settings.WEBHOOK_URL))]
-    ])
-    if update.message:
-        await update.message.reply_text(text, reply_markup=markup)
-    # Если это был callback, то просто отвечаем, т.к. нельзя отредактировать сообщение добавив web_app кнопку
-    elif update.callback_query:
-        await update.callback_query.answer("Используйте команду /player для получения новой кнопки.")
-
 
 async def stop_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Останавливает воспроизведение радио."""
@@ -196,20 +180,38 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ==================== HELPERS ====================
 
 async def _send_track(context: ContextTypes.DEFAULT_TYPE, chat_id: int, video_id: str):
-    """Загружает и отправляет трек пользователю."""
+    """Загружает и отправляет трек пользователю с кнопкой веб-плеера."""
     dl = context.application.downloader
+    settings: Settings = context.application.settings
     res = await dl.download(video_id)
     
     if not res.success:
         await context.bot.send_message(chat_id, f"❌ Ошибка загрузки: {res.error_message}")
         return
 
+    markup = InlineKeyboardMarkup([
+        [InlineKeyboardButton("🎧 Открыть плеер", web_app=WebAppInfo(url=settings.WEBHOOK_URL))]
+    ])
+
     try:
         if res.file_id:
-            await context.bot.send_audio(chat_id, audio=res.file_id, title=res.track_info.title, performer=res.track_info.artist)
+            await context.bot.send_audio(
+                chat_id, 
+                audio=res.file_id, 
+                title=res.track_info.title, 
+                performer=res.track_info.artist,
+                reply_markup=markup
+            )
         elif res.file_path:
             with open(res.file_path, 'rb') as f:
-                msg = await context.bot.send_audio(chat_id, audio=f, title=res.track_info.title, performer=res.track_info.artist, caption="#groove_ai")
+                msg = await context.bot.send_audio(
+                    chat_id, 
+                    audio=f, 
+                    title=res.track_info.title, 
+                    performer=res.track_info.artist, 
+                    caption="#groove_ai",
+                    reply_markup=markup
+                )
                 if msg.audio:
                     await dl.cache_file_id(video_id, msg.audio.file_id)
     finally:
@@ -229,7 +231,6 @@ def setup_handlers(app: Application, radio: RadioManager, settings: Settings, do
     
     # Команды
     app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("player", player_command))
     app.add_handler(CommandHandler("play", play_command))
     app.add_handler(CommandHandler("radio", radio_command))
     app.add_handler(CommandHandler("stop", stop_command))
