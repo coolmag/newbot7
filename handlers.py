@@ -107,20 +107,23 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
     data = query.data
 
-    if data == "main_menu_start":
-        await start(update, context)
-        return
+    logger.info(f"[CALLBACK] Received data: '{data}'")
 
-    if data == "main_menu_genres":
+    if data == "main_menu_start":
+        logger.info("[CALLBACK] Branch: main_menu_start")
+        await start(update, context)
+    
+    elif data == "main_menu_genres":
+        logger.info("[CALLBACK] Branch: main_menu_genres")
         markup = get_main_menu_keyboard()
         await query.edit_message_text(
             "🗂 *Каталог жанров:*",
             parse_mode=ParseMode.MARKDOWN,
             reply_markup=markup
         )
-        return
         
-    if data.startswith("cat|"):
+    elif data.startswith("cat|"):
+        logger.info(f"[CALLBACK] Branch: cat| with path '{data}'")
         path_str = data.removeprefix("cat|")
         if not path_str:
             await start(update, context)
@@ -133,6 +136,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             for p in path:
                 current_level = current_level[p]
         except KeyError:
+            logger.error(f"Invalid path in callback: {path_str}")
             await query.edit_message_text("❌ Ошибка в структуре меню!", reply_markup=get_main_menu_keyboard())
             return
 
@@ -141,9 +145,9 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode=ParseMode.MARKDOWN,
             reply_markup=get_subcategory_keyboard(path_str)
         )
-        return
 
-    if data.startswith("play_cat|"):
+    elif data.startswith("play_cat|"):
+        logger.info(f"[CALLBACK] Branch: play_cat| with path '{data}'")
         path_str = data.removeprefix("play_cat|")
         if not path_str:
             await query.edit_message_text("❗️Не удалось найти этот жанр.", reply_markup=get_main_menu_keyboard())
@@ -165,28 +169,29 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             chat_id=query.message.chat_id, 
             query=str(search_query)
         ))
-        return
 
-    if data == "play_random":
+    elif data == "play_random":
+        logger.info("[CALLBACK] Branch: play_random")
         await query.edit_message_text("🎲 Случайная волна...")
         asyncio.create_task(context.application.radio_manager.start(
             chat_id=query.message.chat_id, 
             query="top 50 global hits"
         ))
-        return
 
-    if data.startswith("sel_track|"):
+    elif data.startswith("sel_track|"):
+        logger.info(f"[CALLBACK] Branch: sel_track| with video_id '{data}'")
         video_id = data.split("|", 1)[1]
         await query.edit_message_text("⏳ Загружаю трек...")
         await _send_track(context, query.message.chat_id, video_id)
-        # После отправки трека можно вернуть в главное меню
         await start(update, context)
-        return
 
-    if data == "noop":
-        return
+    elif data == "noop":
+        logger.info("[CALLBACK] Branch: noop")
+        pass
 
-    logger.warning(f"Unhandled button callback data: {data}")
+    else:
+        logger.warning(f"[CALLBACK] Unhandled callback data: '{data}'")
+
 
 # ==================== HELPERS ====================
 
