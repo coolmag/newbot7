@@ -9,7 +9,7 @@ from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton, WebAppI
 from telegram.constants import ParseMode
 from telegram.ext import (
     Application, CommandHandler, ContextTypes, CallbackQueryHandler,
-    ConversationHandler, MessageHandler, filters
+    MessageHandler, filters
 )
 
 from radio import RadioManager
@@ -22,20 +22,20 @@ from keyboards import (
     get_subcategory_keyboard
 )
 
-
 logger = logging.getLogger("handlers")
-
-# Состояния
-PAGE_SIZE = 5
-SEARCH_LIMIT = 30
-MENU, WAITING_ARTIST, WAITING_TRACK = range(3)
 
 # ==================== КОМАНДЫ ====================
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Обрабатывает команду /start, отображая главное меню."""
-    text = "🎧 *Музыкальный комбайн*\n\nВыберите категорию:"
-    markup = get_main_menu_keyboard()
+    text = "🎧 *Музыкальный комбайн*\n\nВыберите категорию в меню или откройте веб-плеер."
+    
+    # Добавляем кнопку для веб-плеера прямо в стартовое сообщение
+    settings: Settings = context.application.settings
+    markup = InlineKeyboardMarkup([
+        [InlineKeyboardButton("🎧 Открыть веб-плеер", web_app=WebAppInfo(url=settings.WEBHOOK_URL))],
+        [InlineKeyboardButton("🗂 Открыть меню жанров", callback_data="main_menu_genres")]
+    ])
 
     if update.callback_query:
         await update.callback_query.answer()
@@ -46,16 +46,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         await update.message.reply_text(
             text, parse_mode=ParseMode.MARKDOWN, reply_markup=markup
         )
-    return MENU
 
 async def player_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Отправляет кнопку для запуска веб-плеера."""
-    settings: Settings = context.application.settings
-    text = "👇 Нажмите кнопку ниже, чтобы открыть полнофункциональный веб-плеер."
-    markup = InlineKeyboardMarkup([
-        [InlineKeyboardButton("🎧 Открыть плеер", web_app=WebAppInfo(url=settings.WEBHOOK_URL))]
-    ])
-    await update.message.reply_text(text, reply_markup=markup)
+    """Отправляет кнопку для запуска веб-плеера (дублирует часть /start)."""
+    await start(update, context)
 
 async def stop_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Останавливает воспроизведение радио."""
@@ -66,14 +60,25 @@ async def skip_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Пропускает текущий трек в радио."""
     await context.application.radio_manager.skip(update.effective_chat.id)
 
-async def play_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Команда /play — начинает поиск трека."""
-    cancel_btn = InlineKeyboardButton("🔙 Отмена", callback_data="main_menu")
-    await update.message.reply_text(
-        "🎵 Введите название трека:", 
-        reply_markup=InlineKeyboardMarkup([[cancel_btn]])
-    )
-    return WAITING_TRACK
+async def play_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Ищет и отправляет трек по запросу. /play <название трека>"""
+    query_text = " ".join(context.args)
+    if not query_text:
+        await update.message.reply_text(
+            "ℹ️ Укажите название трека после команды.\n\n*Пример:*\n`/play Daft Punk - Get Lucky`",
+            parse_mode=ParseMode.MARKDOWN
+        )
+        return
+
+    msg = await update.message.reply_text(f"🔎 Ищу: *{query_text}*...", parse_mode=ParseMode.MARKDOWN)
+    
+    tracks = await context.application.downloader.search(query=query_text, search_mode='track', limit=1)
+    
+    if tracks:
+        await msg.delete()
+        await _send_track(context, update.effective_chat.id, tracks[0].identifier)
+    else:
+        await msg.edit_text("😕 Ничего не найдено.")
 
 async def radio_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Команда /radio — запускает случайное радио."""
@@ -88,57 +93,62 @@ async def unknown_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # ==================== ГЛАВНЫЙ ОБРАБОТЧИК КНОПОК ====================
 
-async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Optional[int]:
+async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Центральный обработчик для всех inline-кнопок."""
     query = update.callback_query
     await query.answer()
     data = query.data
 
-    # Возврат в главное меню
-    if data == "main_menu":
-        return await start(update, context)
+    if data == "main_menu_start":
+        await start(update, context)
+        return
 
-    # Навигация по категориям
+    if data == "main_menu_genres":
+        markup = get_main_menu_keyboard()
+        await query.edit_message_text(
+            "🗂 *Каталог жанров:*",
+            parse_mode=ParseMode.MARKDOWN,
+            reply_markup=markup
+        )
+        return
+        
     if data.startswith("cat|"):
         path_str = data.removeprefix("cat|")
         if not path_str:
-            return await start(update, context) # Возврат в главное меню, если путь пустой
+            await start(update, context)
+            return
 
         path = path_str.split('|')
         
-        # Проверяем, что навигация по структуре прошла успешно
         try:
             current_level = MUSIC_CATALOG
             for p in path:
                 current_level = current_level[p]
         except KeyError:
             await query.edit_message_text("❌ Ошибка в структуре меню!", reply_markup=get_main_menu_keyboard())
-            return MENU
+            return
 
         await query.edit_message_text(
             f"💿 *{path[-1]}:*",
             parse_mode=ParseMode.MARKDOWN,
             reply_markup=get_subcategory_keyboard(path_str)
         )
-        return MENU
+        return
 
-    # Запуск радио по жанру
     if data.startswith("play_cat|"):
         path_str = data.removeprefix("play_cat|")
         if not path_str:
             await query.edit_message_text("❗️Не удалось найти этот жанр.", reply_markup=get_main_menu_keyboard())
-            return MENU
+            return
             
         path = path_str.split('|')
         
-        # Получаем поисковый запрос из MUSIC_CATALOG
         try:
             current_level = MUSIC_CATALOG
             for p in path[:-1]:
                 current_level = current_level[p]
             search_query = current_level[path[-1]]
         except (KeyError, TypeError):
-            # Fallback на случай, если структура некорректна
             search_query = " ".join(path) 
             logger.warning(f"Could not resolve radio query for path: {path_str}. Falling back to '{search_query}'")
 
@@ -147,89 +157,30 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             chat_id=query.message.chat_id, 
             query=str(search_query)
         ))
-        return MENU
+        return
 
-    # Случайный микс
     if data == "play_random":
         await query.edit_message_text("🎲 Случайная волна...")
         asyncio.create_task(context.application.radio_manager.start(
             chat_id=query.message.chat_id, 
             query="top 50 global hits"
         ))
-        return MENU
+        return
 
-    # Пагинация поиска
-    if data.startswith("page|"):
-        _, page, query_text = data.split("|", 2)
-        await _send_artist_search_results(update, context, query_text, int(page))
-        return MENU
-
-    # Выбор трека из поиска
     if data.startswith("sel_track|"):
         video_id = data.split("|", 1)[1]
         await query.edit_message_text("⏳ Загружаю трек...")
         await _send_track(context, query.message.chat_id, video_id)
-        return await start(update, context)
-
-    if data == "noop":
-        return None
-
-    logger.warning(f"Unhandled button callback data: {data}")
-    await query.message.reply_text("Неизвестная команда. Возвращаю в меню.", reply_markup=get_main_menu_keyboard())
-    return MENU
-
-
-# ==================== ПОИСК ====================
-
-async def track_search_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Обрабатывает текстовый ввод для поиска трека."""
-    query_text = update.message.text
-    chat_id = update.effective_chat.id
-    
-    msg = await update.message.reply_text(f"🔎 Ищу: *{query_text}*...", parse_mode=ParseMode.MARKDOWN)
-    
-    # В режиме поиска трека ищем только один самый релевантный
-    tracks = await context.application.downloader.search(query=query_text, search_mode='track', limit=1)
-    
-    if tracks:
-        await msg.delete()
-        await _send_track(context, chat_id, tracks[0].identifier)
-    else:
-        await msg.edit_text("😕 Ничего не найдено.")
-    
-    return await start(update, context)
-
-# ==================== HELPERS ====================
-
-async def _send_artist_search_results(update: Update, context: ContextTypes.DEFAULT_TYPE, query_text: str, page: int):
-    """Отправляет результаты поиска по артисту с пагинацией."""
-    # Для поиска по артисту ищем больше треков
-    tracks = await context.application.downloader.search(query=query_text, search_mode='artist', limit=SEARCH_LIMIT)
-    
-    if not tracks:
-        reply_markup = get_main_menu_keyboard()
-        text = "😕 Ничего не найдено."
-        if update.callback_query:
-            await update.callback_query.edit_message_text(text, reply_markup=reply_markup)
-        else:
-            await context.bot.send_message(update.effective_chat.id, text, reply_markup=reply_markup)
+        # После отправки трека можно вернуть в главное меню
+        await start(update, context)
         return
 
-    total_pages = ceil(len(tracks) / PAGE_SIZE)
-    start_offset = (page - 1) * PAGE_SIZE
-    page_tracks = tracks[start_offset:start_offset + PAGE_SIZE]
+    if data == "noop":
+        return
 
-    markup = InlineKeyboardMarkup(
-        get_track_search_keyboard(page_tracks).inline_keyboard +
-        get_pagination_keyboard(page, total_pages, query_text).inline_keyboard
-    )
-    
-    text = f"👤 *{query_text}* (Стр. {page}/{total_pages})"
-    
-    if update.callback_query:
-        await update.callback_query.edit_message_text(text, parse_mode=ParseMode.MARKDOWN, reply_markup=markup)
-    else:
-        await context.bot.send_message(update.effective_chat.id, text, parse_mode=ParseMode.MARKDOWN, reply_markup=markup)
+    logger.warning(f"Unhandled button callback data: {data}")
+
+# ==================== HELPERS ====================
 
 async def _send_track(context: ContextTypes.DEFAULT_TYPE, chat_id: int, video_id: str):
     """Загружает и отправляет трек пользователю."""
@@ -263,34 +214,16 @@ def setup_handlers(app: Application, radio: RadioManager, settings: Settings, do
     app.radio_manager = radio
     app.settings = settings
     
-    conv_handler = ConversationHandler(
-        entry_points=[
-            CommandHandler('start', start),
-            CommandHandler("play", play_command),
-            CallbackQueryHandler(button_callback), # Обработка кнопок как точка входа
-        ],
-        states={
-            MENU: [
-                CallbackQueryHandler(button_callback)
-            ],
-            WAITING_TRACK: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, track_search_handler),
-                CallbackQueryHandler(button_callback, pattern="^main_menu$") 
-            ],
-        },
-        fallbacks=[
-            CommandHandler('start', start),
-        ],
-        allow_reentry=True
-    )
-    
-    app.add_handler(conv_handler)
-    
-    # Команды, которые работают всегда, вне состояний
+    # Команды
+    app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("player", player_command))
+    app.add_handler(CommandHandler("play", play_command))
+    app.add_handler(CommandHandler("radio", radio_command))
     app.add_handler(CommandHandler("stop", stop_command))
     app.add_handler(CommandHandler("skip", skip_command))
-    app.add_handler(CommandHandler("radio", radio_command))
+    
+    # Обработчик кнопок (единственный и главный)
+    app.add_handler(CallbackQueryHandler(button_callback))
     
     # Обработка неизвестных команд (должна быть последней)
     app.add_handler(MessageHandler(filters.COMMAND, unknown_command))
