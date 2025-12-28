@@ -14,7 +14,7 @@ export function playTrack(index) {
     
     elements.audio.play().then(() => {
         store.isPlaying = true;
-        render();
+        updateUI(track);
     }).catch(() => console.log("Interaction required"));
 }
 
@@ -27,4 +27,10 @@ export function togglePlay() {
         store.isPlaying = false;
     }
     render();
+}
+
+function updateUI(track) {
+    document.getElementById('track-title').textContent = track.title || "Unknown";
+    document.getElementById('track-artist').textContent = track.artist || "Unknown";
+    document.getElementById('icon-play').textContent = 'pause';
 }
