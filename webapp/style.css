@@ -669,3 +669,24 @@ body {
     background: rgba(255, 255, 255, 0.1);
     border-radius: 4px;
 }
+
+#visualizer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  z-index: 0;
+  background: radial-gradient(circle at center, #000 0%, #010101 100%);
+}
+
+#player-ui {
+  position: relative;
+  z-index: 5;
+}
+
+button, .controls {
+  position: relative;
+  z-index: 10;
+}

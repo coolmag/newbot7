@@ -1,295 +1,33 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Solar Radio</title>
-    <link rel="icon" type="image/svg+xml" href="favicon.svg">
-    <link rel="apple-touch-icon" href="favicon.svg">
-    <link rel="stylesheet" href="style.css?v=6.0">
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
-    <script src="js/telegram-web-app.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/fuse.js@7.1.0/dist/fuse.min.js"></script>
-    <style>
-        /* Genre Card Animations & Effects */
-        .genre-card {
-            opacity: 0;
-            transform: translateY(20px);
-            transition: opacity 0.4s ease, transform 0.4s ease, box-shadow 0.3s ease;
-            position: relative; /* Needed for pseudo-element */
-            overflow: hidden; /* Hide overflow from spotlight */
-        }
-        .genre-card.visible {
-            opacity: 1;
-            transform: translateY(0);
-        }
-        .genre-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(255,255,255,0.15), transparent 40%);
-            opacity: 0;
-            transition: opacity 0.4s ease;
-            z-index: 1;
-        }
-        .genre-card:hover {
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-            transform: translateY(-5px);
-        }
-        .genre-card:hover::before {
-            opacity: 1;
-        }
-        .genre-card > * {
-            position: relative;
-            z-index: 2; /* Ensure content is above the spotlight */
-        }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>🎧 CoolMag Radio</title>
 
-        /* Vinyl Player Styles */
-        .vinyl-player {
-            position: relative;
-            width: 280px;
-            height: 280px;
-            margin: 2rem auto;
-        }
-        .vinyl-container {
-            position: absolute;
-            width: 200px;
-            height: 200px;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-        }
-        .vinyl-record {
-            width: 100%;
-            height: 100%;
-            border-radius: 50%;
-            background: radial-gradient(circle at 30% 30%, #2a2a2a, #000);
-            position: relative;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
-            transition: transform 0.3s ease;
-        }
-        .vinyl-record.playing {
-            animation: spin 3s linear infinite;
-        }
-        @keyframes spin {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-        }
-        .vinyl-grooves {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            border-radius: 50%;
-            background: repeating-radial-gradient(circle at 50% 50%, transparent 0px, rgba(255,255,255,0.03) 1px, transparent 2px);
-        }
-        .vinyl-label {
-            position: absolute;
-            width: 80px;
-            height: 80px;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            border-radius: 50%;
-            background: linear-gradient(135deg, #FFD93D, #FF9500);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 4px 16px rgba(255, 157, 0, 0.4);
-        }
-        .vinyl-label-text {
-            color: #000;
-            font-size: 11px;
-            font-weight: bold;
-            text-align: center;
-            line-height: 1.2;
-        }
-        .vinyl-hole {
-            position: absolute;
-            width: 16px;
-            height: 16px;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            border-radius: 50%;
-            background: #000;
-            box-shadow: inset 0 2px 4px rgba(0,0,0,0.8);
-        }
-        .tonearm {
-            position: absolute;
-            width: 4px;
-            height: 120px;
-            background: linear-gradient(to bottom, #666, #333);
-            border-radius: 2px;
-            top: 20%;
-            right: 10%;
-            transform-origin: 50% 0%;
-            transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: 2px 2px 8px rgba(0,0,0,0.3);
-            z-index: 10;
-        }
-        .tonearm::before {
-            content: '';
-            position: absolute;
-            width: 12px;
-            height: 12px;
-            background: #888;
-            border-radius: 50%;
-            top: -6px;
-            left: -4px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.4);
-        }
-        .tonearm::after {
-            content: '';
-            position: absolute;
-            width: 8px;
-            height: 8px;
-            background: linear-gradient(135deg, #ff6b6b, #ff4444);
-            border-radius: 50%;
-            bottom: 0;
-            left: -2px;
-            box-shadow: 0 0 8px rgba(255, 68, 68, 0.6);
-        }
-        .tonearm.playing {
-            transform: rotate(25deg);
-        }
-        .vinyl-glow {
-            --glow-opacity: 0;
-            --glow-scale: 1;
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            border-radius: 50%;
-            box-shadow: 0 0 80px rgba(255, 157, 0, 0.6);
-            opacity: var(--glow-opacity);
-            transform: scale(var(--glow-scale));
-            transition: opacity 0.1s linear, transform 0.1s linear;
-        }
-    </style>
+  <link rel="stylesheet" href="/webapp/style.css?v=7.1" />
+  <link rel="icon" href="/webapp/favicon.svg" />
 </head>
+
 <body>
-    <div class="screen screen-player active" id="screen-player">
-        <div class="player-container">
-            <div class="header">
-                <span class="material-icons-round header-btn" id="btn-genres">apps</span>
-                <div class="live-badge">
-                    <span class="live-dot"></span>
-                    <span id="current-genre">LIVE RADIO</span>
-                </div>
-                <span class="material-icons-round header-btn" id="btn-playlist">queue_music</span>
-            </div>
-            <div class="vinyl-player">
-                <div class="vinyl-container">
-                    <div class="vinyl-glow" id="vinyl-glow"></div>
-                    <div class="vinyl-record" id="vinyl-record">
-                        <div class="vinyl-grooves"></div>
-                        <div class="vinyl-label">
-                            <div class="vinyl-label-text">SOLAR<br>RADIO</div>
-                        </div>
-                        <div class="vinyl-hole"></div>
-                    </div>
-                </div>
-                <div class="tonearm" id="tonearm"></div>
-            </div>
-            <div class="track-info">
-                <div class="title" id="track-title">Select a genre</div>
-                <div class="artist" id="track-artist">Tap 🎵 to browse</div>
-            </div>
-            <div class="progress-section">
-                <div class="progress-bar" id="progress-container">
-                    <div class="progress-buffered" id="progress-buffered"></div>
-                    <div class="progress-fill" id="progress-bar"></div>
-                    <div class="progress-handle" id="progress-handle"></div>
-                </div>
-                <div class="time-display">
-                    <span id="curr-time">0:00</span>
-                    <span id="dur-time">0:00</span>
-                </div>
-            </div>
-            <div class="controls">
-                <button class="ctrl-btn ctrl-btn-small" id="btn-rewind">
-                    <span class="material-icons-round">replay_10</span>
-                </button>
-                <button class="ctrl-btn" id="btn-prev">
-                    <span class="material-icons-round">skip_previous</span>
-                </button>
-                <button class="ctrl-btn ctrl-btn-main" id="btn-play-pause">
-                    <span class="material-icons-round" id="icon-play">play_arrow</span>
-                </button>
-                <button class="ctrl-btn" id="btn-next">
-                    <span class="material-icons-round">skip_next</span>
-                </button>
-                <button class="ctrl-btn ctrl-btn-small" id="btn-forward">
-                    <span class="material-icons-round">forward_10</span>
-                </button>
-            </div>
-            <div class="extra-controls">
-                <div class="speed-control">
-                    <span class="material-icons-round">speed</span>
-                    <select id="playback-speed">
-                        <option value="0.5">0.5x</option>
-                        <option value="0.75">0.75x</option>
-                        <option value="1" selected>1x</option>
-                        <option value="1.25">1.25x</option>
-                        <option value="1.5">1.5x</option>
-                        <option value="2">2x</option>
-                    </select>
-                </div>
-            </div>
-        </div>
+  <div id="visualizer"></div>
+
+  <div id="player-ui">
+    <h1>🎵 CoolMag Radio</h1>
+    <div class="controls">
+      <button id="playBtn">▶️ Play</button>
+      <button id="pauseBtn">⏸ Pause</button>
+      <button id="nextBtn">⏭ Next</button>
+      <button id="playlistBtn">📜 Classic Rock</button>
     </div>
-    <div class="drawer genre-drawer" id="screen-genres">
-        <div class="drawer-handle"></div>
-        <div class="drawer-header">
-            <span class="material-icons-round header-btn" id="btn-back-player">arrow_back</span>
-            <h2>Choose Genre</h2>
-            <span class="material-icons-round header-btn" style="opacity:0">x</span>
-        </div>
-        <div class="drawer-content genres-container">
-            <div class="search-box">
-                <span class="material-icons-round">search</span>
-                <input type="text" id="genre-search" placeholder="Search genres, artists, or tracks...">
-            </div>
-            <div class="section">
-                <div class="section-title">🔥 Trending Now</div>
-                <div class="chips-row" id="trending-chips"></div>
-            </div>
-            <div class="section">
-                <div class="section-title">📅 By Decade</div>
-                <div class="chips-row" id="decade-chips"></div>
-            </div>
-            <div class="section">
-                <div class="section-title">😊 By Mood</div>
-                <div class="chips-row" id="mood-chips"></div>
-            </div>
-            <div class="section">
-                <div class="section-title">🎵 All Genres</div>
-                <div class="genre-grid" id="genre-grid"></div>
-            </div>
-        </div>
-    </div>
-    <div class="drawer" id="subgenre-drawer">
-        <div class="drawer-handle"></div>
-        <div class="drawer-header">
-            <span class="drawer-icon" id="drawer-icon">🎵</span>
-            <h3 id="drawer-title">Genre</h3>
-        </div>
-        <div class="subgenre-list" id="subgenre-list"></div>
-    </div>
-    <div class="drawer" id="playlist-drawer">
-        <div class="drawer-handle"></div>
-        <div class="drawer-header">
-            <span class="material-icons-round" style="color: var(--sun-mid)">queue_music</span>
-            <h3>Up Next</h3>
-        </div>
-        <div id="playlist-content" class="playlist-items">
-            Loading...
-        </div>
-    </div>
-    <div class="overlay" id="overlay"></div>
-    <audio id="audio-player" crossorigin="anonymous" playsinline></audio>
-    <script type="module" src="js/main.js?v=6.0"></script>
+    <audio id="player" preload="none" controls></audio>
+    <div id="playlist"></div>
+  </div>
+
+  <!-- Telegram WebApp API -->
+  <script src="/webapp/js/telegram-web-app.js"></script>
+  
+  <!-- Main App Logic -->
+  <script type="module" src="/webapp/js/main.js?v=7.1"></script>
 </body>
 </html>
