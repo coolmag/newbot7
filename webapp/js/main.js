@@ -1,6 +1,6 @@
 import { initializeEventListeners } from './events.js';
 import { initializeVisualizer } from './visualizer.js';
-import * as elements from './elements.js'; // Убедитесь, что elements.js обновлен
+import * as elements from './elements.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     // Инициализация Telegram WebApp

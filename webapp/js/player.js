@@ -25,12 +25,17 @@ export function togglePlay() {
         elements.audio.pause();
         store.isPlaying = false;
     }
-    const icon = document.getElementById('icon-play');
-    icon.textContent = store.isPlaying ? 'pause' : 'play_arrow';
+    // Используем iconPlay из elements.js
+    if (elements.iconPlay) {
+        elements.iconPlay.textContent = store.isPlaying ? 'pause' : 'play_arrow';
+    }
+    render();
 }
 
 function updateUI(track) {
-    document.getElementById('track-title').textContent = track.title || "Unknown";
-    document.getElementById('track-artist').textContent = track.artist || "Unknown";
-    document.getElementById('icon-play').textContent = 'pause';
+    elements.trackTitle.textContent = track.title || "Unknown";
+    elements.trackArtist.textContent = track.artist || "Unknown";
+    if (elements.iconPlay) {
+        elements.iconPlay.textContent = 'pause';
+    }
 }
