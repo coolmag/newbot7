@@ -1,75 +1,545 @@
+/* CSS Variables for Dynamic Theming */
 :root {
-    --accent: #00f2ff;
-    --gold: #ffcc00;
-    --glass: rgba(10, 10, 15, 0.7);
-    --border: rgba(255, 255, 255, 0.1);
+    /* Cyberpunk Color Palette */
+    --neon-primary: #00f3ff;
+    --neon-secondary: #ff00ff;
+    --neon-accent: #ffcc00;
+    --cyber-dark: #0a0a1a;
+    --cyber-darker: #050510;
+    --cyber-light: #1a1a2e;
+    --cyber-surface: rgba(20, 20, 40, 0.85);
+    --cyber-glass: rgba(255, 255, 255, 0.05);
+    
+    /* Glow Effects */
+    --glow-primary: 0 0 20px var(--neon-primary);
+    --glow-secondary: 0 0 30px var(--neon-secondary);
+    --glow-accent: 0 0 15px var(--neon-accent);
+    --glow-intense: 0 0 50px rgba(0, 243, 255, 0.5);
+    
+    /* Animation */
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-bounce: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
 }
 
-body, html {
-    margin: 0; padding: 0; width: 100%; height: 100%;
-    background: #000;
-    color: white; font-family: 'Inter', -apple-system, sans-serif; overflow: hidden;
+/* Reset & Base */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
 }
 
-.luxury-bg {
-    position: fixed; inset: 0;
-    background: radial-gradient(circle at 20% 30%, #1a1a2e 0%, #050508 100%);
+body {
+    font-family: 'JetBrains Mono', monospace;
+    background: var(--cyber-darker);
+    color: white;
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+    position: relative;
+}
+
+/* Cyber Grid Background */
+.cyber-grid {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: 
+        linear-gradient(rgba(0, 243, 255, 0.1) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 243, 255, 0.1) 1px, transparent 1px);
+    background-size: 50px 50px;
+    animation: gridMove 20s linear infinite;
+    z-index: -2;
+}
+
+ @keyframes gridMove {
+    from { transform: translate(0, 0); }
+    to { transform: translate(50px, 50px); }
+}
+
+/* WebGL Background Effects */
+.bg-effects {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
     z-index: -1;
 }
 
-.player-viewport {
-    display: flex; justify-content: center; align-items: center;
-    height: 100vh; width: 100vw;
+/* Main Player Container */
+.player-container {
+    position: relative;
+    width: 95vw;
+    max-width: 1600px;
+    height: 90vh;
+    margin: 5vh auto;
+    background: var(--cyber-surface);
+    backdrop-filter: blur(40px);
+    border: 1px solid rgba(0, 243, 255, 0.2);
+    border-radius: 24px;
+    box-shadow: 
+        var(--glow-intense),
+        inset 0 0 100px rgba(0, 243, 255, 0.1);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
 }
 
-.glass-chassis {
-    width: 380px; padding: 40px; border-radius: 60px;
-    background: var(--glass);
-    backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px);
-    border: 1px solid var(--border);
-    box-shadow: 0 50px 120px rgba(0,0,0,0.8), inset 0 0 20px rgba(255,255,255,0.02);
-    display: flex; flex-direction: column; align-items: center;
+/* Cyber Header */
+.cyber-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 30px;
+    border-bottom: 1px solid rgba(0, 243, 255, 0.2);
+    background: linear-gradient(
+        to right,
+        transparent,
+        rgba(0, 243, 255, 0.05),
+        transparent
+    );
 }
 
-/* 3D Visualizer Glow */
-.turntable-stage {
-    position: relative; width: 300px; height: 300px; margin: 20px 0;
+.signal-indicators {
+    display: flex;
+    gap: 10px;
 }
 
-.rgb-ambient-glow {
-    position: absolute; inset: 0; border-radius: 50%;
-    background: conic-gradient(from 0deg, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00);
-    filter: blur(40px); opacity: 0.3;
-    animation: rotate-glow 5s linear infinite;
+.signal-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--neon-primary);
+    position: relative;
 }
 
-#canvas-container { position: absolute; inset: 0; z-index: 5; }
-
-/* Typography */
-.metadata h1 { 
-    font-size: 24px; letter-spacing: -0.5px; margin: 0; 
-    background: linear-gradient(to bottom, #fff, #888);
-    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+.signal-dot.active {
+    background: var(--neon-primary);
+    box-shadow: var(--glow-primary);
+    animation: pulseDot 2s infinite;
 }
 
-/* Scrubber */
-.scrub-track { 
-    flex: 1; height: 4px; background: rgba(255,255,255,0.05); 
-    border-radius: 2px; margin: 0 15px; position: relative; cursor: pointer;
+ @keyframes pulseDot {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
 }
 
-.scrub-fill {
-    height: 100%; background: var(--neon); width: 0%;
-    box-shadow: 0 0 15px var(--neon); border-radius: 2px;
+.brand-logo {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
 }
 
-/* Buttons */
-.btn-play {
-    width: 80px; height: 80px; border-radius: 50%; border: none;
-    background: #fff; color: #000; box-shadow: 0 15px 35px rgba(255,255,255,0.2);
-    cursor: pointer; transition: 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+.logo-part-1 {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.8rem;
+    font-weight: 900;
+    letter-spacing: 4px;
+    background: linear-gradient(45deg, var(--neon-primary), var(--neon-secondary));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    text-shadow: var(--glow-primary);
 }
 
-.btn-play:active { transform: scale(0.9) rotate(5deg); }
+.logo-part-2 {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 2.2rem;
+    font-weight: 900;
+    letter-spacing: 6px;
+    color: white;
+    position: relative;
+}
 
-@keyframes rotate-glow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+.logo-subtitle {
+    font-size: 0.7rem;
+    color: var(--neon-primary);
+    letter-spacing: 2px;
+    margin-top: -4px;
+}
+
+/* Cyber Buttons */
+.cyber-btn {
+    background: transparent;
+    border: 1px solid var(--neon-primary);
+    color: var(--neon-primary);
+    padding: 8px 16px;
+    border-radius: 4px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: var(--transition-smooth);
+    position: relative;
+    overflow: hidden;
+}
+
+.cyber-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(0, 243, 255, 0.2), transparent);
+    transition: 0.5s;
+}
+
+.cyber-btn:hover::before {
+    left: 100%;
+}
+
+.cyber-btn:hover {
+    box-shadow: var(--glow-primary);
+    transform: translateY(-2px);
+}
+
+/* Main Workspace */
+.main-workspace {
+    display: flex;
+    flex: 1;
+    padding: 20px;
+    gap: 20px;
+}
+
+/* Vinyl Animation */
+.vinyl-disc {
+    position: relative;
+    width: 200px;
+    height: 200px;
+    border-radius: 50%;
+    background: linear-gradient(45deg, #111, #333);
+    box-shadow: 
+        inset 0 0 50px rgba(0, 0, 0, 0.8),
+        0 0 40px rgba(0, 0, 0, 0.6);
+    animation: spinVinyl 20s linear infinite paused;
+}
+
+.vinyl-disc.playing {
+    animation-play-state: running;
+}
+
+ @keyframes spinVinyl {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.vinyl-grooves {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    right: 20px;
+    bottom: 20px;
+    border-radius: 50%;
+    background: repeating-radial-gradient(
+        circle,
+        transparent,
+        transparent 1px,
+        rgba(255, 255, 255, 0.05) 2px,
+        rgba(255, 255, 255, 0.05) 3px
+    );
+}
+
+.vinyl-label {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: linear-gradient(45deg, #ff0000, #990000);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5);
+}
+
+.label-inner {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.6rem;
+    font-weight: bold;
+    color: #000;
+}
+
+.tonearm {
+    position: absolute;
+    top: 0;
+    right: -60px;
+    width: 120px;
+    height: 120px;
+    transform-origin: 0 60px;
+    animation: tonearmMove 30s ease-in-out infinite alternate;
+}
+
+ @keyframes tonearmMove {
+    0% { transform: rotate(-30deg); }
+    100% { transform: rotate(30deg); }
+}
+
+/* Progress Bar with Neon Glow */
+.progress-track {
+    position: relative;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 45%;
+    background: linear-gradient(90deg, var(--neon-primary), var(--neon-secondary));
+    border-radius: 3px;
+    box-shadow: var(--glow-primary);
+}
+
+.progress-glow {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, 
+        transparent, 
+        rgba(0, 243, 255, 0.3), 
+        transparent);
+    filter: blur(10px);
+    animation: glowScan 2s linear infinite;
+}
+
+ @keyframes glowScan {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+/* Transport Controls */
+.play-btn {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--neon-primary), var(--neon-secondary));
+    border: none;
+    color: white;
+    font-size: 2rem;
+    cursor: pointer;
+    position: relative;
+    transition: var(--transition-bounce);
+    box-shadow: 
+        0 0 30px rgba(0, 243, 255, 0.5),
+        inset 0 0 20px rgba(255, 255, 255, 0.1);
+}
+
+.play-btn:hover {
+    transform: scale(1.1) rotate(5deg);
+    box-shadow: 
+        0 0 50px rgba(0, 243, 255, 0.8),
+        inset 0 0 30px rgba(255, 255, 255, 0.2);
+}
+
+.play-btn:active {
+    transform: scale(0.95) rotate(-5deg);
+}
+
+/* Knobs with Physical Feel */
+.knob {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #2a2a2a, #1a1a1a);
+    border: 2px solid var(--neon-primary);
+    position: relative;
+    cursor: pointer;
+    box-shadow: 
+        inset 0 0 20px rgba(0, 0, 0, 0.8),
+        0 0 20px rgba(0, 243, 255, 0.3);
+}
+
+.knob-mark {
+    position: absolute;
+    top: 5px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 4px;
+    height: 15px;
+    background: var(--neon-accent);
+    border-radius: 2px;
+}
+
+.knob-glow {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: radial-gradient(circle at 30% 30%, 
+        rgba(255, 204, 0, 0.3), 
+        transparent 70%);
+    pointer-events: none;
+}
+
+/* Terminal Style Playlist */
+.playlist-terminal {
+    background: rgba(10, 10, 20, 0.9);
+    border: 1px solid var(--neon-primary);
+    border-radius: 8px;
+    padding: 15px;
+    font-family: 'Courier New', monospace;
+    color: #0f0;
+    box-shadow: 
+        inset 0 0 20px rgba(0, 255, 0, 0.1),
+        0 0 30px rgba(0, 255, 0, 0.2);
+}
+
+.terminal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--neon-primary);
+    margin-bottom: 15px;
+}
+
+.terminal-title {
+    color: var(--neon-primary);
+    font-weight: bold;
+    text-shadow: 0 0 10px var(--neon-primary);
+}
+
+.playlist-viewport {
+    height: 300px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--neon-primary) transparent;
+}
+
+.playlist-viewport::-webkit-scrollbar {
+    width: 6px;
+}
+
+.playlist-viewport::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.playlist-viewport::-webkit-scrollbar-thumb {
+    background: var(--neon-primary);
+    border-radius: 3px;
+}
+
+/* Glitch Text Effect */
+.glitch {
+    position: relative;
+    color: white;
+    animation: glitchSkew 4s infinite;
+}
+
+.glitch::before,
+.glitch::after {
+    content: attr(data-text);
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0.8;
+}
+
+.glitch::before {
+    animation: glitch 3s infinite;
+    color: var(--neon-primary);
+    z-index: -1;
+}
+
+.glitch::after {
+    animation: glitch 2s infinite reverse;
+    color: var(--neon-secondary);
+    z-index: -2;
+}
+
+ @keyframes glitch {
+    0% { transform: translate(0); }
+    20% { transform: translate(-2px, 2px); }
+    40% { transform: translate(-2px, -2px); }
+    60% { transform: translate(2px, 2px); }
+    80% { transform: translate(2px, -2px); }
+    100% { transform: translate(0); }
+}
+
+/* VU Meters */
+.vu-meter {
+    position: relative;
+    width: 30px;
+    height: 120px;
+    background: linear-gradient(to top, 
+        #ff0000 0%, 
+        #ff9900 20%, 
+        #ffff00 40%, 
+        #00ff00 60%, 
+        #00ccff 80%, 
+        #0066ff 100%);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.vu-needle {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 60%;
+    background: rgba(255, 255, 255, 0.9);
+    animation: vuPulse 1s ease-in-out infinite;
+}
+
+ @keyframes vuPulse {
+    0%, 100% { height: 40%; }
+    50% { height: 80%; }
+}
+
+/* Responsive Design */
+ @media (max-width: 1200px) {
+    .main-workspace {
+        flex-direction: column;
+    }
+    
+    .vinyl-disc {
+        width: 150px;
+        height: 150px;
+    }
+    
+    .brand-logo .logo-part-1,
+    .brand-logo .logo-part-2 {
+        font-size: 1.2rem;
+    }
+}
+
+ @media (max-width: 768px) {
+    .player-container {
+        width: 100vw;
+        height: 100vh;
+        margin: 0;
+        border-radius: 0;
+    }
+    
+    .cyber-header {
+        padding: 10px 15px;
+    }
+    
+    .physical-controls {
+        flex-direction: row;
+        justify-content: center;
+    }
+}

@@ -1,74 +1,322 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="ru" data-theme="cyberpunk">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Solar RGB Elite</title>
-    <link rel="icon" type="image/svg+xml" href="favicon.svg">
-    <link rel="stylesheet" href="style.css?v=15.0">
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
-    
+    <title>NeoVinyl | Cyberpunk Vinyl Player</title>
+    <link rel="stylesheet" href="style.css?v=2025.1">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=JetBrains+Mono:wght@300;400;500&display=swap">
+    <link rel="icon" type="image/svg+xml" href="assets/icons/vinyl-neon.svg">
+    <link rel="manifest" href="manifest.json">
+    <!-- PWA мета-теги -->
+    <meta name="theme-color" content="#0a0a1a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <script type="importmap">
     {
         "imports": {
-            "three": "https://unpkg.com/three@0.160.0/build/three.module.js"
+            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+            "three/examples/jsm/": "https://unpkg.com/three@0.160.0/examples/jsm/"
         }
     }
     </script>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
-    <div class="luxury-bg"></div>
+    <!-- Эффекты фона с WebGL -->
+    <div class="cyber-grid"></div>
+    <canvas id="bg-effects" class="bg-effects"></canvas>
     
-    <div class="player-viewport">
-        <div class="glass-chassis">
-            <!-- Top Bar -->
-            <div class="app-bar">
-                <button class="btn-icon" id="btn-genres"><span class="material-icons-round">widgets</span></button>
-                <div class="brand-badge"><span class="pulse"></span> LIVE STUDIO</div>
-                <button class="btn-icon" id="btn-playlist"><span class="material-icons-round">queue_music</span></button>
+    <!-- Основной контейнер с glassmorphism эффектом -->
+    <div class="player-container">
+        <!-- Верхняя панель с неоновыми индикаторами -->
+        <div class="cyber-header">
+            <div class="signal-indicators">
+                <div class="signal-dot active" data-frequency="FM"></div>
+                <div class="signal-dot" data-frequency="AM"></div>
+                <div class="signal-dot" data-frequency="DIGITAL"></div>
             </div>
-
-            <!-- 3D Turntable Stage -->
-            <div class="turntable-stage">
-                <div class="rgb-ambient-glow"></div>
-                <div id="canvas-container"></div>
+            
+            <div class="header-center">
+                <div class="brand-logo">
+                    <span class="logo-part-1">NEO</span>
+                    <span class="logo-part-2">VINYL</span>
+                    <div class="logo-subtitle">v2.0.25</div>
+                </div>
             </div>
-
-            <!-- Track Metadata -->
-            <div class="metadata">
-                <h1 id="track-title" class="glitch-text">Solar System</h1>
-                <p id="track-artist">Select frequency...</p>
+            
+            <div class="header-controls">
+                <button class="cyber-btn small" id="btn-theme" aria-label="Сменить тему">
+                    <span class="btn-icon">◑</span>
+                </button>
+                <button class="cyber-btn small" id="btn-visualizer" aria-label="Визуализация">
+                    <span class="btn-icon">⎊</span>
+                </button>
+                <button class="cyber-btn small" id="btn-effects" aria-label="Эффекты">
+                    <span class="btn-icon">✧</span>
+                </button>
             </div>
+        </div>
 
-            <!-- High-End Scrubber -->
-            <div class="player-core">
-                <div class="timeline">
-                    <span id="curr-time">0:00</span>
-                    <div class="scrub-track" id="seek-bar">
-                        <div class="scrub-fill" id="progress-bar"></div>
-                        <div class="scrub-handle"></div>
+        <!-- Основное рабочее пространство -->
+        <div class="main-workspace">
+            <!-- Левая панель - визуализатор и управление -->
+            <div class="visualizer-panel">
+                <!-- 3D Винтажный проигрыватель (Three.js) -->
+                <div class="turntable-container">
+                    <div class="turntable-hologram">
+                        <canvas id="turntable-3d"></canvas>
+                        <div class="turntable-glow"></div>
+                        <div class="turntable-reflection"></div>
                     </div>
-                    <span id="dur-time">0:00</span>
+                    
+                    <!-- Физические элементы управления -->
+                    <div class="physical-controls">
+                        <div class="knob-container">
+                            <div class="knob" id="volume-knob" data-value="70">
+                                <div class="knob-mark"></div>
+                                <div class="knob-glow"></div>
+                            </div>
+                            <span class="knob-label">VOLUME</span>
+                        </div>
+                        
+                        <div class="knob-container">
+                            <div class="knob" id="bass-knob" data-value="50">
+                                <div class="knob-mark"></div>
+                                <div class="knob-glow"></div>
+                            </div>
+                            <span class="knob-label">BASS</span>
+                        </div>
+                        
+                        <div class="knob-container">
+                            <div class="knob" id="treble-knob" data-value="50">
+                                <div class="knob-mark"></div>
+                                <div class="knob-glow"></div>
+                            </div>
+                            <span class="knob-label">TREBLE</span>
+                        </div>
+                    </div>
                 </div>
+                
+                <!-- Аналоговые VU-метры -->
+                <div class="vu-meters">
+                    <div class="vu-meter left">
+                        <div class="vu-scale"></div>
+                        <div class="vu-needle"></div>
+                        <div class="vu-glow"></div>
+                    </div>
+                    <div class="vu-meter right">
+                        <div class="vu-scale"></div>
+                        <div class="vu-needle"></div>
+                        <div class="vu-glow"></div>
+                    </div>
+                </div>
+            </div>
 
-                <div class="transport">
-                    <button class="btn-nav" id="btn-prev"><span class="material-icons-round">fast_rewind</span></button>
-                    <button class="btn-play" id="btn-play-pause">
-                        <span class="material-icons-round" id="icon-play">play_arrow</span>
-                    </button>
-                    <button class="btn-nav" id="btn-next"><span class="material-icons-round">fast_forward</span></button>
+            <!-- Центральная панель - информация и основные управление -->
+            <div class="center-panel">
+                <!-- Отображение трека с неоновыми эффектами -->
+                <div class="track-display">
+                    <div class="track-info">
+                        <div class="track-title-container">
+                            <h1 class="track-title glitch" id="current-track">NEON DREAMS</h1>
+                            <div class="title-hologram"></div>
+                        </div>
+                        
+                        <div class="track-artist">
+                            <span class="artist-name" id="current-artist">CYBER SYSTEMS</span>
+                            <span class="artist-badge">● LIVE</span>
+                        </div>
+                        
+                        <div class="track-album">
+                            <span class="album-name" id="current-album">DIGITAL VINYL</span>
+                            <span class="album-year">2025</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Виниловая пластинка с анимацией -->
+                    <div class="vinyl-animation">
+                        <div class="vinyl-disc">
+                            <div class="vinyl-grooves">
+                                <div class="groove groove-1"></div>
+                                <div class="groove groove-2"></div>
+                                <div class="groove groove-3"></div>
+                                <div class="groove groove-4"></div>
+                            </div>
+                            <div class="vinyl-label">
+                                <div class="label-inner">
+                                    <span class="label-text">NEO</span>
+                                </div>
+                            </div>
+                            <div class="vinyl-reflection"></div>
+                            <div class="tonearm">
+                                <div class="arm-base"></div>
+                                <div class="arm-rod"></div>
+                                <div class="arm-head"></div>
+                                <div class="arm-needle"></div>
+                            </div>
+                        </div>
+                        <div class="vinyl-glow"></div>
+                    </div>
                 </div>
+                
+                <!-- Прогресс бар с неоновым свечением -->
+                <div class="progress-section">
+                    <div class="time-display">
+                        <span class="time-current" id="time-current">0:00</span>
+                        <span class="time-total" id="time-total">4:20</span>
+                    </div>
+                    
+                    <div class="progress-container">
+                        <div class="progress-track">
+                            <div class="progress-fill" id="progress-fill"></div>
+                            <div class="progress-glow"></div>
+                            <div class="progress-handle" id="progress-handle">
+                                <div class="handle-core"></div>
+                                <div class="handle-glow"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="progress-waveform">
+                            <canvas id="waveform-canvas"></canvas>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Основные кнопки управления -->
+                <div class="transport-controls">
+                    <button class="control-btn secondary" id="btn-prev" aria-label="Предыдущий трек">
+                        <span class="btn-icon">⏮</span>
+                        <span class="btn-label">PREV</span>
+                    </button>
+                    
+                    <button class="control-btn play-btn" id="btn-play">
+                        <div class="play-icon">
+                            <span class="icon-default">▶</span>
+                            <span class="icon-pause">⏸</span>
+                        </div>
+                        <div class="btn-hologram"></div>
+                        <span class="btn-glow"></span>
+                    </button>
+                    
+                    <button class="control-btn secondary" id="btn-next" aria-label="Следующий трек">
+                        <span class="btn-icon">⏭</span>
+                        <span class="btn-label">NEXT</span>
+                    </button>
+                    
+                    <button class="control-btn tertiary" id="btn-repeat" aria-label="Повтор">
+                        <span class="btn-icon">🔁</span>
+                    </button>
+                    
+                    <button class="control-btn tertiary" id="btn-shuffle" aria-label="Перемешать">
+                        <span class="btn-icon">🔀</span>
+                    </button>
+                </div>
+                
+                <!-- Эквалайзер с неоновыми ползунками -->
+                <div class="equalizer-section">
+                    <div class="eq-sliders" id="eq-sliders">
+                        <!-- Сгенерируется динамически -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Правая панель - плейлист и настройки -->
+            <div class="right-panel">
+                <!-- Плейлист в стиле терминала -->
+                <div class="playlist-terminal">
+                    <div class="terminal-header">
+                        <span class="terminal-title">[PLAYLIST]</span>
+                        <div class="terminal-controls">
+                            <span class="terminal-stat">TRACKS: <span id="track-count">12</span></span>
+                        </div>
+                    </div>
+                    
+                    <div class="playlist-viewport">
+                        <div class="playlist-list" id="playlist-tracks">
+                            <!-- Треки загружаются динамически -->
+                        </div>
+                    </div>
+                    
+                    <div class="terminal-footer">
+                        <span class="terminal-cursor">></span>
+                        <span class="terminal-input" id="current-playing">SELECTING...</span>
+                    </div>
+                </div>
+                
+                <!-- Настройки звука -->
+                <div class="audio-settings">
+                    <div class="setting-group">
+                        <label class="setting-label">SPATIAL AUDIO</label>
+                        <div class="toggle-switch">
+                            <input type="checkbox" id="toggle-spatial" class="toggle-input">
+                            <label for="toggle-spatial" class="toggle-slider">
+                                <span class="toggle-glow"></span>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="setting-group">
+                        <label class="setting-label">BLOOM INTENSITY</label>
+                        <input type="range" id="bloom-intensity" min="0" max="100" value="40" class="neon-slider">
+                    </div>
+                    
+                    <div class="setting-group">
+                        <label class="setting-label">GLITCH EFFECT</label>
+                        <input type="range" id="glitch-intensity" min="0" max="100" value="20" class="neon-slider">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Нижняя панель - расширенные элементы управления -->
+        <div class="bottom-bar">
+            <div class="spectrum-display">
+                <canvas id="spectrum-canvas"></canvas>
+            </div>
+            
+            <div class="system-info">
+                <div class="info-item">
+                    <span class="info-label">BITRATE</span>
+                    <span class="info-value" id="bitrate-value">320 kbps</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">SAMPLE</span>
+                    <span class="info-value" id="sample-rate">48 kHz</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">BUFFER</span>
+                    <span class="info-value" id="buffer-state">STABLE</span>
+                </div>
+            </div>
+            
+            <div class="connection-status">
+                <div class="connection-dot connected"></div>
+                <span class="connection-text">SYNC: ONLINE</span>
             </div>
         </div>
     </div>
 
-    <!-- UI Overlays -->
-    <div class="modal-overlay" id="overlay"></div>
-    <div class="side-drawer" id="drawer-genres"><div class="drawer-header"><h2>Genres</h2></div><div class="genre-grid" id="genre-grid"></div></div>
-    <div class="side-drawer" id="drawer-playlist"><div class="drawer-header"><h2>Queue</h2></div><div class="playlist-list" id="playlist-content"></div></div>
+    <!-- Модальные окна и оверлеи -->
+    <div class="modal-overlay" id="genre-modal">
+        <div class="modal-content cyber-modal">
+            <div class="modal-header">
+                <h2 class="modal-title">GENRE MATRIX</h2>
+                <button class="modal-close" id="close-genre">✕</button>
+            </div>
+            <div class="genre-grid" id="genre-grid"></div>
+        </div>
+    </div>
 
-    <audio id="audio-player" crossorigin="anonymous" playsinline></audio>
+    <!-- Аудио элемент -->
+    <audio id="audio-engine" crossorigin="anonymous" preload="metadata"></audio>
+
+    <!-- Scripts -->
     <script type="module" src="js/main.js"></script>
+    <script>
+        // Регистрация Service Worker для PWA
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/service-worker.js');
+        }
+    </script>
 </body>
 </html>
