@@ -26,11 +26,11 @@ def preload_paths(catalog, parent_path=""):
             preload_paths(val, curr_path)
 
 # Заполнить PATH_STORE при импорте
-settings = get_settings()
-preload_paths(settings.MUSIC_CATALOG)
+from config import MUSIC_CATALOG
+preload_paths(MUSIC_CATALOG)
 
 def get_main_menu_keyboard():
-    categories = list(settings.MUSIC_CATALOG.keys())
+    categories = list(MUSIC_CATALOG.keys())
     keyboard = []
     for cat in categories:
         cb = "cat|" + shorten_path(cat)
@@ -40,7 +40,7 @@ def get_main_menu_keyboard():
 
 def get_subcategory_keyboard(path_str):
     path = path_str.split('|')
-    current_level = settings.MUSIC_CATALOG
+    current_level = MUSIC_CATALOG
     for p in path:
         current_level = current_level[p]
     keyboard = []
