@@ -8,7 +8,6 @@ export function playTrack(index) {
     store.currentTrackIndex = index;
     const track = store.playlist[index];
     
-    // ВАЖНО: Путь должен соответствовать main.py
     elements.audio.src = `/audio/${track.identifier}.mp3`;
     elements.audio.load();
     
@@ -26,7 +25,8 @@ export function togglePlay() {
         elements.audio.pause();
         store.isPlaying = false;
     }
-    render();
+    const icon = document.getElementById('icon-play');
+    icon.textContent = store.isPlaying ? 'pause' : 'play_arrow';
 }
 
 function updateUI(track) {

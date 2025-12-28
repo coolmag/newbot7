@@ -7,8 +7,7 @@ export function initializeVisualizer(audioElement) {
     if (isInitialized) return;
 
     const container = document.getElementById('canvas-container');
-    const w = container.clientWidth;
-    const h = container.clientHeight;
+    const w = container.clientWidth, h = container.clientHeight;
 
     scene = new THREE.Scene();
     camera = new THREE.PerspectiveCamera(45, w / h, 0.1, 1000);
@@ -19,25 +18,21 @@ export function initializeVisualizer(audioElement) {
     // Геометрия винила
     const geometry = new THREE.CylinderGeometry(2, 2, 0.08, 64);
     const material = new THREE.MeshStandardMaterial({ 
-        color: 0x121212, 
-        roughness: 0.3, 
-        metalness: 0.8 
+        color: 0x111111, roughness: 0.2, metalness: 0.9 
     });
     disc = new THREE.Mesh(geometry, material);
-    disc.rotation.x = Math.PI / 2.3;
+    disc.rotation.x = Math.PI / 2.2;
     scene.add(disc);
 
-    // Добавляем освещение для блеска
-    const light1 = new THREE.PointLight(0xffffff, 50);
-    light1.position.set(2, 5, 5);
-    scene.add(light1);
-    
-    const light2 = new THREE.AmbientLight(0x404040, 2);
-    scene.add(light2);
+    // Свет (для бликов на виниле)
+    const pLight = new THREE.PointLight(0xffffff, 80);
+    pLight.position.set(2, 5, 5);
+    scene.add(pLight);
+    scene.add(new THREE.AmbientLight(0x404040, 3));
 
     camera.position.z = 5.5;
 
-    // Анализатор
+    // Анализатор звука
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     const source = audioCtx.createMediaElementSource(audioElement);
     analyzer = audioCtx.createAnalyser();
@@ -56,13 +51,13 @@ function animate() {
         analyzer.getByteFrequencyData(dataArray);
         const volume = dataArray[0] / 255;
         
-        // Вращение и пульсация
-        disc.rotation.y += 0.02 + volume * 0.1;
-        const scale = 1 + volume * 0.15;
-        disc.scale.set(scale, 1, scale);
+        // Вращение и реакция на бас
+        disc.rotation.y += 0.02 + volume * 0.2;
+        const s = 1 + volume * 0.12;
+        disc.scale.set(s, 1, s);
 
-        // Синхронизация LED ленты через CSS переменные
-        document.documentElement.style.setProperty('--led-speed', `${0.5 + (1 - volume)}s`);
+        // Синхронизация RGB кольца (через CSS)
+        document.documentElement.style.setProperty('--led-speed', `${0.2 + (1 - volume) * 2}s`);
     }
     renderer.render(scene, camera);
 }
