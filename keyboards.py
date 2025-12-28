@@ -25,29 +25,22 @@ def get_subcategory_keyboard(path_str: str):
 
     keyboard = []
     for name, val in current_level.items():
+        # Сокращаем путь для кнопок, если он слишком длинный
         full_path = f"{path_str}|{name}"
         
-        # Проверяем, что callback_data не превышает лимит Telegram в 64 байта
-        # Префикс 'cat|' или 'play_cat|' + сам путь
-        if len(full_path.encode('utf-8')) > 54:
-             # Если путь слишком длинный, пропускаем этот пункт меню
-             # В реальном приложении здесь может быть логирование или альтернативная логика
-            continue
-
+        # Если это папка (dict)
         if isinstance(val, dict):
-            callback = f"cat|{full_path}"
-            keyboard.append([InlineKeyboardButton(f"📂 {name}", callback_data=callback)])
+            # Используем сокращение 'c|' вместо 'cat|' для экономии места
+            cb = f"cat|{full_path}"
+            if len(cb.encode()) <= 64:
+                keyboard.append([InlineKeyboardButton(f"📂 {name}", callback_data=cb)])
         else:
-            callback = f"play_cat|{full_path}"
-            keyboard.append([InlineKeyboardButton(f"▶️ {name}", callback_data=callback)])
+            cb = f"play_cat|{full_path}"
+            if len(cb.encode()) <= 64:
+                keyboard.append([InlineKeyboardButton(f"▶️ {name}", callback_data=cb)])
             
-    # Кнопка «Назад»
-    if '|' in path_str:
-        parent_path = '|'.join(path[:-1])
-        back_cb = f"cat|{parent_path}"
-        keyboard.append([InlineKeyboardButton("🔙 Назад", callback_data=back_cb)])
-    else:
-        keyboard.append([InlineKeyboardButton("🔙 В главное меню", callback_data="main_menu")])
+    # Кнопка назад
+    keyboard.append([InlineKeyboardButton("🔙 Назад", callback_data="main_menu_genres")])
         
     return InlineKeyboardMarkup(keyboard)
 

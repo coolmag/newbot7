@@ -6,8 +6,9 @@ from datetime import timedelta
 from typing import List
 
 from fastapi import FastAPI, Request
-from fastapi.responses import RedirectResponse, JSONResponse
+from fastapi.responses import RedirectResponse, JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
 from telegram import Update
 from telegram.ext import Application
 
@@ -105,6 +106,36 @@ async def lifespan(app: FastAPI):
     logger.info("✅ Shutdown complete.")
 
 app = FastAPI(lifespan=lifespan)
+
+# --- CORS Middleware ---
+# Разрешаем запросы от веб-плеера
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # В продакшене лучше указать конкретный домен
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+@app.get("/audio/{video_id}.mp3")
+async def get_audio_file(video_id: str, request: Request):
+    """
+    Отдаёт аудиофайл для воспроизведения в веб-плеере.
+    """
+    downloader: YouTubeDownloader = request.app.state.downloader
+    file_path = downloader._find_downloaded_file(video_id)
+    
+    if file_path and file_path.exists():
+        return FileResponse(file_path, media_type="audio/mpeg", filename=f"{video_id}.mp3")
+    
+    # Если файл не найден, пытаемся его скачать
+    logger.info(f"Audio file not found for {video_id}, attempting to download...")
+    result = await downloader.download(video_id)
+    if result.success and result.file_path and result.file_path.exists():
+         return FileResponse(result.file_path, media_type="audio/mpeg", filename=f"{video_id}.mp3")
+
+    return JSONResponse(status_code=404, content={"message": "Audio file not found"})
+
 
 @app.get("/api/health")
 async def health():
