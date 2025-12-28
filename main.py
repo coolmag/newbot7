@@ -47,7 +47,15 @@ async def lifespan(app: FastAPI):
     app.state.downloader = downloader # Store for API endpoints
     
     # 5. Создаём Telegram Application (с Bot'ом внутри)
-    tg_app = Application.builder().token(settings.BOT_TOKEN).build()
+    builder = Application.builder().token(settings.BOT_TOKEN)
+    
+    # Добавляем поддержку прокси, если он указан в настройках
+    if settings.PROXY_URL:
+        logger.info(f"Using proxy: {settings.PROXY_URL}")
+        builder.proxy_url(settings.PROXY_URL)
+        builder.get_updates_proxy_url(settings.PROXY_URL)
+        
+    tg_app = builder.build()
     
     # 6. Создаём RadioManager с Bot'ом из Application (ВАЖНО!)
     radio_manager = RadioManager(

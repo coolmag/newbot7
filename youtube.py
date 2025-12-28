@@ -96,8 +96,10 @@ class YouTubeDownloader:
             cache_key = f"yt_search_v9:{query.lower().strip()}:{search_mode}:{decade}"
             cached_tracks = await self._cache.get(cache_key)
             if cached_tracks is not None:
+                logger.info(f"[Search] Cache HIT for query '{query}'")
                 return cached_tracks
 
+            logger.info(f"[Search] Cache MISS for query '{query}'")
             is_russian_query = any(word in query.lower() for word in ['советск', 'русск', 'ссср'])
             
             if search_mode == 'artist':

@@ -27,11 +27,25 @@ logger = logging.getLogger("handlers")
 # ==================== КОМАНДЫ ====================
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Обрабатывает команду /start, отображая главное меню жанров."""
-    text = "🎧 *Музыкальный комбайн*\n\nНажмите кнопку ниже, чтобы открыть меню жанров или воспользуйтесь командами:\n\n/play `<название>` - поиск трека\n/radio - случайная волна"
-    markup = InlineKeyboardMarkup([
+    """Обрабатывает команду /start, отображая главное меню и кнопку плеера."""
+    # Получаем настройки для доступа к BASE_URL
+    settings: Settings = context.application.settings
+    
+    text = (
+        "🎧 *Музыкальный комбайн*\n\n"
+        "Нажмите кнопку ниже, чтобы запустить веб-плеер или открыть меню жанров.\n\n"
+        "Команды:\n"
+        "/play `<название>` - поиск трека\n"
+        "/radio - случайная волна"
+    )
+    
+    # ВОТ ЗДЕСЬ БЫЛА ПРОБЛЕМА: Добавлена кнопка запуска WebApp
+    keyboard = [
+        [InlineKeyboardButton("🎧 Открыть плеер", web_app=WebAppInfo(url=settings.BASE_URL))],
         [InlineKeyboardButton("🗂 Открыть меню жанров", callback_data="main_menu_genres")]
-    ])
+    ]
+    
+    markup = InlineKeyboardMarkup(keyboard)
 
     if update.callback_query:
         await update.callback_query.answer()
