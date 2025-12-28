@@ -10,62 +10,190 @@ from pydantic import field_validator
 # ГЛОБАЛЬНЫЙ КАТАЛОГ ЖАНРОВ
 # ===========================
 MUSIC_CATALOG = {
+    # =========================
+    # 🔥 ТОП / БЫСТРЫЙ СТАРТ
+    # =========================
     "🔥 Топ-чарты": {
-        "Global Top 50": "top 50 global official playlist -mix",
-        "Viral Hits": "tiktok viral hits -playlist -mix",
+        "Global Top 50": "top 50 global hits official",
+        "Viral / TikTok": "tiktok viral hits music",
+        "Fresh 2024–2025": "new music hits 2024 2025"
     },
-    "🎶 По настроению": {
-        "🏃‍♂️ Тренировка": "gym workout music motivational -mix -playlist",
-        "☕️ Чилаут": "chill lofi hip hop beats to relax -mix -playlist",
-        "🎉 Вечеринка": "party hits pop dance -mix -playlist",
-        "❤️ Романтика": "romantic love songs -mix -playlist",
-        "😢 Грусть": "sad songs for broken hearts -mix -playlist",
-    },
-    "📅 По десятилетиям": {
-        "🕺 80-е": "80s greatest hits -mix -playlist",
-        "🎸 90-е": "90s greatest hits -mix -playlist",
-        "✨ 00-е": "2000s greatest hits -mix -playlist",
-        "📱 10-е": "2010s greatest hits -mix -playlist",
-    },
-    "🎸 Рок": {
+
+    # =========================
+    # 🎸 ROCK
+    # =========================
+    "🎸 Rock": {
         "Classic Rock": {
-            "🦰 70-е": "70s classic rock anthems",
-            "👨‍🎤 80-е": "80s classic rock anthems",
+            "All": "classic rock greatest hits",
+            "1960s": "60s classic rock",
+            "1970s": "70s classic rock led zeppelin pink floyd",
+            "1980s": "80s classic rock"
         },
-        "Alternative & Indie": {
-            "🤘 Все подряд": "90s 2000s alternative rock indie -mix -playlist",
-            "🎸 90-е": "90s alternative rock indie",
-            "✨ 00-е": "2000s alternative rock indie",
+        "Alternative Rock": {
+            "All": "alternative rock mix",
+            "1990s": "90s alternative rock nirvana pearl jam",
+            "2000s": "2000s alternative rock linkin park muse",
+            "2010s": "2010s alternative rock"
         },
-        "Hard Rock & Metal": "hard rock heavy metal -mix -playlist",
-        "Punk Rock": "punk rock classics ramones misfits -mix -playlist",
-    },
-    "🎤 Хип-хоп": {
-        "Old-School 80s & 90s": "old school hip hop 80s 90s -mix -playlist",
-        "Golden Age": "90s boom bap hip hop wu-tang nas -mix -playlist",
-        "Modern Trap": "trap music -mix -playlist",
-        "R&B Classics": "90s 2000s r&b classics -mix -playlist",
-    },
-    "🎧 Электроника": {
-        "House": "deep house -mix -playlist",
-        "Techno": "techno club -mix -playlist",
-        "Trance": "vocal trance anthems -mix -playlist",
-        "Drum & Bass": "liquid drum & bass -mix -playlist",
-    },
-    "✨ Поп": {
-        "80s Synth-Pop": "synth-pop 80s hits -mix -playlist",
-        "90s Pop": {
-             "💖 Все подряд": "90s pop hits",
-             "🇷🇺 Русская": "русская поп-музыка 90-х",
-             "🌍 Зарубежная": "90s foreign pop hits",
+        "Indie Rock": {
+            "All": "indie rock mix",
+            "2000s": "2000s indie rock the strokes",
+            "2010s": "2010s indie rock"
         },
-        "00s Pop": {
-             "🔥 Все подряд": "2000s pop hits",
-             "🇷🇺 Русская": "русская поп-музыка 2000-х",
-             "🌍 Зарубежная": "foreign pop hits 2000s",
+        "Hard Rock": {
+            "All": "hard rock greatest hits",
+            "1980s": "80s hard rock guns n roses acdc",
+            "1990s": "90s hard rock"
         },
-        "Modern Pop": "today's top pop hits -mix -playlist",
+        "Metal": {
+            "Classic Metal": "classic heavy metal iron maiden judas priest",
+            "Nu Metal": "nu metal linkin park limp bizkit",
+            "Modern Metal": "modern metal core"
+        },
+        "Punk Rock": {
+            "Classic Punk": "classic punk ramones sex pistols",
+            "Pop Punk": "pop punk blink 182 green day"
+        }
     },
+
+    # =========================
+    # 🎷 JAZZ / BLUES / SOUL
+    # =========================
+    "🎷 Jazz & Blues": {
+        "Classic Jazz": {
+            "All": "classic jazz greatest hits",
+            "1940s–50s": "bebop jazz miles davis charlie parker",
+            "1960s": "modal jazz john coltrane"
+        },
+        "Smooth Jazz": {
+            "All": "smooth jazz chill",
+            "1990s": "90s smooth jazz",
+            "2000s": "2000s smooth jazz"
+        },
+        "Blues": {
+            "Delta Blues": "delta blues classics",
+            "Blues Rock": "blues rock guitar legends",
+            "Modern Blues": "modern blues rock"
+        },
+        "Soul & Funk": {
+            "Classic Soul": "classic soul marvin gaye otis reddin",
+            "Funk": "70s funk classics"
+        }
+    },
+
+    # =========================
+    # 🎤 HIP-HOP / R&B
+    # =========================
+    "🎤 Hip-Hop & R&B": {
+        "Old School": {
+            "1980s": "80s hip hop old school",
+            "1990s": "90s hip hop golden age"
+        },
+        "2000s Era": {
+            "All": "2000s hip hop classics",
+            "East Coast": "2000s east coast hip hop",
+            "West Coast": "2000s west coast hip hop"
+        },
+        "Modern Hip-Hop": {
+            "Trap": "modern trap hip hop",
+            "Drill": "drill hip hop",
+            "Cloud": "cloud rap"
+        },
+        "R&B": {
+            "1990s": "90s rnb classics",
+            "2000s": "2000s rnb hits",
+            "Neo Soul": "neo soul rnb"
+        }
+    },
+
+    # =========================
+    # 🎧 ELECTRONIC
+    # =========================
+    "🎧 Electronic": {
+        "House": {
+            "All": "house music mix",
+            "1990s": "90s house music",
+            "2000s": "2000s house music",
+            "Deep House": "deep house"
+        },
+        "Techno": {
+            "All": "techno club mix",
+            "Minimal": "minimal techno",
+            "Industrial": "industrial techno"
+        },
+        "Trance": {
+            "Classic": "classic trance anthems",
+            "Uplifting": "uplifting trance"
+        },
+        "Drum & Bass": {
+            "Liquid": "liquid drum and bass",
+            "Neurofunk": "neurofunk dnb"
+        },
+        "Synth / Retro": {
+            "Synthwave": "synthwave retrowave",
+            "Retrowave": "retro wave 80s style"
+        }
+    },
+
+    # =========================
+    # ✨ POP
+    # =========================
+    "✨ Pop": {
+        "1980s": "80s pop hits michael jackson madonna",
+        "1990s": {
+            "All": "90s pop hits",
+            "Eurodance": "90s eurodance hits",
+            "US / UK": "90s pop usa uk"
+        },
+        "2000s": {
+            "All": "2000s pop hits",
+            "MTV Era": "2000s mtv pop hits"
+        },
+        "Modern Pop": "modern pop hits"
+    },
+
+    # =========================
+    # 🇷🇺 RUSSIAN MUSIC
+    # =========================
+    "🇷🇺 Russian Music": {
+        "Soviet & Retro": {
+            "Golden Hits": "лучшие песни ссср 70 80",
+            "Movies": "песни из советских фильмов",
+            "VIA": "виа ссср песняры самоцветы"
+        },
+        "Russian Rock": {
+            "Legends": "русский рок кино би 2 сплин",
+            "Modern": "современный русский рок",
+            "Punk": "король и шут сектор газа"
+        },
+        "Russian Pop": {
+            "1990s": "русская дискотека 90",
+            "2000s": "русские хиты 2000",
+            "Modern": "русские поп хиты 2024"
+        },
+        "Russian Rap": {
+            "Old School": "русский рэп 2000 баста гуф",
+            "New School": "русский рэп новинки",
+            "Chill / Lyric": "лирика русский рэп"
+        }
+    },
+
+    # =========================
+    # 🎯 MOODS / USE CASES
+    # =========================
+    "🎯 Mood & Activity": {
+        "Work / Focus": "deep focus music for work",
+        "Gym": "gym workout motivation music",
+        "Chill / Relax": "chill lofi beats",
+        "Party": "party dance hits",
+        "Night Drive": "night drive music",
+        "Sleep / Ambient": "ambient music for sleep",
+        "Classical": {
+            "Baroque": "baroque classical music",
+            "Romantic": "romantic era classical music",
+            "Modern": "modern classical music"
+        }
+    }
 }
 
 class Settings(BaseSettings):
