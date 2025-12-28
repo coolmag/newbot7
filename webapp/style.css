@@ -1,73 +1,56 @@
-:root {
-    --accent: #00f2ff;
-    --glass: rgba(255, 255, 255, 0.05);
-    --border: rgba(255, 255, 255, 0.1);
-}
+:root { --neon: #00f2ff; --led-speed: 3s; }
 
-body, html {
-    margin: 0; padding: 0; width: 100%; height: 100%;
-    background: radial-gradient(circle at center, #1a1a2e 0%, #050505 100%);
-    color: white; font-family: 'Inter', sans-serif; overflow: hidden;
-}
+body { margin: 0; background: #050508; color: white; font-family: 'Inter', sans-serif; overflow: hidden; }
 
-.app-container {
-    display: flex; justify-content: center; align-items: center;
-    width: 100%; height: 100vh;
-}
+.bg-blur { position: fixed; inset: 0; background: radial-gradient(circle at 50% 50%, #1a1a2e, #050508); z-index: -1; }
 
-.glass-card {
-    width: 90%; max-width: 400px;
-    background: var(--glass);
-    backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px);
-    border: 1px solid var(--border);
-    border-radius: 40px; padding: 30px;
-    box-shadow: 0 40px 100px rgba(0,0,0,0.5);
+.player-wrapper { display: flex; justify-content: center; align-items: center; height: 100vh; width: 100vw; }
+
+.main-card {
+    width: 350px; background: rgba(255, 255, 255, 0.03); 
+    backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px);
+    border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 50px;
+    padding: 30px; box-shadow: 0 50px 100px rgba(0,0,0,0.6);
     display: flex; flex-direction: column; align-items: center;
 }
 
-/* 3D Container & RGB Ring */
-.main-visualizer {
-    position: relative; width: 260px; height: 260px; margin: 20px 0;
-}
-
-.rgb-ring {
+/* RGB ЛЕНТА */
+.visual-engine { position: relative; width: 280px; height: 280px; margin: 15px 0; }
+.led-border {
     position: absolute; inset: 0; border-radius: 50%;
-    background: conic-gradient(from 0deg, #ff0000, #ff00ff, #0000ff, #00ffff, #00ff00, #ffff00, #ff0000);
-    mask: radial-gradient(transparent 68%, black 69%);
-    -webkit-mask: radial-gradient(transparent 68%, black 69%);
-    animation: rotate 3s linear infinite; filter: blur(1px) brightness(1.2);
+    background: conic-gradient(red, #ff00ff, blue, #00ffff, lime, yellow, red);
+    mask: radial-gradient(transparent 66%, black 67%);
+    -webkit-mask: radial-gradient(transparent 66%, black 67%);
+    animation: rotate var(--led-speed) linear infinite; filter: blur(1px) brightness(1.5); box-shadow: 0 0 20px rgba(0,242,255,0.2);
 }
 
-#canvas-container {
-    position: absolute; inset: 15%; z-index: 5;
-}
-
-/* Controls & UI */
-.top-bar { width: 100%; display: flex; justify-content: space-between; align-items: center; }
-.status-pill { background: rgba(255,255,255,0.08); padding: 6px 15px; border-radius: 20px; font-size: 11px; letter-spacing: 1px; display: flex; align-items: center; gap: 8px; }
-.dot { width: 6px; height: 6px; background: var(--accent); border-radius: 50%; box-shadow: 0 0 10px var(--accent); }
-
-.track-details { text-align: center; margin: 15px 0; width: 100%; }
-.track-details h1 { font-size: 20px; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.track-details p { color: #888; font-size: 14px; margin: 5px 0 0; }
-
-.main-controls { display: flex; align-items: center; gap: 25px; margin-top: 10px; }
-.play-btn { width: 75px; height: 75px; border-radius: 50%; border: none; background: white; color: black; display: flex; justify-content: center; align-items: center; cursor: pointer; transition: 0.2s; }
-.play-btn:active { transform: scale(0.9); }
-.play-btn .material-icons-round { font-size: 40px; }
-.side-btn { background: none; border: none; color: white; cursor: pointer; opacity: 0.6; }
-
-.progress-container { width: 100%; margin: 10px 0; }
-.bar-bg { width: 100%; height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; position: relative; cursor: pointer; }
-.bar-fill { position: absolute; left: 0; top: 0; height: 100%; background: var(--accent); border-radius: 3px; box-shadow: 0 0 15px var(--accent); width: 0%; }
-.time-info { display: flex; justify-content: space-between; font-size: 10px; margin-bottom: 5px; color: #666; }
+#canvas-container { position: absolute; inset: 10%; z-index: 10; cursor: pointer; }
 
  @keyframes rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
-/* Drawer Styles */
-.drawer { position: fixed; bottom: 0; left: 0; right: 0; background: #111; border-radius: 30px 30px 0 0; padding: 25px; transform: translateY(100%); transition: 0.4s cubic-bezier(0.1, 0.7, 0.1, 1); z-index: 2000; }
+/* TYPOGRAPHY */
+.track-meta { text-align: center; margin-bottom: 20px; width: 100%; }
+.track-meta h2 { font-size: 22px; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.track-meta p { color: #777; margin: 5px 0 0; font-size: 14px; }
+
+/* CONTROLS */
+.controls-row { display: flex; align-items: center; gap: 30px; margin-top: 25px; }
+.play-trigger {
+    width: 75px; height: 75px; border-radius: 50%; border: none;
+    background: white; color: black; display: flex; justify-content: center; align-items: center;
+    box-shadow: 0 10px 30px rgba(255,255,255,0.2); cursor: pointer;
+}
+.play-trigger .material-icons-round { font-size: 45px; }
+.nav-btn { background: none; border: none; color: white; opacity: 0.6; cursor: pointer; }
+
+/* DRAWER & OVERLAY */
+.drawer { 
+    position: fixed; bottom: 0; left: 0; right: 0; background: #0f0f13; 
+    border-radius: 40px 40px 0 0; padding: 25px; transform: translateY(100%); 
+    transition: 0.4s cubic-bezier(0, 0.5, 0.5, 1); z-index: 2000;
+}
 .drawer.active { transform: translateY(0); }
-.overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(5px); display: none; z-index: 1500; }
+.overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(10px); display: none; z-index: 1500; }
 .overlay.active { display: block; }
 .genre-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .genre-card { background: #1d1d1f; border: 1px solid #333; color: white; padding: 20px; border-radius: 20px; cursor: pointer; font-weight: 600; }

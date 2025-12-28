@@ -5,68 +5,61 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Solar RGB Pro</title>
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
-    <link rel="stylesheet" href="style.css?v=9.0">
+    <link rel="stylesheet" href="style.css?v=11.0">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
     <script type="importmap">
-    {
-        "imports": {
-            "three": "https://unpkg.com/three@0.160.0/build/three.module.js"
-        }
-    }
+    { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }
     </script>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
-    <div class="app-container">
-        <div class="glass-card">
+    <div class="bg-blur"></div>
+    <div class="player-wrapper">
+        <div class="main-card">
             <!-- Top Bar -->
-            <div class="top-bar">
-                <button class="icon-btn" id="btn-genres"><span class="material-icons-round">grid_view</span></button>
-                <div class="status-pill"><span class="dot"></span> <span id="current-genre">SOLAR RADIO</span></div>
-                <button class="icon-btn" id="btn-playlist"><span class="material-icons-round">auto_awesome_motion</span></button>
+            <div class="header">
+                <button class="glass-btn" id="btn-genres"><span class="material-icons-round">grid_view</span></button>
+                <div class="badge"><span></span> RGB LIVE</div>
+                <button class="glass-btn" id="btn-playlist"><span class="material-icons-round">queue_music</span></button>
             </div>
 
             <!-- Visualizer Section -->
-            <div class="main-visualizer">
-                <div class="rgb-ring"></div>
-                <div id="canvas-container"></div>
+            <div class="visual-engine">
+                <div class="led-border"></div> <!-- "Адресная лента" -->
+                <div id="canvas-container"></div> <!-- 3D Винил -->
             </div>
 
-            <!-- Info Section -->
-            <div class="track-details">
-                <h1 id="track-title">Музыка не выбрана</h1>
+            <!-- Metadata -->
+            <div class="track-meta">
+                <h2 id="track-title">Музыка не выбрана</h2>
                 <p id="track-artist">Нажмите кнопку «Жанры»</p>
             </div>
 
-            <!-- Progress Section -->
-            <div class="progress-container">
-                <div class="time-info">
-                    <span id="curr-time">0:00</span>
-                    <span id="dur-time">0:00</span>
+            <!-- UI Controls -->
+            <div class="player-ui">
+                <div class="time-row"><span id="curr-time">0:00</span><span id="dur-time">0:00</span></div>
+                <div class="seek-bg" id="seek-bar"><div class="seek-fill" id="progress-bar"></div></div>
+                
+                <div class="controls-row">
+                    <button class="nav-btn" id="btn-prev"><span class="material-icons-round">skip_previous</span></button>
+                    <button class="play-trigger" id="btn-play-pause">
+                        <span class="material-icons-round" id="icon-play">play_arrow</span>
+                    </button>
+                    <button class="nav-btn" id="btn-next"><span class="material-icons-round">skip_next</span></button>
                 </div>
-                <div class="bar-bg" id="progress-clickable">
-                    <div class="bar-fill" id="progress-bar"></div>
-                </div>
-            </div>
-
-            <!-- Control Bar -->
-            <div class="main-controls">
-                <button class="side-btn" id="btn-prev"><span class="material-icons-round">skip_previous</span></button>
-                <button class="play-btn" id="btn-play-pause"><span class="material-icons-round" id="icon-play">play_arrow</span></button>
-                <button class="side-btn" id="btn-next"><span class="material-icons-round">skip_next</span></button>
             </div>
         </div>
     </div>
 
-    <!-- Drawers -->
+    <!-- Modals -->
     <div class="overlay" id="overlay"></div>
     <div class="drawer" id="drawer-genres">
-        <div class="drawer-header"><h3>Выберите жанр</h3></div>
-        <div class="genre-grid" id="genre-grid"></div>
+        <div class="drawer-bar"></div>
+        <div class="grid" id="genre-grid"></div>
     </div>
     <div class="drawer" id="drawer-playlist">
-        <div class="drawer-header"><h3>Очередь</h3></div>
-        <div id="playlist-content"></div>
+        <div class="drawer-bar"></div>
+        <div class="list" id="playlist-content"></div>
     </div>
 
     <audio id="audio-player" crossorigin="anonymous" playsinline></audio>
