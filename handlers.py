@@ -5,7 +5,7 @@ import asyncio
 from math import ceil
 from typing import Optional
 
-from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
+from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
 from telegram.constants import ParseMode
 from telegram.ext import (
     Application, CommandHandler, ContextTypes, CallbackQueryHandler,
@@ -19,8 +19,7 @@ from keyboards import (
     get_track_search_keyboard, 
     get_pagination_keyboard, 
     get_main_menu_keyboard, 
-    get_subcategory_keyboard,
-    resolve_path
+    get_subcategory_keyboard
 )
 
 
@@ -48,6 +47,15 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
             text, parse_mode=ParseMode.MARKDOWN, reply_markup=markup
         )
     return MENU
+
+async def player_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Отправляет кнопку для запуска веб-плеера."""
+    settings: Settings = context.application.settings
+    text = "👇 Нажмите кнопку ниже, чтобы открыть полнофункциональный веб-плеер."
+    markup = InlineKeyboardMarkup([
+        [InlineKeyboardButton("🎧 Открыть плеер", web_app=WebAppInfo(url=settings.WEBHOOK_URL))]
+    ])
+    await update.message.reply_text(text, reply_markup=markup)
 
 async def stop_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Останавливает воспроизведение радио."""
@@ -92,18 +100,18 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
     # Навигация по категориям
     if data.startswith("cat|"):
-        path_hash = data.removeprefix("cat|")
-        path_str = resolve_path(path_hash)
+        path_str = data.removeprefix("cat|")
         if not path_str:
-            await query.edit_message_text("❗️Меню устарело. Пожалуйста, откройте заново.", reply_markup=get_main_menu_keyboard())
-            return MENU
-            
+            return await start(update, context) # Возврат в главное меню, если путь пустой
+
         path = path_str.split('|')
-        current_level = MUSIC_CATALOG
+        
+        # Проверяем, что навигация по структуре прошла успешно
         try:
-            for p in path: # Corrected from path[:-1]
+            current_level = MUSIC_CATALOG
+            for p in path:
                 current_level = current_level[p]
-        except (KeyError, TypeError):
+        except KeyError:
             await query.edit_message_text("❌ Ошибка в структуре меню!", reply_markup=get_main_menu_keyboard())
             return MENU
 
@@ -116,37 +124,37 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
     # Запуск радио по жанру
     if data.startswith("play_cat|"):
-        path_hash = data.removeprefix("play_cat|")
-        path_str = resolve_path(path_hash)
+        path_str = data.removeprefix("play_cat|")
         if not path_str:
             await query.edit_message_text("❗️Не удалось найти этот жанр.", reply_markup=get_main_menu_keyboard())
             return MENU
             
         path = path_str.split('|')
-        search_query = " ".join(path) # Fallback to path if lookup fails
         
-        current_level = MUSIC_CATALOG # CORRECTED LINE
+        # Получаем поисковый запрос из MUSIC_CATALOG
         try:
+            current_level = MUSIC_CATALOG
             for p in path[:-1]:
                 current_level = current_level[p]
             search_query = current_level[path[-1]]
         except (KeyError, TypeError):
+            # Fallback на случай, если структура некорректна
+            search_query = " ".join(path) 
             logger.warning(f"Could not resolve radio query for path: {path_str}. Falling back to '{search_query}'")
 
         await query.edit_message_text(f"🎵 Запускаю: *{path[-1]}*...", parse_mode=ParseMode.MARKDOWN)
         asyncio.create_task(context.application.radio_manager.start(
             chat_id=query.message.chat_id, 
             query=str(search_query)
-            # Removed message_id= and chat.type
         ))
         return MENU
 
-    # Случайный микс - ADDED THIS BLOCK BACK
+    # Случайный микс
     if data == "play_random":
         await query.edit_message_text("🎲 Случайная волна...")
         asyncio.create_task(context.application.radio_manager.start(
             chat_id=query.message.chat_id, 
-            query="top 50 global hits" # Removed message_id= and chat.type
+            query="top 50 global hits"
         ))
         return MENU
 
@@ -279,6 +287,7 @@ def setup_handlers(app: Application, radio: RadioManager, settings: Settings, do
     app.add_handler(conv_handler)
     
     # Команды, которые работают всегда, вне состояний
+    app.add_handler(CommandHandler("player", player_command))
     app.add_handler(CommandHandler("stop", stop_command))
     app.add_handler(CommandHandler("skip", skip_command))
     app.add_handler(CommandHandler("radio", radio_command))

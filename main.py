@@ -3,9 +3,10 @@ import asyncio
 from contextlib import asynccontextmanager
 import time
 from datetime import timedelta
+from typing import List
 
 from fastapi import FastAPI, Request
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from telegram import Update
 from telegram.ext import Application
@@ -16,6 +17,7 @@ from radio import RadioManager
 from youtube import YouTubeDownloader
 from handlers import setup_handlers
 from cache_service import CacheService
+from models import TrackInfo
 
 logger = logging.getLogger(__name__)
 _start_time = time.time()
@@ -42,6 +44,7 @@ async def lifespan(app: FastAPI):
     
     # 4. Создаём загрузчик
     downloader = YouTubeDownloader(settings, cache)
+    app.state.downloader = downloader # Store for API endpoints
     
     # 5. Создаём Telegram Application (с Bot'ом внутри)
     tg_app = Application.builder().token(settings.BOT_TOKEN).build()
@@ -65,8 +68,9 @@ async def lifespan(app: FastAPI):
     await tg_app.initialize()
     await tg_app.bot.set_my_commands([
         ("start", "🚀 Открыть меню"),
-        ("play", "🎲 Случайное радио"),
-        ("radio", "📻 Выбрать жанр"),
+        ("player", "🎧 Открыть веб-плеер"),
+        ("play", "🔎 Поиск трека"),
+        ("radio", "🎲 Случайное радио"),
         ("stop", "⏹️ Остановить"),
         ("skip", "⏭️ Пропустить трек")
     ])
@@ -97,6 +101,23 @@ app = FastAPI(lifespan=lifespan)
 @app.get("/api/health")
 async def health():
     return {"status": "ok", "uptime": get_uptime()}
+
+@app.get("/api/player/playlist", response_model=dict)
+async def get_playlist(query: str, request: Request):
+    """
+    Возвращает плейлист по заданному запросу.
+    Используется веб-плеером.
+    """
+    downloader: YouTubeDownloader = request.app.state.downloader
+    logger.info(f"API: Поиск плейлиста по запросу: '{query}'")
+    try:
+        # Ищем ~15 треков для плейлиста в веб-плеере
+        tracks: List[TrackInfo] = await downloader.search(query=query, search_mode='track', limit=15)
+        # FastAPI автоматически преобразует dataclass в JSON
+        return {"playlist": tracks}
+    except Exception as e:
+        logger.error(f"API: Ошибка при поиске плейлиста: {e}", exc_info=True)
+        return JSONResponse(status_code=500, content={"message": "Internal server error"})
 
 @app.post("/telegram")
 async def telegram_webhook(request: Request):

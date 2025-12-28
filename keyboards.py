@@ -1,70 +1,60 @@
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-from config import get_settings
-import hashlib
-
-# Глобальное хранилище путей
-PATH_STORE = {}
-
-def shorten_path(path: str) -> str:
-    """Генерирует короткий хэш пути (например 'Pop|Hits') для компактных callback'ов."""
-    if not isinstance(path, str):
-        path = str(path)
-    h = hashlib.md5(path.encode()).hexdigest()[:10]
-    PATH_STORE[h] = path
-    return h
-
-def resolve_path(hash_key: str) -> str:
-    """Получает путь по хэшу через PATH_STORE."""
-    return PATH_STORE.get(hash_key, "")
-
-def preload_paths(catalog, parent_path=""):
-    """Рекурсивно наполняет PATH_STORE всеми путями из каталога."""
-    for key, val in catalog.items():
-        curr_path = f"{parent_path}|{key}" if parent_path else key
-        h = shorten_path(curr_path)
-        if isinstance(val, dict):
-            preload_paths(val, curr_path)
-
-# Заполнить PATH_STORE при импорте
 from config import MUSIC_CATALOG
-preload_paths(MUSIC_CATALOG)
 
 def get_main_menu_keyboard():
+    """Генерирует клавиатуру главного меню."""
     categories = list(MUSIC_CATALOG.keys())
     keyboard = []
     for cat in categories:
-        cb = "cat|" + shorten_path(cat)
+        # Используем полный путь в callback_data
+        cb = f"cat|{cat}"
         keyboard.append([InlineKeyboardButton(cat, callback_data=cb)])
     keyboard.append([InlineKeyboardButton("🎲 Случайный микс", callback_data="play_random")])
     return InlineKeyboardMarkup(keyboard)
 
-def get_subcategory_keyboard(path_str):
-    path = path_str.split('|')
-    current_level = MUSIC_CATALOG
-    for p in path:
-        current_level = current_level[p]
+def get_subcategory_keyboard(path_str: str):
+    """Генерирует клавиатуру для подкатегорий на основе полного пути."""
+    try:
+        path = path_str.split('|')
+        current_level = MUSIC_CATALOG
+        for p in path:
+            current_level = current_level[p]
+    except KeyError:
+        # Если путь невалидный, возвращаем пустую клавиатуру или клавиатуру ошибки
+        return InlineKeyboardMarkup([[InlineKeyboardButton("❌ Ошибка меню", callback_data="main_menu")]])
+
     keyboard = []
     for name, val in current_level.items():
         full_path = f"{path_str}|{name}"
+        
+        # Проверяем, что callback_data не превышает лимит Telegram в 64 байта
+        # Префикс 'cat|' или 'play_cat|' + сам путь
+        if len(full_path.encode('utf-8')) > 54:
+             # Если путь слишком длинный, пропускаем этот пункт меню
+             # В реальном приложении здесь может быть логирование или альтернативная логика
+            continue
+
         if isinstance(val, dict):
-            callback = "cat|" + shorten_path(full_path)
+            callback = f"cat|{full_path}"
             keyboard.append([InlineKeyboardButton(f"📂 {name}", callback_data=callback)])
         else:
-            callback = "play_cat|" + shorten_path(full_path)
+            callback = f"play_cat|{full_path}"
             keyboard.append([InlineKeyboardButton(f"▶️ {name}", callback_data=callback)])
+            
     # Кнопка «Назад»
     if '|' in path_str:
         parent_path = '|'.join(path[:-1])
-        back_cb = "cat|" + shorten_path(parent_path)
+        back_cb = f"cat|{parent_path}"
         keyboard.append([InlineKeyboardButton("🔙 Назад", callback_data=back_cb)])
     else:
         keyboard.append([InlineKeyboardButton("🔙 В главное меню", callback_data="main_menu")])
+        
     return InlineKeyboardMarkup(keyboard)
 
-# ========= ДОБАВЛЯЕМ ФУНКЦИИ ДЛЯ handlers.py =========
+# ========= ФУНКЦИИ ДЛЯ ПОИСКА (ОСТАЮТСЯ БЕЗ ИЗМЕНЕНИЙ) =========
 def get_track_search_keyboard(tracks, page: int = 1):
     """
-    Генерирует клавиатуру с результатами поиска треков (поиск по артисту и треку).
+    Генерирует клавиатуру с результатами поиска треков.
     """
     keyboard = []
     for idx, track in enumerate(tracks, start=1):
