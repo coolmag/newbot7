@@ -13,11 +13,14 @@ let fuse; // Fuse.js instance
 // --- Reusable Logic ---
 
 async function selectGenre(name, searchQuery) {
-    if (store.isLoading) return;
+    if (store.isLoading) return; // <-- FIX #1: Add guard
     store.isLoading = true;
     store.currentGenre = name;
     
-    closeGenresScreen();
+    // Conditionally close the screen
+    if (elements.screenGenres?.classList.contains('active')) {
+        closeGenresScreen();
+    }
     closeDrawers();
     haptic.impact('medium');
 
@@ -28,7 +31,8 @@ async function selectGenre(name, searchQuery) {
     } catch (e) {
         console.error('Failed to select genre:', e);
     } finally {
-        store.isLoading = false;
+        // Add a small cooldown to prevent spamming
+        setTimeout(() => store.isLoading = false, 300); // <-- FIX #1: Reset with cooldown
     }
 }
 
@@ -89,39 +93,57 @@ function createChips(container, items) {
     if (!container) return;
     container.innerHTML = '';
     items.forEach(item => {
-        const chip = document.createElement('button');
+        const chip = document.createElement('div'); // <-- FIX #2: Use div instead of button
         chip.className = 'chip';
+        chip.setAttribute('role', 'button'); // <-- FIX #2: Accessibility
+        chip.tabIndex = 0; // <-- FIX #2: Accessibility
         chip.textContent = item.name;
-        chip.onclick = () => {
+
+        const action = () => {
             selectGenre(item.name, item.search);
             haptic.selection();
         };
+        chip.onclick = action;
+        chip.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') action(); };
+
         container.appendChild(chip);
     });
 }
 
 function buildGenreCard(genre) {
-    const card = document.createElement('button');
+    const card = document.createElement('div'); // <-- FIX #2: Use div instead of button
     card.className = 'genre-card';
+    card.setAttribute('role', 'button'); // <-- FIX #2: Accessibility
+    card.tabIndex = 0; // <-- FIX #2: Accessibility
     card.style.background = `linear-gradient(145deg, ${genre.color} 0%, rgba(0,0,0,0.4) 100%)`;
 
-    card.innerHTML = `<div class="genre-icon">${genre.icon}</div><div class="genre-name">${genre.name}</div>`;
+    card.innerHTML = `<div class="genre-icon">${genre.icon}</div><div class.genre-name">${genre.name}</div>`;
     
-    card.onclick = () => {
+    const action = () => {
         elements.drawerTitle.textContent = genre.name;
         elements.drawerIcon.textContent = genre.icon;
         elements.subgenreList.innerHTML = '';
         Object.values(genre.subgenres).forEach(sub => {
-            const item = document.createElement('button');
+            const item = document.createElement('div'); // <-- FIX #2: Use div instead of button
             item.className = 'subgenre-item';
+            item.setAttribute('role', 'button'); // <-- FIX #2: Accessibility
+            item.tabIndex = 0; // <-- FIX #2: Accessibility
             item.innerHTML = `<div><div class="subgenre-name">${sub.name}</div><div class="subgenre-styles">${sub.styles}</div></div><span class="material-icons-round">arrow_forward</span>`;
-            item.onclick = () => selectGenre(sub.name, sub.search);
+            
+            const subAction = () => selectGenre(sub.name, sub.search);
+            item.onclick = subAction;
+            item.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') subAction(); };
+            
             elements.subgenreList.appendChild(item);
         });
         elements.subgenreDrawer.classList.add('active');
         elements.overlay.classList.add('active');
         haptic.impact('medium');
     };
+
+    card.onclick = action;
+    card.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') action(); };
+
     return card;
 }
 

@@ -2,20 +2,19 @@
 
 import store from './store.js';
 import * as elements from './elements.js';
-import { visualizer } from './visualizer.js'; // Import the new visualizer
+import { visualizer } from './visualizer.js';
 
 let audioLoadTimeout = null;
 
 function cleanupAudioListeners() {
     const audio = elements.audio;
     if (!audio) return;
-    audio.removeEventListener('canplay', handleCanPlay);
-    audio.removeEventListener('error', handleError);
-    audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
-    audio.removeEventListener('ended', playNext);
-    audio.removeEventListener('timeupdate', handleTimeUpdate);
-    audio.removeEventListener('play', handlePlay);
-    audio.removeEventListener('pause', handlePause);
+    // Create a new element to effectively remove all listeners
+    const newAudio = audio.cloneNode(true);
+    audio.parentNode.replaceChild(newAudio, audio);
+    elements.audio = newAudio; // Update the reference in the elements module
+    store.audio = newAudio; // Update the reference in the store
+    return newAudio;
 }
 
 // --- Audio Event Handlers ---
@@ -40,18 +39,20 @@ function handleLoadedMetadata() {
     clearTimeout(audioLoadTimeout);
 }
 
-function handleTimeUpdate() {
-    // This is handled by the renderer's RAF loop for performance
+function handleEnded() {
+    console.log('[Player] Event: ended');
+    store.isAudioLoading = false; // <-- FIX #3
+    playNext();
 }
 
 function handlePlay() {
     store.isPlaying = true;
-    visualizer.setPlaying(true); // Sync visualizer
+    visualizer.setPlaying(true);
 }
 
 function handlePause() {
     store.isPlaying = false;
-    visualizer.setPlaying(false); // Sync visualizer
+    visualizer.setPlaying(false);
 }
 
 // --- Player Control Functions ---
@@ -62,43 +63,46 @@ export function playTrack(index) {
             console.log('[Player] Playlist finished.');
             store.isPlaying = false;
             store.currentTrackIndex = -1;
-            visualizer.setPlaying(false); // Stop visuals at end of playlist
+            visualizer.setPlaying(false);
         }
         return;
     }
-
-    store.currentTrackIndex = index;
+    
     store.isAudioLoading = true;
-    
-    const track = store.playlist[index];
-    const audio = elements.audio;
-    
-    audio.pause();
-    visualizer.setPlaying(false); // Stop visuals while loading new track
-    cleanupAudioListeners();
+    store.currentTrackIndex = index;
 
-    const audioUrl = track.url || `/audio/${track.identifier}`; 
-    console.log('[Player] Setting audio src:', audioUrl);
-    audio.src = audioUrl;
-    
-    clearTimeout(audioLoadTimeout);
-    audioLoadTimeout = setTimeout(() => {
-        if (store.isAudioLoading) {
-            console.warn("[Player] Track load timeout, skipping...");
-            playNext();
-        }
-    }, 10000); 
+    try {
+        const track = store.playlist[index];
+        const audio = cleanupAudioListeners(); // Use a fresh element to avoid listener stacking
 
-    audio.addEventListener('canplay', handleCanPlay);
-    audio.addEventListener('error', handleError);
-    audio.addEventListener('loadedmetadata', handleLoadedMetadata);
-    audio.addEventListener('ended', playNext);
-    audio.addEventListener('timeupdate', handleTimeUpdate);
-    audio.addEventListener('play', handlePlay);
-    audio.addEventListener('pause', handlePause);
+        visualizer.setPlaying(false);
 
-    audio.load();
-    updateMediaSessionMetadata();
+        const audioUrl = track.url || `/audio/${track.identifier}`; 
+        console.log('[Player] Setting audio src:', audioUrl);
+        audio.src = audioUrl;
+        
+        clearTimeout(audioLoadTimeout);
+        audioLoadTimeout = setTimeout(() => {
+            if (store.isAudioLoading) {
+                console.warn("[Player] Track load timeout, skipping...");
+                handleError(new Error("Load Timeout"));
+            }
+        }, 10000); 
+
+        audio.addEventListener('canplay', handleCanPlay, { once: true });
+        audio.addEventListener('error', handleError, { once: true });
+        audio.addEventListener('loadedmetadata', handleLoadedMetadata, { once: true });
+        audio.addEventListener('ended', handleEnded, { once: true });
+        audio.addEventListener('play', handlePlay);
+        audio.addEventListener('pause', handlePause);
+
+        audio.load();
+        updateMediaSessionMetadata();
+
+    } catch (error) {
+        console.error("[Player] Critical error in playTrack:", error);
+        handleError(error); // Funnel errors to the handler that resets state
+    }
 }
 
 export function playNext() {
@@ -120,7 +124,7 @@ export async function safePlay() {
         await audio.play();
     } catch (err) {
         console.error("Playback error:", err.name, err.message);
-        store.isPlaying = false; // Ensure state is correct on error
+        store.isPlaying = false;
         if (err.name === 'NotAllowedError') {
             console.log("Playback was prevented by browser autoplay policy.");
         }
