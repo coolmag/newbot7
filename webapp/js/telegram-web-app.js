@@ -366,6 +366,14 @@
     }
   }
 
+  // --- ИСПРАВЛЕНИЕ: Добавлена отсутствующая функция onViewportChanged ---
+  function onViewportChanged(eventType, eventData) {
+    if (eventData.height) {
+      setViewportHeight(eventData);
+    }
+  }
+  // ---------------------------------------------------------------------
+
   var lastWindowHeight = window.innerHeight;
   function onWindowResize(e) {
     if (lastWindowHeight != window.innerHeight) {
@@ -1025,7 +1033,7 @@
       document.body.appendChild(debugBottomBar);
     });
     var animStyle = document.createElement('style');
-    animStyle.innerHTML = 'tg-bottom-button.shine { position: relative; overflow: hidden; } tg-bottom-button.shine:before { content:"\0000a0"; position: absolute; top: 0; width: 100%; height: 100%; background: linear-gradient(120deg, transparent, rgba(255, 255, 255, .2), transparent); animation: tg-bottom-button-shine 5s ease-in-out infinite; } @-webkit-keyframes tg-bottom-button-shine { 0% {left: -100%;} 12%,100% {left: 100%}} @keyframes tg-bottom-button-shine { 0% {left: -100%;} 12%,100% {left: 100%}}';
+    animStyle.innerHTML = 'tg-bottom-button.shine { position: relative; overflow: hidden; } tg-bottom-button.shine:before { content:\"\0000a0\"; position: absolute; top: 0; width: 100%; height: 100%; background: linear-gradient(120deg, transparent, rgba(255, 255, 255, .2), transparent); animation: tg-bottom-button-shine 5s ease-in-out infinite; } @-webkit-keyframes tg-bottom-button-shine { 0% {left: -100%;} 12%,100% {left: 100%}} @keyframes tg-bottom-button-shine { 0% {left: -100%;} 12%,100% {left: 100%}}';
     debugBottomBar.appendChild(animStyle);
   }
   function updateDebugBottomBar() {
