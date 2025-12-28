@@ -12,11 +12,11 @@ export const trackArtist = document.getElementById('track-artist');
 export const currTime = document.getElementById('curr-time');
 export const durTime = document.getElementById('dur-time');
 export const progressBar = document.getElementById('progress-bar');
-export const progressContainer = document.getElementById('progress-container'); // New ID for progress clickable area
+export const progressContainer = document.getElementById('progress-container'); // Changed from progress-track
 
 // Main Actions elements
 export const btnPrev = document.getElementById('btn-prev');
-export const btnPlayPause = document.getElementById('btn-play-pause'); // Renamed from playBtn
+export const btnPlayPause = document.getElementById('btn-play-pause');
 export const iconPlay = document.getElementById('icon-play');
 export const btnNext = document.getElementById('btn-next');
 

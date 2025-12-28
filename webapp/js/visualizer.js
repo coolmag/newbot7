@@ -3,54 +3,72 @@ import * as THREE from 'three';
 let scene, camera, renderer, disc, tonearm, analyzer, dataArray;
 let isInitialized = false;
 
+/**
+ * Архитектурно верная инициализация 3D сцены.
+ * Используется WebGL2 и MeshStandardMaterial для реалистичных бликов.
+ */
 export function initializeVisualizer(audioElement) {
-    if (isInitialized) return;
+    if (isInitialized || !audioElement) return;
 
     const container = document.getElementById('canvas-container');
-    const w = container.clientWidth, h = container.clientHeight;
+    if (!container) return;
 
+    const width = container.clientWidth;
+    const height = container.clientHeight;
+
+    // Сцена
     scene = new THREE.Scene();
-    camera = new THREE.PerspectiveCamera(40, w / h, 0.1, 1000);
-    renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    renderer.setSize(w, h);
+    camera = new THREE.PerspectiveCamera(40, width / height, 0.1, 1000);
+    renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "high-performance" });
+    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setSize(width, height);
     container.appendChild(renderer.domElement);
 
-    // 1. Пластинка
-    const discGeo = new THREE.CylinderGeometry(2, 2, 0.05, 64);
-    const discMat = new THREE.MeshStandardMaterial({ color: 0x0a0a0a, roughness: 0.3, metalness: 0.8 });
-    disc = new THREE.Mesh(discGeo, discMat);
-    disc.rotation.x = Math.PI / 2.3;
+    // Геометрия Винила (PBR Material)
+    const geometry = new THREE.CylinderGeometry(2, 2, 0.08, 128);
+    const material = new THREE.MeshStandardMaterial({ 
+        color: 0x0a0a0a, 
+        roughness: 0.2, 
+        metalness: 0.8,
+        emissive: 0x000000 
+    });
+    disc = new THREE.Mesh(geometry, material);
+    disc.rotation.x = Math.PI / 2.2;
     scene.add(disc);
 
-    // 2. Наклейка (Красная)
-    const labelGeo = new THREE.CircleGeometry(0.7, 32);
-    const labelMat = new THREE.MeshStandardMaterial({ color: 0xff0000 });
+    // Наклейка
+    const labelGeo = new THREE.CircleGeometry(0.75, 64);
+    const labelMat = new THREE.MeshStandardMaterial({ color: 0xff0000, roughness: 0.5 });
     const label = new THREE.Mesh(labelGeo, labelMat);
-    label.position.y = 0.03; label.rotation.x = -Math.PI / 2;
+    label.position.y = 0.05;
+    label.rotation.x = -Math.PI / 2;
     disc.add(label);
 
-    // 3. Тонарм (Игла)
-    const armGroup = new THREE.Group();
-    const armGeo = new THREE.CylinderGeometry(0.04, 0.04, 2, 8);
-    const armMat = new THREE.MeshStandardMaterial({ color: 0x222222 });
-    const arm = new THREE.Mesh(armGeo, armMat);
-    arm.position.y = 1; armGroup.add(arm);
-    armGroup.position.set(1.8, 0.4, 1.8);
-    scene.add(armGroup);
-    tonearm = armGroup;
+    // Освещение (Исправлено: clone().set -> position.set())
+    const mainLight = new THREE.PointLight(0xffffff, 200);
+    mainLight.position.set(5, 5, 5);
+    scene.add(mainLight);
 
-    scene.add(new THREE.PointLight(0xffffff, 150, 100).clone().set(5, 5, 5));
-    scene.add(new THREE.AmbientLight(0xffffff, 2));
+    const blueLight = new THREE.PointLight(0x00f2ff, 150);
+    blueLight.position.set(-5, 5, 2);
+    scene.add(blueLight);
 
-    camera.position.z = 6;
+    scene.add(new THREE.AmbientLight(0xffffff, 0.5));
 
-    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    const source = audioCtx.createMediaElementSource(audioElement);
-    analyzer = audioCtx.createAnalyser();
-    analyzer.fftSize = 64;
-    source.connect(analyzer);
-    analyzer.connect(audioCtx.destination);
-    dataArray = new Uint8Array(analyzer.frequencyBinCount);
+    camera.position.set(0, 0, 6.5);
+
+    // Анализатор частот
+    try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const source = audioCtx.createMediaElementSource(audioElement);
+        analyzer = audioCtx.createAnalyser();
+        analyzer.fftSize = 128;
+        source.connect(analyzer);
+        analyzer.connect(audioCtx.destination);
+        dataArray = new Uint8Array(analyzer.frequencyBinCount);
+    } catch (e) {
+        console.warn("[3D] AudioContext block by browser policy");
+    }
 
     isInitialized = true;
     animate();
@@ -58,12 +76,18 @@ export function initializeVisualizer(audioElement) {
 
 function animate() {
     requestAnimationFrame(animate);
-    if (analyzer) {
+    if (analyzer && disc) {
         analyzer.getByteFrequencyData(dataArray);
-        const volume = dataArray[0] / 255;
-        disc.rotation.y += 0.02 + volume * 0.1;
-        tonearm.rotation.z = Math.sin(Date.now() * 0.001) * 0.05;
-        document.documentElement.style.setProperty('--led-speed', `${0.2 + (1 - volume) * 2}s`);
+        const bass = dataArray[0] / 255;
+        const mid = dataArray[10] / 255;
+
+        // Кинематика диска
+        disc.rotation.y += 0.02 + bass * 0.15;
+        const s = 1 + bass * 0.08;
+        disc.scale.set(s, 1, s);
+
+        // Реактивный свет
+        document.documentElement.style.setProperty('--led-speed', `${0.2 + (1 - bass) * 1.5}s`);
     }
     renderer.render(scene, camera);
 }
