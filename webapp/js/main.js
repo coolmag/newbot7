@@ -23,7 +23,11 @@ const logger = {
 
 // Глобальный перехват ошибок (чтобы видеть их на телефоне)
 window.onerror = function(msg, url, line) {
-    if (logger && logger.print) logger.print(`ОШИБКА: ${msg}`, 'error');
+    const debugEl = document.getElementById('debug-log');
+    if (debugEl) {
+        debugEl.innerHTML += `<br>ERR: ${msg} @ ${url?.split('/').pop()}:${line}`;
+    }
+    if (logger && logger.print) logger.print(`КРИТ. ОШИБКА: ${msg}`, 'error');
     return false;
 };
 
@@ -72,27 +76,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (startBtn) {
         startBtn.onclick = async () => {
-            logger.print('ЗАПУСК СИСТЕМ...', 'loading');
+            logger.print('1/3 ЗАПУСК...', 'loading');
             
-            // Скрываем оверлей сразу, чтобы не бесило
             if (startOverlay) {
                 startOverlay.style.opacity = '0';
                 setTimeout(() => startOverlay.remove(), 500);
             }
 
             try {
-                // 1. Получаем элемент аудио
                 const audio = Player.getAudioElement();
                 
-                // 2. Инициализируем визуализатор (он сам сделает resume контекста)
+                logger.print('2/3 ИНИЦИАЛИЗАЦИЯ АУДИО...', 'loading');
                 await Visualizer.initialize(audio);
-                
-                logger.print('АУДИО-ДВИЖОК: ОНЛАЙН', 'success');
+                logger.print('3/3 АУДИО-ЯДРО: ОНЛАЙН', 'success');
+
             } catch (e) {
                 logger.print('СБОЙ АУДИО: ' + e.message, 'error');
+                // Также выводим в дебаг-лог
+                const debugEl = document.getElementById('debug-log');
+                if (debugEl) debugEl.innerHTML += `<br>AUDIO FAIL: ${e.message}`;
             }
             
-            // 3. Загружаем дефолтный жанр
             window.loadGenreHandler('lofi hip hop radio');
         };
     }
@@ -114,7 +118,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (playlist && playlist.length > 0) {
                 logger.print(`НАЙДЕНО ${playlist.length} ТРЕКОВ`, 'success');
                 Player.playTrack(0);
-            } else {
+            }
+            else {
                 logger.print('СИГНАЛ НЕ НАЙДЕН', 'error');
                 if(tTitle) tTitle.textContent = "Пусто";
             }
