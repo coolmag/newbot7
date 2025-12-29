@@ -1,4 +1,4 @@
-const CACHE_NAME = 'aurora-player-v1';
+const CACHE_NAME = 'aurora-player-v2'; // ИЗМЕНЕНО: v2 для сброса кэша
 const ASSETS_TO_CACHE = [
     './',
     './index.html',
@@ -8,22 +8,18 @@ const ASSETS_TO_CACHE = [
     './js/player.js',
     './js/store.js',
     './js/ui.js',
-    './js/visualizer.js'
+    './js/genres.js'
+    // visualizer.js не кешируем жестко, чтобы он не ломал загрузку
 ];
 
-// Install event: cache all static assets
 self.addEventListener('install', event => {
+    self.skipWaiting(); // Форсируем обновление
     event.waitUntil(
         caches.open(CACHE_NAME)
-            .then(cache => {
-                console.log('[SW] Caching assets on install');
-                return cache.addAll(ASSETS_TO_CACHE);
-            })
-            .then(() => self.skipWaiting())
+            .then(cache => cache.addAll(ASSETS_TO_CACHE))
     );
 });
 
-// Activate event: clean up old caches
 self.addEventListener('activate', event => {
     event.waitUntil(
         caches.keys().then(cacheNames => {
@@ -35,49 +31,35 @@ self.addEventListener('activate', event => {
                     }
                 })
             );
-        }).then(() => self.clients.claim())
+        }).then(() => self.clients.claim()) // Немедленно берем контроль
     );
 });
 
-// Fetch event: serve from cache first, then network
 self.addEventListener('fetch', event => {
-    // We only want to cache GET requests.
-    if (event.request.method !== 'GET') {
-        return;
-    }
+    if (event.request.method !== 'GET') return;
 
-    // For API and audio requests, always go to the network first.
+    // API и Audio всегда мимо кэша
     if (event.request.url.includes('/api/') || event.request.url.includes('/audio/')) {
         event.respondWith(fetch(event.request));
         return;
     }
 
-    // For static assets, use a cache-first strategy.
     event.respondWith(
         caches.match(event.request)
             .then(cachedResponse => {
-                // Return response from cache if available.
-                if (cachedResponse) {
-                    return cachedResponse;
-                }
-
-                // If not in cache, fetch from network.
+                // Если есть в кэше - отдаем
+                if (cachedResponse) return cachedResponse;
+                // Если нет - качаем и кешируем
                 return fetch(event.request).then(networkResponse => {
-                    // Don't cache opaque responses (e.g. from CDNs without CORS)
-                    if(networkResponse.type === 'opaque') {
+                    if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic') {
                         return networkResponse;
                     }
-
-                    // Clone the response and cache it.
-                    return caches.open(CACHE_NAME).then(cache => {
-                        cache.put(event.request, networkResponse.clone());
-                        return networkResponse;
+                    const responseToCache = networkResponse.clone();
+                    caches.open(CACHE_NAME).then(cache => {
+                        cache.put(event.request, responseToCache);
                     });
+                    return networkResponse;
                 });
-            })
-            .catch(error => {
-                console.error('[SW] Fetch failed:', error);
-                // You could return a fallback offline page here.
             })
     );
 });
