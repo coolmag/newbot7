@@ -4,28 +4,22 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Aurora OS</title>
-    
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
-    
-    <link rel="stylesheet" href="style.css?v=7">
+    <link rel="stylesheet" href="style.css?v=9">
     <link rel="icon" href="favicon.svg" type="image/svg+xml">
-    
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
     <canvas id="visualizer-canvas"></canvas>
-
     <div id="app-container">
-        <!-- Плеер -->
         <div class="player-card">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                 <button class="btn" id="btn-open-genres"><span class="material-icons-round">grid_view</span></button>
-                <span class="title-bar">AURORA V5</span>
+                <span class="title-bar">AURORA V6</span>
                 <button class="btn" id="btn-open-playlist"><span class="material-icons-round">playlist_play</span></button>
             </div>
-
             <div class="reactor-container">
                 <div class="reactor-ring"></div>
                 <div class="reactor-ring"></div>
@@ -33,60 +27,49 @@
                     <span class="material-icons-round" style="font-size: 40px; color: rgba(255,255,255,0.2);">music_note</span>
                 </div>
             </div>
-
             <div class="track-info">
                 <h1 id="track-title">System Online</h1>
                 <p id="track-artist">Select frequency</p>
             </div>
-
             <div class="progress-container">
                 <div class="progress-bg">
+                    <div id="buffered-fill" style="position:absolute; height:100%; background:rgba(255,255,255,0.1); width:0%;"></div>
                     <div class="progress-fill" id="progress-fill"></div>
                 </div>
-                <div class="time-labels">
-                    <span id="time-current">0:00</span>
-                    <span id="time-duration">0:00</span>
-                </div>
+                <div class="time-labels"><span id="time-current">0:00</span><span id="time-duration">0:00</span></div>
             </div>
-
             <div class="controls">
                 <button class="btn" id="btn-shuffle" title="Shuffle"><span class="material-icons-round" style="font-size: 20px; color: #666;">shuffle</span></button>
                 <button class="btn" id="btn-prev"><span class="material-icons-round">skip_previous</span></button>
                 <button class="btn btn-main" id="btn-play-pause"><span class="material-icons-round">play_arrow</span></button>
                 <button class="btn" id="btn-next"><span class="material-icons-round">skip_next</span></button>
-                <button class="btn" title="Info"><span class="material-icons-round" style="font-size: 20px; color: #666;">info</span></button>
+                <!-- КНОПКА FX ВМЕСТО ПОВТОРА -->
+                <button class="btn" id="btn-fx" title="Bass Boost"><span class="material-icons-round" style="font-size: 16px; font-weight: bold; color: #666;">FX</span></button>
             </div>
-            
             <div id="system-log" class="system-log">[WAITING FOR INPUT]</div>
         </div>
-
-        <!-- Start Screen -->
+        
         <div id="start-overlay" class="start-screen">
             <div style="font-family: 'Orbitron'; font-size: 32px; color: #00f2ff; margin-bottom: 10px; text-shadow: 0 0 20px #00f2ff;">AURORA</div>
             <div style="font-family: monospace; font-size: 12px; color: #888; margin-bottom: 30px;">WEB AUDIO INTERFACE</div>
             <button id="btn-start-system" class="start-btn">INITIALIZE</button>
         </div>
-
-        <!-- Drawers -->
+        
         <div class="overlay" id="overlay"></div>
-        
-        <div class="drawer" id="drawer-genres">
-            <h2>Select Frequency</h2>
-            <div class="scroll-area genre-grid" id="genre-grid"></div>
-        </div>
-        
-        <div class="drawer" id="drawer-playlist">
-            <h2>Current Queue</h2>
-            <div class="scroll-area" id="playlist-container"></div>
-        </div>
+        <div class="drawer" id="drawer-genres"><h2>Frequency</h2><div class="scroll-area genre-grid" id="genre-grid"></div></div>
+        <div class="drawer" id="drawer-playlist"><h2>Queue</h2><div class="scroll-area" id="playlist-container"></div></div>
     </div>
-
     <audio id="audio-player" crossorigin="anonymous"></audio>
-
     <script>
-        // Force update SW
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('service-worker.js').then(r => r.update());
+        if ('serviceWorker' in navigator) navigator.serviceWorker.register('service-worker.js').then(r => r.update());
+        const audio = document.getElementById('audio-player');
+        const bufFill = document.getElementById('buffered-fill');
+        if(audio && bufFill) {
+            audio.addEventListener('progress', () => {
+                if (audio.duration > 0 && audio.buffered.length > 0) {
+                     bufFill.style.width = (audio.buffered.end(audio.buffered.length - 1) / audio.duration * 100) + "%";
+                }
+            });
         }
     </script>
     <script src="js/main.js" type="module"></script>
