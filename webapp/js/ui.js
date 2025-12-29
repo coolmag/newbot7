@@ -6,7 +6,7 @@ let menuStack = [];
 function getEl(id) { return document.getElementById(id); }
 
 // --- GLITCH ЭФФЕКТ (КИБЕРПАНК) ---
-const GLITCH_CHARS = '!<>-_\\/[]{}—=+*^?#________';
+const GLITCH_CHARS = '!<>-_\/[]{}—=+*^?#________';
 function glitchText(element, finalText) {
     if (!element) return;
     let iteration = 0;
@@ -116,10 +116,10 @@ function renderPlaylist(playlist, currentIndex, player) {
         item.className = `playlist-row ${idx === currentIndex ? 'active' : ''}`;
         const iconType = idx === currentIndex ? 'equalizer' : 'music_note';
         item.innerHTML = "
-            <div class=\"p-icon-box"><span class=\"material-icons-round">${iconType}</span></div>
+            <div class=\"p-icon-box\"><span class=\"material-icons-round\">${iconType}</span></div>
             <div class=\"p-info">
-                <div class=\"p-title">${track.title}</div>
-                <div class=\"p-artist">${track.artist}</div>
+                <div class=\"p-title\">${track.title}</div>
+                <div class=\"p-artist\">${track.artist}</div>
             </div>
         ";
         item.onclick = () => { player.playTrack(idx); toggleDrawer('playlist', false); };
