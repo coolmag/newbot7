@@ -46,7 +46,7 @@ function getRandomQuery(node) {
 function renderMenu() {
     const drawer = getEl('drawer-genres');
     if (!drawer) return;
-    const current = menuStack.length > 0 ? menuStack[menuStack.length - 1] : { title: "Frequency", items: MENU_ROOT.children, isRoot: true };
+    const current = menuStack.length > 0 ? menuStack[menuStack.length - 1] : { title: "Частота", items: MENU_ROOT.children, isRoot: true };
 
     drawer.innerHTML = ''; 
 
@@ -108,7 +108,7 @@ function renderPlaylist(playlist, currentIndex, player) {
     if (!container) return;
     container.innerHTML = '';
     if (!playlist || playlist.length === 0) {
-        container.innerHTML = '<div class="empty-state">Queue is empty</div>';
+        container.innerHTML = '<div class="empty-state">Очередь пуста</div>';
         return;
     }
     playlist.forEach((track, idx) => {

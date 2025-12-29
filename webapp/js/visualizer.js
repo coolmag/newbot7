@@ -1,10 +1,9 @@
 let canvas, ctx, audioCtx, analyser, dataArray;
 let stars = [];
 let isRunning = false;
-let bassFilter = null; // Фильтр басов
+let bassFilter = null;
 
-// Настройки
-const STAR_COUNT = 100;
+const STAR_COUNT = 80; // Чуть меньше для производительности телефона
 const BASE_SPEED = 0.5;
 
 class Star {
@@ -31,11 +30,18 @@ class Star {
     }
 }
 
-function initialize(audioElement) {
+async function initialize(audioElement) {
+    // Если уже запущен, просто пытаемся возобновить контекст
+    if (audioCtx && audioCtx.state === 'suspended') {
+        await audioCtx.resume();
+        return;
+    }
     if (isRunning) return;
+
     canvas = document.getElementById('visualizer-canvas');
     if (!canvas) return;
     ctx = canvas.getContext('2d', { alpha: false }); 
+    
     resize();
     window.addEventListener('resize', resize);
     stars = Array(STAR_COUNT).fill().map(() => new Star());
@@ -44,15 +50,18 @@ function initialize(audioElement) {
         const AudioContext = window.AudioContext || window.webkitAudioContext;
         if (!audioCtx) audioCtx = new AudioContext();
         
-        // --- ЦЕПОЧКА ЗВУКА: Source -> BassFilter -> Analyser -> Dest ---
+        // ВАЖНО: Возобновляем контекст, если он был заморожен браузером
+        if (audioCtx.state === 'suspended') {
+            await audioCtx.resume();
+        }
+
+        // Подключаем только если еще не подключили
         if (!analyser) {
             const source = audioCtx.createMediaElementSource(audioElement);
-            
-            // Создаем фильтр для Bass Boost
             bassFilter = audioCtx.createBiquadFilter();
             bassFilter.type = 'lowshelf';
-            bassFilter.frequency.value = 200; // Частота баса
-            bassFilter.gain.value = 0; // По умолчанию выключен
+            bassFilter.frequency.value = 200;
+            bassFilter.gain.value = 0;
             
             analyser = audioCtx.createAnalyser();
             analyser.fftSize = 128;
@@ -65,36 +74,53 @@ function initialize(audioElement) {
         dataArray = new Uint8Array(analyser.frequencyBinCount);
         isRunning = true;
         animate();
-    } catch (e) { console.warn(e); }
+    } catch (e) {
+        console.warn("Visualizer init warning:", e);
+        // Не роняем приложение, если аудио контекст не дался
+    }
 }
 
-// Функция для переключения басов (вызывается из player.js)
 function setBassBoost(active) {
-    if (bassFilter) {
-        // Плавное изменение
+    if (bassFilter && audioCtx) {
         const now = audioCtx.currentTime;
-        const value = active ? 12 : 0; // +12dB или 0dB
+        const value = active ? 10 : 0;
         bassFilter.gain.setTargetAtTime(value, now, 0.2);
     }
 }
 
-function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+function resize() { 
+    if(canvas) {
+        canvas.width = window.innerWidth; 
+        canvas.height = window.innerHeight; 
+    }
+}
 
 function animate() {
     if (!isRunning) return;
     requestAnimationFrame(animate);
+    
     let bass = 0;
     if (analyser) {
         analyser.getByteFrequencyData(dataArray);
-        for(let i = 0; i < 10; i++) bass += dataArray[i];
-        bass = bass / 10 / 255;
+        for(let i = 0; i < 8; i++) bass += dataArray[i];
+        bass = bass / 8 / 255;
     }
-    ctx.fillStyle = '#050510'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.fillStyle = '#050510'; 
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
     const cx = canvas.width / 2;
     const cy = canvas.height / 2;
     const currentSpeed = BASE_SPEED + (bass * 8); 
-    stars.forEach(star => { star.update(currentSpeed); star.draw(ctx, cx, cy, bass); });
-    if (bass > 0.05) document.documentElement.style.setProperty('--beat', bass.toFixed(3));
+    
+    stars.forEach(star => { 
+        star.update(currentSpeed); 
+        star.draw(ctx, cx, cy, bass); 
+    });
+    
+    if (bass > 0.05) {
+        document.documentElement.style.setProperty('--beat', bass.toFixed(3));
+    }
 }
 
 export const Visualizer = { initialize, setBassBoost };

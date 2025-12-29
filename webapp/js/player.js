@@ -6,24 +6,24 @@ let onStatusChange = null;
 let isBassBoosted = false;
 
 function setupAudioListeners() {
-    audio.addEventListener('loadstart', () => reportStatus('loading', 'ESTABLISHING CONNECTION...'));
-    audio.addEventListener('waiting', () => reportStatus('loading', 'BUFFERING DATA STREAM...'));
+    audio.addEventListener('loadstart', () => reportStatus('loading', 'УСТАНОВКА СОЕДИНЕНИЯ...'));
+    audio.addEventListener('waiting', () => reportStatus('loading', 'БУФЕРИЗАЦИЯ...'));
     audio.addEventListener('canplay', () => {
-        reportStatus('ready', 'STREAM READY');
+        reportStatus('ready', 'ПОТОК ГОТОВ');
         if (store.isPlaying) audio.play().catch(console.warn);
     });
     audio.addEventListener('play', () => {
         store.isPlaying = true;
-        reportStatus('playing', 'PLAYBACK INITIATED');
+        reportStatus('playing', 'ВОСПРОИЗВЕДЕНИЕ');
         document.documentElement.style.setProperty('--reactor-color', '#00f2ff');
     });
     audio.addEventListener('pause', () => {
         store.isPlaying = false;
-        reportStatus('paused', 'SYSTEM PAUSED');
+        reportStatus('paused', 'ПАУЗА');
         document.documentElement.style.setProperty('--reactor-color', '#ff0055');
     });
     audio.addEventListener('error', (e) => {
-        reportStatus('error', 'STREAM CORRUPTED. REROUTING...');
+        reportStatus('error', 'ОШИБКА ПОТОКА. ПЕРЕКЛЮЧЕНИЕ...');
         document.documentElement.style.setProperty('--reactor-color', '#ff0000');
         setTimeout(() => nextTrack(), 2000);
     });
@@ -40,7 +40,7 @@ async function playTrack(index) {
 
     audio.pause();
     store.isPlaying = true;
-    reportStatus('loading', `LOADING: ${track.title.toUpperCase().substring(0, 20)}...`);
+    reportStatus('loading', `ЗАГРУЗКА: ${track.title.toUpperCase().substring(0, 20)}...`);
     document.documentElement.style.setProperty('--reactor-color', '#ffe600');
 
     audio.src = `/audio/${track.identifier}.mp3`;
@@ -75,19 +75,19 @@ function seek(pct) {
         if (newTime > bufferedEnd) {
              if (newTime < audio.duration - 5) {
                  newTime = bufferedEnd - 1; 
-                 reportStatus('loading', 'BUFFERING... PLEASE WAIT');
+                 reportStatus('loading', 'БУФЕРИЗАЦИЯ... ПОДОЖДИТЕ');
              }
         }
     }
     audio.currentTime = newTime;
-    reportStatus('seeking', `SEEKING TO ${Math.floor(pct*100)}%`);
+    reportStatus('seeking', `ПЕРЕМОТКА НА ${Math.floor(pct*100)}%`);
 }
 
 // --- НОВАЯ ФУНКЦИЯ FX ---
 function toggleBassBoost() {
     isBassBoosted = !isBassBoosted;
     Visualizer.setBassBoost(isBassBoosted);
-    reportStatus('info', `BASS BOOST: ${isBassBoosted ? 'ON' : 'OFF'}`);
+    reportStatus('info', `УСИЛЕНИЕ БАСА: ${isBassBoosted ? 'ВКЛ' : 'ВЫКЛ'}`);
     return isBassBoosted;
 }
 
