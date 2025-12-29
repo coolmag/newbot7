@@ -184,7 +184,7 @@ class YouTubeDownloader:
                 if not success:
                     return DownloadResult(success=False, error_message="Download failed", track_info=track_info)
             except asyncio.TimeoutError:
-                self._cleanup_partial(video_id)
+                await self._cleanup_partial(video_id)
                 return DownloadResult(success=False, error_message="Timeout", track_info=track_info)
 
             final_path = self._find_downloaded_file(video_id)
@@ -206,8 +206,11 @@ class YouTubeDownloader:
             if path.exists() and path.stat().st_size > 0: return path
         return None
 
-    def _cleanup_partial(self, video_id: str):
+    async def _cleanup_partial(self, video_id: str):
         pattern = str(self._settings.DOWNLOADS_DIR / f"{video_id}.*")
-        for f in glob.glob(pattern):
-            try: os.unlink(f)
-            except Exception: pass
+        try:
+            files_to_delete = await asyncio.to_thread(glob.glob, pattern)
+            for f in files_to_delete:
+                await asyncio.to_thread(os.unlink, f)
+        except Exception as e:
+            logger.warning(f"Error during partial file cleanup for {video_id}: {e}")

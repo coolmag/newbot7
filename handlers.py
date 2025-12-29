@@ -276,9 +276,11 @@ async def _send_track(context: ContextTypes.DEFAULT_TYPE, chat_id: int, video_id
                 if msg.audio:
                     await dl.cache_file_id(video_id, msg.audio.file_id)
     finally:
-        if res.file_path and os.path.exists(res.file_path):
-            try: os.unlink(res.file_path)
-            except OSError: pass
+        if res.file_path and await asyncio.to_thread(os.path.exists, res.file_path):
+            try:
+                await asyncio.to_thread(os.unlink, res.file_path)
+            except OSError as e:
+                logger.warning(f"Failed to delete temp file {res.file_path}: {e}")
 
 # ==================== РЕГИСТРАЦИЯ ====================
 

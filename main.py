@@ -169,12 +169,5 @@ async def telegram_webhook(request: Request):
         logger.error(f"Webhook error: {e}", exc_info=True)
     return {"ok": True}
 
-@app.get("/", include_in_schema=False)
-async def root():
-    return RedirectResponse(url="/webapp")
-
-# Статика (если есть папка webapp)
-try:
-    app.mount("/webapp", StaticFiles(directory="webapp", html=True), name="webapp")
-except Exception:
-    pass  # Папки нет — пропускаем
+# Mount the 'webapp' directory to serve static files at the root
+app.mount("/", StaticFiles(directory="webapp", html=True), name="static")

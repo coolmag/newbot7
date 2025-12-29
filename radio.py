@@ -180,9 +180,11 @@ class RadioSession:
             logger.error(f"[{self.chat_id}] ❌ Critical error in _play_track: {e}", exc_info=True)
             return False
         finally:
-            if result and result.file_path and os.path.exists(result.file_path):
-                try: os.unlink(result.file_path)
-                except OSError: pass
+            if result and result.file_path and await asyncio.to_thread(os.path.exists, result.file_path):
+                try:
+                    await asyncio.to_thread(os.unlink, result.file_path)
+                except OSError as e:
+                    logger.warning(f"[{self.chat_id}] Failed to delete temp file {result.file_path}: {e}")
 
 class RadioManager:
     def __init__(self, bot: Bot, settings: Settings, downloader: YouTubeDownloader):
