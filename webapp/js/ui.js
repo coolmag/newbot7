@@ -5,15 +5,18 @@ let menuStack = [];
 
 function getEl(id) { return document.getElementById(id); }
 
-// --- GLITCH ЭФФЕКТ (КИБЕРПАНК) ---
+// --- GLITCH ЭФФЕКТ ---
 const GLITCH_CHARS = '!<>-_\/[]{}—=+*^?#________';
 function glitchText(element, finalText) {
     if (!element) return;
     let iteration = 0;
     
-    clearInterval(element.interval); // Очистка предыдущей анимации
+    // Очистка старого таймера
+    if (element.dataset.glitchInterval) {
+        clearInterval(parseInt(element.dataset.glitchInterval));
+    }
     
-    element.interval = setInterval(() => {
+    const interval = setInterval(() => {
         element.textContent = finalText
             .split("")
             .map((letter, index) => {
@@ -25,12 +28,14 @@ function glitchText(element, finalText) {
             .join("");
         
         if (iteration >= finalText.length) { 
-            clearInterval(element.interval);
-            element.textContent = finalText; // Финал
+            clearInterval(interval);
+            element.textContent = finalText;
         }
         
-        iteration += 1 / 2; // Скорость расшифровки
+        iteration += 1 / 2;
     }, 30);
+    
+    element.dataset.glitchInterval = interval;
 }
 
 function getRandomQuery(node) {
@@ -46,10 +51,12 @@ function getRandomQuery(node) {
 function renderMenu() {
     const drawer = getEl('drawer-genres');
     if (!drawer) return;
-    const current = menuStack.length > 0 ? menuStack[menuStack.length - 1] : { title: "Частота", items: MENU_ROOT.children, isRoot: true };
+    
+    const current = menuStack.length > 0 ? menuStack[menuStack.length - 1] : { title: "Frequency", items: MENU_ROOT.children, isRoot: true };
 
     drawer.innerHTML = ''; 
 
+    // Header
     const header = document.createElement('div');
     header.className = 'drawer-header';
 
@@ -71,6 +78,7 @@ function renderMenu() {
     header.appendChild(backBtn); header.appendChild(title); header.appendChild(closeBtn);
     drawer.appendChild(header);
 
+    // List
     const listContainer = document.createElement('div');
     listContainer.className = 'scroll-area menu-list';
 
@@ -108,7 +116,7 @@ function renderPlaylist(playlist, currentIndex, player) {
     if (!container) return;
     container.innerHTML = '';
     if (!playlist || playlist.length === 0) {
-        container.innerHTML = '<div class="empty-state">Очередь пуста</div>';
+        container.innerHTML = '<div class="empty-state">Queue is empty</div>';
         return;
     }
     playlist.forEach((track, idx) => {
@@ -133,12 +141,22 @@ function toggleDrawer(name, show) {
     const overlay = getEl('overlay');
     const dGenres = getEl('drawer-genres');
     const dPlaylist = getEl('drawer-playlist');
+    
     if (show) {
-        overlay.classList.add('active');
-        if (name === 'genres') { dGenres.classList.add('active'); dPlaylist.classList.remove('active'); if (menuStack.length === 0) renderMenu(); }
-        if (name === 'playlist') { dPlaylist.classList.add('active'); dGenres.classList.remove('active'); }
+        if(overlay) overlay.classList.add('active');
+        if (name === 'genres') { 
+            if(dGenres) dGenres.classList.add('active'); 
+            if(dPlaylist) dPlaylist.classList.remove('active'); 
+            if (menuStack.length === 0) renderMenu(); 
+        }
+        if (name === 'playlist') { 
+            if(dPlaylist) dPlaylist.classList.add('active'); 
+            if(dGenres) dGenres.classList.remove('active'); 
+        }
     } else {
-        overlay.classList.remove('active'); dGenres?.classList.remove('active'); dPlaylist?.classList.remove('active');
+        if(overlay) overlay.classList.remove('active');
+        if(dGenres) dGenres.classList.remove('active');
+        if(dPlaylist) dPlaylist.classList.remove('active');
     }
 }
 
@@ -146,7 +164,6 @@ function initialize(player) {
     subscribe('currentTrackIndex', (idx) => {
         const track = store.playlist[idx];
         if (track) {
-            // ПРИМЕНЯЕМ GLITCH ЭФФЕКТ
             glitchText(getEl('track-title'), track.title);
             
             const ta = getEl('track-artist');
@@ -190,7 +207,7 @@ function initialize(player) {
     bind('btn-open-playlist', () => toggleDrawer('playlist', true));
     bind('overlay', () => toggleDrawer(null, false));
     
-    // Кнопка FX (Bass Boost)
+    // Кнопка FX
     const btnFx = getEl('btn-fx');
     if(btnFx) {
         btnFx.onclick = () => {
