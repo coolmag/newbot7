@@ -1,8 +1,9 @@
-const CACHE_NAME = 'aurora-player-v11';
+const CACHE_NAME = 'aurora-player-v12';
 const ASSETS = [
     './', './index.html', './style.css',
     './js/main.js', './js/api.js', './js/player.js',
-    './js/store.js', './js/ui.js', './js/genres.js', './js/visualizer.js'
+    './js/store.js', './js/ui.js', './js/genres.js', 
+    './js/visualizer.js', './js/haptics.js' // Добавлен новый модуль
 ];
 
 self.addEventListener('install', e => {
