@@ -1,108 +1,58 @@
 import { store } from './store.js';
+import { Visualizer } from './visualizer.js'; // Импорт для управления FX
 
 const audio = document.getElementById('audio-player');
-let onStatusChange = null; // Функция для отправки логов в UI
+let onStatusChange = null;
+let isBassBoosted = false;
 
-// Настройка слушателей событий аудио
 function setupAudioListeners() {
-    // 1. Начало загрузки
-    audio.addEventListener('loadstart', () => {
-        reportStatus('loading', 'ESTABLISHING CONNECTION...');
-    });
-
-    // 2. Ожидание данных (буферизация)
-    audio.addEventListener('waiting', () => {
-        reportStatus('loading', 'BUFFERING DATA STREAM...');
-    });
-
-    // 3. Готов к воспроизведению
+    audio.addEventListener('loadstart', () => reportStatus('loading', 'ESTABLISHING CONNECTION...'));
+    audio.addEventListener('waiting', () => reportStatus('loading', 'BUFFERING DATA STREAM...'));
     audio.addEventListener('canplay', () => {
         reportStatus('ready', 'STREAM READY');
-        // Если стоял флаг isPlaying, запускаем
-        if (store.isPlaying) audio.play().catch(e => console.warn(e));
+        if (store.isPlaying) audio.play().catch(console.warn);
     });
-
-    // 4. Воспроизведение началось
     audio.addEventListener('play', () => {
         store.isPlaying = true;
         reportStatus('playing', 'PLAYBACK INITIATED');
-        // Сообщаем в UI, чтобы включил визуализатор
-        document.documentElement.style.setProperty('--reactor-color', '#00f2ff'); // Blue
+        document.documentElement.style.setProperty('--reactor-color', '#00f2ff');
     });
-
-    // 5. Пауза
     audio.addEventListener('pause', () => {
         store.isPlaying = false;
         reportStatus('paused', 'SYSTEM PAUSED');
-        document.documentElement.style.setProperty('--reactor-color', '#ff0055'); // Red/Dim
+        document.documentElement.style.setProperty('--reactor-color', '#ff0055');
     });
-
-    // 6. Ошибка
     audio.addEventListener('error', (e) => {
-        console.error("Audio Error:", e);
         reportStatus('error', 'STREAM CORRUPTED. REROUTING...');
         document.documentElement.style.setProperty('--reactor-color', '#ff0000');
-        
-        // Авто-скип через 2 секунды
         setTimeout(() => nextTrack(), 2000);
     });
-
-    // 7. Трек закончился
-    audio.addEventListener('ended', () => {
-        nextTrack();
-    });
+    audio.addEventListener('ended', () => nextTrack());
 }
 
-// Функция отправки статуса
-function reportStatus(state, message) {
-    if (onStatusChange) onStatusChange(state, message);
-}
-
-// Установка коллбека для логов
-function setStatusCallback(fn) {
-    onStatusChange = fn;
-}
+function reportStatus(state, message) { if (onStatusChange) onStatusChange(state, message); }
+function setStatusCallback(fn) { onStatusChange = fn; }
 
 async function playTrack(index) {
     if (index < 0 || index >= store.playlist.length) return;
-    
-    // Обновляем индекс
     store.currentTrackIndex = index;
     const track = store.playlist[index];
 
-    // Сброс
     audio.pause();
-    store.isPlaying = true; // Сразу ставим флаг, что хотим играть
-    
-    // Сообщаем UI, что начали процесс
+    store.isPlaying = true;
     reportStatus('loading', `LOADING: ${track.title.toUpperCase().substring(0, 20)}...`);
-    document.documentElement.style.setProperty('--reactor-color', '#ffe600'); // Yellow (Loading)
+    document.documentElement.style.setProperty('--reactor-color', '#ffe600');
 
-    // Загрузка
     audio.src = `/audio/${track.identifier}.mp3`;
-    audio.load(); // Принудительный старт загрузки
-    
-    // Попытка воспроизведения
-    try {
-        await audio.play();
-    } catch (e) {
-        // Ошибка AbortError нормальна при быстром переключении
-        if (e.name !== 'AbortError') {
-            console.warn("Play request interrupted or waiting for user interaction");
-        }
-    }
+    audio.load();
+    try { await audio.play(); } catch (e) { if (e.name !== 'AbortError') console.warn("Play interrupted"); }
 }
 
 function togglePlay() {
     if (audio.paused) {
-        if (store.currentTrackIndex === -1 && store.playlist.length > 0) {
-            playTrack(0);
-        } else {
-            audio.play().catch(() => playTrack(store.currentTrackIndex));
-        }
-    } else {
-        audio.pause();
-    }
+        if (store.currentTrackIndex === -1 && store.playlist.length > 0) playTrack(0);
+        else audio.play().catch(() => playTrack(store.currentTrackIndex));
+    } else { audio.pause(); }
 }
 
 function nextTrack() {
@@ -118,21 +68,32 @@ function prevTrack() {
 }
 
 function seek(pct) {
-    if (audio.duration) {
-        audio.currentTime = audio.duration * pct;
-        reportStatus('seeking', `SEEKING TO ${Math.floor(pct*100)}%`);
+    if (!audio.duration) return;
+    let newTime = audio.duration * pct;
+    if (audio.buffered.length > 0) {
+        const bufferedEnd = audio.buffered.end(audio.buffered.length - 1);
+        if (newTime > bufferedEnd) {
+             if (newTime < audio.duration - 5) {
+                 newTime = bufferedEnd - 1; 
+                 reportStatus('loading', 'BUFFERING... PLEASE WAIT');
+             }
+        }
     }
+    audio.currentTime = newTime;
+    reportStatus('seeking', `SEEKING TO ${Math.floor(pct*100)}%`);
 }
 
-// Инициализируем слушатели при загрузке модуля
+// --- НОВАЯ ФУНКЦИЯ FX ---
+function toggleBassBoost() {
+    isBassBoosted = !isBassBoosted;
+    Visualizer.setBassBoost(isBassBoosted);
+    reportStatus('info', `BASS BOOST: ${isBassBoosted ? 'ON' : 'OFF'}`);
+    return isBassBoosted;
+}
+
 setupAudioListeners();
 
 export const Player = {
-    playTrack,
-    togglePlay,
-    nextTrack,
-    prevTrack,
-    seek,
-    getAudioElement: () => audio,
-    setStatusCallback
+    playTrack, togglePlay, nextTrack, prevTrack, seek, getAudioElement: () => audio, setStatusCallback,
+    toggleBassBoost // Экспорт
 };
