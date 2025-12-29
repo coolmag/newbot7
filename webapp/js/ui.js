@@ -1,106 +1,147 @@
 import { store, subscribe } from './store.js';
 import { MENU_ROOT } from './genres.js';
 
-// История навигации для кнопки "Назад"
-let menuStack = [];
+let menuStack = []; // История переходов
 
 function getEl(id) { return document.getElementById(id); }
 
-// Рендер меню (рекурсивный)
-function renderMenuLevel(items, title = "Menu") {
-    const grid = getEl('genre-grid');
-    const titleEl = document.querySelector('#drawer-genres h2');
-    if (!grid) return;
-    
-    // Обновляем заголовок
-    if (titleEl) titleEl.textContent = title;
-
-    grid.innerHTML = '';
-    
-    // Кнопка "Назад", если мы не в корне
-    if (menuStack.length > 0) {
-        const backBtn = document.createElement('div');
-        backBtn.className = 'genre-btn back-btn';
-        backBtn.innerHTML = `<span class="material-icons-round">arrow_back</span> Назад`;
-        backBtn.onclick = () => {
-            menuStack.pop(); // Убираем текущий уровень
-            const prev = menuStack.length > 0 ? menuStack[menuStack.length - 1] : { items: MENU_ROOT.children, title: MENU_ROOT.name };
-            
-            // Если вернулись в корень, очищаем стек совсем, чтобы логика работала верно
-            if (menuStack.length === 0) {
-                 renderMenuLevel(MENU_ROOT.children, MENU_ROOT.name);
-            } else {
-                 renderMenuLevel(prev.items, prev.title);
-            }
-        };
-        grid.appendChild(backBtn);
-    }
-
-    items.forEach(item => {
-        const btn = document.createElement('div');
-        btn.className = 'genre-btn';
-        
-        // Разный стиль для папок и для конечных жанров
-        if (item.children) {
-            btn.className += ' folder';
-            btn.innerHTML = `<span class="material-icons-round">folder</span> ${item.name}`;
-            btn.onclick = () => {
-                menuStack.push({ items, title }); // Сохраняем текущий уровень
-                renderMenuLevel(item.children, item.name);
-            };
-        } else {
-            // Это конечный жанр или действие
-            const icon = item.type === 'action' ? 'casino' : 'music_note';
-            btn.innerHTML = `<span class="material-icons-round">${icon}</span> ${item.name}`;
-            
-            btn.onclick = () => {
-                if (item.action === 'random') {
-                    // Логика рандома
-                    const randomQuery = getRandomQuery(MENU_ROOT);
-                    window.loadGenreHandler(randomQuery);
-                } else {
-                    window.loadGenreHandler(item.query);
-                }
-            };
-        }
-        grid.appendChild(btn);
-    });
-}
-
-// Рекурсивный поиск случайного жанра
+// Генератор рандома
 function getRandomQuery(node) {
     if (node.query) return node.query;
     if (node.children) {
-        const randomChild = node.children[Math.floor(Math.random() * node.children.length)];
-        return getRandomQuery(randomChild);
+        const child = node.children[Math.floor(Math.random() * node.children.length)];
+        return getRandomQuery(child);
     }
-    return "lofi hip hop"; // fallback
+    return "lofi hip hop";
 }
 
+// --- ОТРИСОВКА МЕНЮ (ЖАНРОВ) ---
+function renderMenu() {
+    const drawer = getEl('drawer-genres');
+    if (!drawer) return;
+
+    // Определяем, где мы находимся
+    const current = menuStack.length > 0 
+        ? menuStack[menuStack.length - 1] 
+        : { title: "Frequency", items: MENU_ROOT.children, isRoot: true };
+
+    drawer.innerHTML = ''; 
+
+    // 1. ШАПКА (Header) с навигацией
+    const header = document.createElement('div');
+    header.className = 'drawer-header';
+
+    // Кнопка НАЗАД
+    const backBtn = document.createElement('button');
+    backBtn.className = 'nav-btn';
+    backBtn.innerHTML = '<span class="material-icons-round">arrow_back_ios_new</span>';
+    backBtn.onclick = () => {
+        if (!current.isRoot) {
+            menuStack.pop();
+            renderMenu();
+        }
+    };
+    // Скрываем, если мы в главном меню
+    backBtn.style.visibility = current.isRoot ? 'hidden' : 'visible';
+
+    // ЗАГОЛОВОК
+    const title = document.createElement('div');
+    title.className = 'drawer-title-text';
+    title.textContent = current.title;
+
+    // Кнопка ЗАКРЫТЬ
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'nav-btn';
+    closeBtn.innerHTML = '<span class="material-icons-round">close</span>';
+    closeBtn.onclick = () => toggleDrawer('genres', false);
+
+    header.appendChild(backBtn);
+    header.appendChild(title);
+    header.appendChild(closeBtn);
+    drawer.appendChild(header);
+
+    // 2. СПИСОК (List)
+    const listContainer = document.createElement('div');
+    listContainer.className = 'scroll-area menu-list';
+
+    current.items.forEach(item => {
+        const row = document.createElement('div');
+        row.className = 'menu-row';
+        
+        // Иконка
+        let iconHtml = '';
+        if (item.action === 'random') iconHtml = '<span class="material-icons-round row-icon random">shuffle</span>';
+        else if (item.children) iconHtml = '<span class="material-icons-round row-icon folder">folder</span>';
+        else iconHtml = '<span class="material-icons-round row-icon music">music_note</span>';
+
+        // Стрелочка справа, если это папка
+        const arrowHtml = item.children 
+            ? '<span class="material-icons-round row-arrow">chevron_right</span>' 
+            : '';
+
+        row.innerHTML = `
+            <div class="row-left">
+                ${iconHtml}
+                <span class="row-title">${item.name}</span>
+            </div>
+            ${arrowHtml}
+        `;
+        
+        row.onclick = () => {
+            // Эффект нажатия
+            row.classList.add('clicked');
+            setTimeout(() => row.classList.remove('clicked'), 200);
+
+            if (item.children) {
+                // Входим внутрь
+                menuStack.push({ title: item.name, items: item.children, isRoot: false });
+                setTimeout(renderMenu, 50); 
+            } else {
+                // Выбираем жанр
+                toggleDrawer('genres', false);
+                if (item.action === 'random') {
+                    const q = getRandomQuery(MENU_ROOT);
+                    window.loadGenreHandler(q);
+                } else {
+                    window.loadGenreHandler(item.query);
+                }
+            }
+        };
+        listContainer.appendChild(row);
+    });
+
+    drawer.appendChild(listContainer);
+}
+
+// --- ОТРИСОВКА ПЛЕЙЛИСТА ---
 function renderPlaylist(playlist, currentIndex, player) {
     const container = getEl('playlist-container');
     if (!container) return;
 
     container.innerHTML = '';
     if (!playlist || playlist.length === 0) {
-        container.innerHTML = '<div style="text-align:center; padding:20px; color:#666;">Empty</div>';
+        container.innerHTML = '<div class="empty-state">Queue is empty</div>';
         return;
     }
 
+    // Создаем контейнер заголовка для плейлиста тоже (для симметрии)
+    // Но так как шторка плейлиста уже имеет заголовок в HTML, просто заполняем список
+
     playlist.forEach((track, idx) => {
         const item = document.createElement('div');
-        item.className = `list-item ${idx === currentIndex ? 'active' : ''}`;
+        item.className = `playlist-row ${idx === currentIndex ? 'active' : ''}`;
         
-        // Более компактный вид для ПК
+        // Красивая иконка слева
+        const iconType = idx === currentIndex ? 'equalizer' : 'music_note';
+        
         item.innerHTML = `
-            <div class="list-icon">
-                <span class="material-icons-round">${idx === currentIndex ? 'equalizer' : 'music_note'}</span>
+            <div class="p-icon-box">
+                <span class="material-icons-round">${iconType}</span>
             </div>
-            <div class="list-info">
-                <div class="list-title">${track.title}</div>
-                <div class="list-artist">${track.artist}</div>
+            <div class="p-info">
+                <div class="p-title">${track.title}</div>
+                <div class="p-artist">${track.artist}</div>
             </div>
-            <div class="list-time">${track.duration || ''}</div>
         `;
         
         item.onclick = () => {
@@ -110,9 +151,9 @@ function renderPlaylist(playlist, currentIndex, player) {
         container.appendChild(item);
     });
     
-    // Авто-скролл к текущему треку
-    const activeItem = container.querySelector('.active');
-    if (activeItem) activeItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    // Скролл к активному треку
+    const activeEl = container.querySelector('.active');
+    if (activeEl) activeEl.scrollIntoView({ block: 'center', behavior: 'smooth' });
 }
 
 function toggleDrawer(name, show) {
@@ -125,8 +166,8 @@ function toggleDrawer(name, show) {
         if (name === 'genres') {
             dGenres.classList.add('active');
             dPlaylist.classList.remove('active');
-            // При открытии жанров всегда показываем корень, если это первое открытие
-            if (menuStack.length === 0) renderMenuLevel(MENU_ROOT.children, MENU_ROOT.name);
+            // Если открываем первый раз или стек пуст - рендерим корень
+            if (menuStack.length === 0) renderMenu();
         }
         if (name === 'playlist') {
             dPlaylist.classList.add('active');
@@ -140,6 +181,7 @@ function toggleDrawer(name, show) {
 }
 
 function initialize(player) {
+    // Подписки на Store
     subscribe('currentTrackIndex', (idx) => {
         const track = store.playlist[idx];
         if (track) {
@@ -148,12 +190,10 @@ function initialize(player) {
             if(tt) tt.textContent = track.title;
             if(ta) ta.textContent = track.artist;
             
-            // Обновляем MediaSession (для управления с клавиатуры ПК)
             if ('mediaSession' in navigator) {
                 navigator.mediaSession.metadata = new MediaMetadata({
                     title: track.title,
-                    artist: track.artist,
-                    artwork: [{ src: 'favicon.png', sizes: '512x512', type: 'image/png' }]
+                    artist: track.artist
                 });
             }
         }
@@ -164,7 +204,7 @@ function initialize(player) {
         renderPlaylist(list, store.currentTrackIndex, player);
     });
 
-    // Прогресс бар
+    // Прогресс
     const audio = player.getAudioElement();
     audio.addEventListener('timeupdate', () => {
         if (!audio.duration) return;
@@ -172,7 +212,6 @@ function initialize(player) {
         const fill = getEl('progress-fill');
         const curr = getEl('time-current');
         const dur = getEl('time-duration');
-        
         if (fill) fill.style.width = pct + '%';
         if (curr) curr.textContent = formatTime(audio.currentTime);
         if (dur) dur.textContent = formatTime(audio.duration);
@@ -188,7 +227,7 @@ function initialize(player) {
         };
     }
 
-    // Кнопки
+    // Биндинг кнопок
     const bind = (id, fn) => { const el = getEl(id); if(el) el.onclick = fn; };
     bind('btn-play-pause', () => player.togglePlay());
     bind('btn-next', () => player.nextTrack());
@@ -197,7 +236,6 @@ function initialize(player) {
     bind('btn-open-playlist', () => toggleDrawer('playlist', true));
     bind('overlay', () => toggleDrawer(null, false));
     
-    // Обновление иконки Play/Pause
     subscribe('isPlaying', (playing) => {
         const icon = document.querySelector('#btn-play-pause span');
         if(icon) icon.textContent = playing ? 'pause' : 'play_arrow';
