@@ -4,13 +4,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Aurora Space Player</title>
-    <link rel="stylesheet" href="style.css?v=2">
+    
+    <!-- Шрифты (Правильная загрузка) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Orbitron:wght@400;500;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+    
+    <link rel="stylesheet" href="style.css?v=3">
     <link rel="icon" href="favicon.svg" type="image/svg+xml">
     
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
 
-    <!-- ССЫЛКА НА ESM.SH (Надежный CDN) -->
+    <!-- 3D Библиотека -->
     <script type="importmap">
     {
         "imports": {
@@ -26,14 +32,14 @@
         <div class="player-card">
             <div class="card-header">
                 <button class="btn" id="btn-open-genres"><span class="material-icons-round">category</span></button>
-                <div class="title-bar">Aurora OS v2</div>
+                <div class="title-bar">Aurora OS v3.0</div>
                 <button class="btn" id="btn-open-playlist"><span class="material-icons-round">queue_music</span></button>
             </div>
 
             <div class="track-info-container">
                 <div class="track-artwork-placeholder"></div>
-                <h1 id="track-title">System Booting...</h1>
-                <p id="track-artist">Please wait</p>
+                <h1 id="track-title">System Ready</h1>
+                <p id="track-artist">Waiting for input...</p>
             </div>
 
             <div class="progress-container">
@@ -65,15 +71,15 @@
     </div>
 
     <audio id="audio-player" crossorigin="anonymous"></audio>
+    
+    <!-- Авто-обновление SW -->
     <script>
-        // Обновление SW
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('service-worker.js').then(reg => {
                 reg.onupdatefound = () => {
                     const newWorker = reg.installing;
                     newWorker.onstatechange = () => {
                         if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                            console.log('New version available! Refreshing...');
                             window.location.reload();
                         }
                     };
