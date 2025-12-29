@@ -118,8 +118,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (playlist && playlist.length > 0) {
                 logger.print(`НАЙДЕНО ${playlist.length} ТРЕКОВ`, 'success');
                 Player.playTrack(0);
-            }
-            else {
+            } else {
                 logger.print('СИГНАЛ НЕ НАЙДЕН', 'error');
                 if(tTitle) tTitle.textContent = "Пусто";
             }
