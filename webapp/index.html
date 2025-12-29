@@ -3,43 +3,35 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Aurora Space Player</title>
+    <title>Aurora Player</title>
     
-    <!-- Шрифты (Правильная загрузка) -->
+    <!-- Предзагрузка шрифтов -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Orbitron:wght@400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
     
-    <link rel="stylesheet" href="style.css?v=3">
+    <link rel="stylesheet" href="style.css?v=4">
     <link rel="icon" href="favicon.svg" type="image/svg+xml">
     
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-
-    <!-- 3D Библиотека -->
-    <script type="importmap">
-    {
-        "imports": {
-            "three": "https://esm.sh/three@0.160.0"
-        }
-    }
-    </script>
 </head>
 <body>
     <div id="app-container">
+        <!-- Легкий Canvas (2D) -->
         <canvas id="visualizer-canvas"></canvas>
 
         <div class="player-card">
             <div class="card-header">
                 <button class="btn" id="btn-open-genres"><span class="material-icons-round">category</span></button>
-                <div class="title-bar">Aurora OS v3.0</div>
+                <div class="title-bar">AURORA</div>
                 <button class="btn" id="btn-open-playlist"><span class="material-icons-round">queue_music</span></button>
             </div>
 
             <div class="track-info-container">
                 <div class="track-artwork-placeholder"></div>
-                <h1 id="track-title">System Ready</h1>
-                <p id="track-artist">Waiting for input...</p>
+                <h1 id="track-title">Ready</h1>
+                <p id="track-artist">Tap to start</p>
             </div>
 
             <div class="progress-container">
@@ -61,29 +53,29 @@
 
         <div class="overlay" id="overlay"></div>
         <div class="drawer" id="drawer-genres">
-            <h2>Frequency</h2>
+            <h2>Select Frequency</h2>
             <div class="scroll-area genre-grid" id="genre-grid"></div>
         </div>
         <div class="drawer" id="drawer-playlist">
-            <h2>Playlist</h2>
+            <h2>Current Queue</h2>
             <div class="scroll-area" id="playlist-container"></div>
         </div>
     </div>
 
     <audio id="audio-player" crossorigin="anonymous"></audio>
-    
-    <!-- Авто-обновление SW -->
+
     <script>
+        // Force Reload при обновлении SW
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('service-worker.js').then(reg => {
                 reg.onupdatefound = () => {
-                    const newWorker = reg.installing;
-                    newWorker.onstatechange = () => {
-                        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                    const i = reg.installing;
+                    i.onstatechange = () => {
+                        if (i.state === 'installed' && navigator.serviceWorker.controller) {
                             window.location.reload();
                         }
-                    };
-                };
+                    }
+                }
             });
         }
     </script>

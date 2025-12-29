@@ -1,38 +1,27 @@
-const CACHE_NAME = 'aurora-player-v3'; // ВЕРСИЯ 3
-const ASSETS_TO_CACHE = [
-    './',
-    './index.html',
-    './style.css',
-    './js/main.js',
-    './js/api.js',
-    './js/player.js',
-    './js/store.js',
-    './js/ui.js',
-    './js/genres.js'
+const CACHE_NAME = 'aurora-player-v4'; // V4 - Сброс кэша
+const ASSETS = [
+    './', './index.html', './style.css',
+    './js/main.js', './js/api.js', './js/player.js',
+    './js/store.js', './js/ui.js', './js/genres.js', './js/visualizer.js'
 ];
 
-self.addEventListener('install', event => {
+self.addEventListener('install', e => {
     self.skipWaiting();
-    event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS_TO_CACHE)));
+    e.waitUntil(caches.open(CACHE_NAME).then(c => c.addAll(ASSETS)));
 });
 
-self.addEventListener('activate', event => {
-    event.waitUntil(
-        caches.keys().then(cacheNames => Promise.all(
-            cacheNames.map(name => {
-                if (name !== CACHE_NAME) return caches.delete(name);
-            })
-        )).then(() => self.clients.claim())
-    );
+self.addEventListener('activate', e => {
+    e.waitUntil(caches.keys().then(k => Promise.all(
+        k.map(n => n !== CACHE_NAME ? caches.delete(n) : null)
+    )).then(() => self.clients.claim()));
 });
 
-self.addEventListener('fetch', event => {
-    if (event.request.method !== 'GET') return;
-    if (event.request.url.includes('/api/') || event.request.url.includes('/audio/')) {
-        event.respondWith(fetch(event.request));
+self.addEventListener('fetch', e => {
+    if (e.request.method !== 'GET') return;
+    // Аудио и API всегда по сети
+    if (e.request.url.includes('/api/') || e.request.url.includes('/audio/')) {
+        e.respondWith(fetch(e.request));
         return;
     }
-    event.respondWith(
-        caches.match(event.request).then(res => res || fetch(event.request))
-    );
+    e.respondWith(caches.match(e.request).then(r => r || fetch(e.request)));
 });
