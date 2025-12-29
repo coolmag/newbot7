@@ -1,6 +1,6 @@
 import { store, subscribe } from './store.js';
 import { MENU_ROOT } from './genres.js';
-import * as haptic from './haptics.js'; // Импортируем наш новый модуль
+import * as haptics from './haptics.js'; // <--- НОВЫЙ ИМПОРТ
 
 let menuStack = [];
 
@@ -11,25 +11,23 @@ const GLITCH_CHARS = '!<>-_\/[]{}—=+*^?#________';
 function glitchText(element, finalText) {
     if (!element) return;
     let iteration = 0;
-    
-    if (element.dataset.glitchInterval) {
-        clearInterval(parseInt(element.dataset.glitchInterval));
-    }
+    if (element.dataset.glitchInterval) clearInterval(parseInt(element.dataset.glitchInterval));
     
     const interval = setInterval(() => {
         element.textContent = finalText
             .split("")
-            .map((letter, index) => (index < iteration) ? finalText[index] : GLITCH_CHARS[Math.floor(Math.random() * GLITCH_CHARS.length)])
+            .map((letter, index) => {
+                if (index < iteration) return finalText[index];
+                return GLITCH_CHARS[Math.floor(Math.random() * GLITCH_CHARS.length)];
+            })
             .join("");
         
         if (iteration >= finalText.length) { 
             clearInterval(interval);
             element.textContent = finalText;
         }
-        
         iteration += 1 / 2;
     }, 30);
-    
     element.dataset.glitchInterval = interval;
 }
 
@@ -47,10 +45,11 @@ function renderMenu() {
     const drawer = getEl('drawer-genres');
     if (!drawer) return;
     
-    const current = menuStack.length > 0 ? menuStack[menuStack.length - 1] : { title: "Выбор частоты", items: MENU_ROOT.children, isRoot: true };
+    const current = menuStack.length > 0 ? menuStack[menuStack.length - 1] : { title: "Frequency", items: MENU_ROOT.children, isRoot: true };
 
     drawer.innerHTML = ''; 
 
+    // Header
     const header = document.createElement('div');
     header.className = 'drawer-header';
 
@@ -58,7 +57,7 @@ function renderMenu() {
     backBtn.className = 'nav-btn';
     backBtn.innerHTML = '<span class="material-icons-round">arrow_back_ios_new</span>';
     backBtn.onclick = () => { 
-        haptic.impact('light');
+        haptics.impact('light'); // <--- HAPTIC
         if (!current.isRoot) { menuStack.pop(); renderMenu(); } 
     };
     backBtn.style.visibility = current.isRoot ? 'hidden' : 'visible';
@@ -75,6 +74,7 @@ function renderMenu() {
     header.appendChild(backBtn); header.appendChild(title); header.appendChild(closeBtn);
     drawer.appendChild(header);
 
+    // List
     const listContainer = document.createElement('div');
     listContainer.className = 'scroll-area menu-list';
 
@@ -89,12 +89,16 @@ function renderMenu() {
 
         const arrowHtml = item.children ? '<span class="material-icons-round row-arrow">chevron_right</span>' : '';
 
+        // Template Literal используется корректно
         row.innerHTML = `<div class="row-left">${iconHtml}<span class="row-title">${item.name}</span></div>${arrowHtml}`;
+        
         row.onclick = () => {
-            haptic.impact('light');
+            haptics.impact('light'); // <--- HAPTIC
+            row.classList.add('clicked');
+            setTimeout(() => row.classList.remove('clicked'), 200);
             if (item.children) {
                 menuStack.push({ title: item.name, items: item.children, isRoot: false });
-                renderMenu();
+                setTimeout(renderMenu, 50); 
             } else {
                 toggleDrawer('genres', false);
                 const q = item.action === 'random' ? getRandomQuery(MENU_ROOT) : item.query;
@@ -111,22 +115,26 @@ function renderPlaylist(playlist, currentIndex, player) {
     if (!container) return;
     container.innerHTML = '';
     if (!playlist || playlist.length === 0) {
-        container.innerHTML = '<div class="empty-state">Очередь пуста</div>';
+        container.innerHTML = '<div class="empty-state">Queue is empty</div>';
         return;
     }
     playlist.forEach((track, idx) => {
         const item = document.createElement('div');
         item.className = `playlist-row ${idx === currentIndex ? 'active' : ''}`;
         const iconType = idx === currentIndex ? 'equalizer' : 'music_note';
-        item.innerHTML = "
-            <div class=\"p-icon-box\"><span class=\"material-icons-round\">${iconType}</span></div>
-            <div class=\"p-info">
-                <div class=\"p-title\">${track.title}</div>
-                <div class=\"p-artist\">${track.artist}</div>
+        
+        // --- 🛑 FIX: ИСПРАВЛЕНА СИНТАКСИЧЕСКАЯ ОШИБКА (BACKTICKS) ---
+        item.innerHTML = `
+            <div class="p-icon-box"><span class="material-icons-round">${iconType}</span></div>
+            <div class="p-info">
+                <div class="p-title">${track.title}</div>
+                <div class="p-artist">${track.artist}</div>
             </div>
-        ";
+        `;
+        // -----------------------------------------------------------
+
         item.onclick = () => { 
-            haptic.impact('light');
+            haptics.impact('medium'); // <--- HAPTIC
             player.playTrack(idx); 
             toggleDrawer('playlist', false); 
         };
@@ -141,9 +149,8 @@ function toggleDrawer(name, show) {
     const dGenres = getEl('drawer-genres');
     const dPlaylist = getEl('drawer-playlist');
     
-    haptic.impact('medium');
-
     if (show) {
+        haptics.impact('medium'); // <--- HAPTIC
         if(overlay) overlay.classList.add('active');
         if (name === 'genres') { 
             if(dGenres) dGenres.classList.add('active'); 
@@ -184,7 +191,7 @@ function initialize(player) {
         const fill = getEl('progress-fill');
         const curr = getEl('time-current');
         const dur = getEl('time-duration');
-        if (fill) fill.style.width = `${pct}%`;
+        if (fill) fill.style.width = pct + '%';
         if (curr) curr.textContent = formatTime(audio.currentTime);
         if (dur) dur.textContent = formatTime(audio.duration);
     });
@@ -192,6 +199,7 @@ function initialize(player) {
     const pContainer = document.querySelector('.progress-container');
     if(pContainer) {
         pContainer.onclick = (e) => {
+            haptics.impact('light'); // <--- HAPTIC
             const rect = pContainer.getBoundingClientRect();
             const p = (e.clientX - rect.left) / rect.width;
             player.seek(p);
@@ -201,14 +209,12 @@ function initialize(player) {
     const bind = (id, fn) => { 
         const el = getEl(id); 
         if(el) el.onclick = () => {
-            haptic.impact('light');
+            haptics.impact('light'); // <--- HAPTIC DEFAULT
             fn();
         }; 
     };
-    bind('btn-play-pause', () => {
-        haptic.impact('heavy');
-        player.togglePlay();
-    });
+    
+    bind('btn-play-pause', () => player.togglePlay());
     bind('btn-next', () => player.nextTrack());
     bind('btn-prev', () => player.prevTrack());
     bind('btn-open-genres', () => toggleDrawer('genres', true));
@@ -218,7 +224,7 @@ function initialize(player) {
     const btnFx = getEl('btn-fx');
     if(btnFx) {
         btnFx.onclick = () => {
-            haptic.notification('success');
+            haptics.impact('medium'); // <--- HAPTIC
             const isActive = player.toggleBassBoost();
             btnFx.style.color = isActive ? '#00f2ff' : '#666';
             btnFx.style.textShadow = isActive ? '0 0 10px #00f2ff' : 'none';
