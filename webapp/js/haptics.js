@@ -1,26 +1,30 @@
 /**
  * Модуль для управления тактильной обратной связью (вибрацией)
- * в Telegram WebApp.
+ * Safe Version: Checks for API support explicitly.
  */
 
-const WebApp = window.Telegram?.WebApp;
+// Безопасное получение объекта WebApp
+const tg = window.Telegram?.WebApp;
 
-/**
- * Вызывает короткую вибрацию.
- * @param {('light'|'medium'|'heavy'|'rigid'|'soft')} style - Стиль вибрации.
- */
+// Проверяем, поддерживается ли метод (нужна версия бота 6.1+)
+const isSupported = tg && tg.HapticFeedback && tg.isVersionAtLeast && tg.isVersionAtLeast('6.1');
+
 export function impact(style = 'light') {
-    if (WebApp && WebApp.isVersionAtLeast('6.1') && WebApp.HapticFeedback) {
-        WebApp.HapticFeedback.impactOccurred(style);
+    if (isSupported) {
+        try {
+            tg.HapticFeedback.impactOccurred(style);
+        } catch (e) {
+            // Silently fail if something goes wrong
+        }
     }
 }
 
-/**
- * Вызывает вибрацию-уведомление.
- * @param {('success'|'warning'|'error')} type - Тип уведомления.
- */
 export function notification(type = 'success') {
-    if (WebApp && WebApp.isVersionAtLeast('6.1') && WebApp.HapticFeedback) {
-        WebApp.HapticFeedback.notificationOccurred(type);
+    if (isSupported) {
+        try {
+            tg.HapticFeedback.notificationOccurred(type);
+        } catch (e) {
+             // Silently fail
+        }
     }
 }
