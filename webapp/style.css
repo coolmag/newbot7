@@ -1,13 +1,14 @@
 :root {
     --bg-color: #050510;
     --primary: #00f2ff;
-    --accent: #7000ff;
+    --accent: #bc13fe;
     --text: #ffffff;
     --text-dim: #8899a6;
+    --card-bg: rgba(20, 20, 30, 0.98);
     
-    /* Dynamic Colors */
+    /* Dynamic */
     --beat: 0;
-    --reactor-color: #00f2ff; /* Меняется JS-ом: Голубой, Желтый, Красный */
+    --reactor-color: #00f2ff;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; outline: none; -webkit-tap-highlight-color: transparent; }
@@ -25,18 +26,18 @@ body {
 .player-card {
     position: relative; z-index: 10;
     width: 100%; max-width: 380px;
-    background: rgba(18, 18, 28, 0.95);
+    background: var(--card-bg);
     border-radius: 24px;
     border: 1px solid rgba(255, 255, 255, 0.08);
     padding: 24px;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.9);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.8);
     display: flex; flex-direction: column;
     transform: translateZ(0);
 }
 
 .title-bar { font-family: 'Orbitron'; color: var(--primary); font-size: 12px; letter-spacing: 2px; }
 
-/* РЕАКТОР (С динамическим цветом) */
+/* РЕАКТОР */
 .reactor-container {
     position: relative; width: 140px; height: 140px; margin: 25px auto;
     display: flex; justify-content: center; align-items: center;
@@ -44,14 +45,13 @@ body {
 .reactor-ring {
     position: absolute; inset: 0; border-radius: 50%;
     border: 2px solid transparent;
-    border-top-color: var(--reactor-color); /* DYNAMIC */
+    border-top-color: var(--reactor-color);
     border-bottom-color: var(--accent);
     animation: spin 4s linear infinite;
-    transition: border-color 0.5s ease;
+    transition: border-color 0.5s;
 }
 .reactor-ring:nth-child(2) {
-    inset: 10px; border-left-color: var(--reactor-color); /* DYNAMIC */
-    border-right-color: var(--accent);
+    inset: 10px; border-left-color: var(--reactor-color); border-right-color: var(--accent);
     animation: spin-rev 6s linear infinite; opacity: 0.6;
 }
 .reactor-core {
@@ -61,10 +61,9 @@ body {
 }
 .reactor-core::after {
     content: ''; width: 100%; height: 100%; border-radius: 50%;
-    background: radial-gradient(circle, var(--reactor-color) 0%, transparent 70%); /* DYNAMIC */
-    opacity: calc(0.3 + var(--beat)); 
-    transform: scale(calc(0.9 + var(--beat) * 0.1));
-    transition: background 0.5s ease;
+    background: radial-gradient(circle, var(--reactor-color) 0%, transparent 70%);
+    opacity: calc(0.3 + var(--beat)); transform: scale(calc(0.9 + var(--beat) * 0.1));
+    transition: background 0.5s;
 }
  @keyframes spin { to { transform: rotate(360deg); } }
  @keyframes spin-rev { to { transform: rotate(-360deg); } }
@@ -75,7 +74,7 @@ body {
     font-family: 'Orbitron'; font-size: 16px; color: var(--primary);
     margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.track-info p { font-size: 12px; color: var(--text-dim); transition: color 0.3s; }
+.track-info p { font-size: 12px; color: var(--text-dim); }
 
 /* ПРОГРЕСС */
 .progress-container { margin-bottom: 25px; cursor: pointer; }
@@ -87,12 +86,9 @@ body {
 .controls { display: flex; justify-content: space-between; align-items: center; margin-top: auto; }
 .btn { 
     background: none; border: none; color: #fff; cursor: pointer; 
-    width: 45px; height: 45px; display: flex; align-items: center; justify-content: center;
-    border-radius: 50%; transition: background 0.2s;
+    width: 45px; height: 45px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
 }
 .btn:active { transform: scale(0.9); }
-.btn:hover { background: rgba(255,255,255,0.05); }
-
 .btn-main {
     width: 65px; height: 65px;
     background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1);
@@ -100,72 +96,122 @@ body {
 }
 .btn-main .material-icons-round { font-size: 32px; color: var(--primary); }
 
-/* --- ЛОГ (КОНСОЛЬ) --- */
+/* ЛОГ */
 .system-log {
-    font-family: 'Courier New', monospace; font-size: 10px; 
-    color: var(--primary); opacity: 0.7;
-    text-align: center; margin-top: 20px; 
-    border-top: 1px solid rgba(255,255,255,0.05); padding-top: 10px;
-    text-transform: uppercase; letter-spacing: 1px;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    font-family: monospace; font-size: 10px; color: var(--primary); opacity: 0.6;
+    text-align: center; margin-top: 20px; border-top: 1px solid rgba(255,255,255,0.05);
+    padding-top: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-/* Цвета статусов */
-.log-error { color: #ff0055; animation: blink 1s infinite; }
-.log-success { color: #00ff88; }
 .log-loading { color: #ffe600; }
+.log-error { color: #ff0055; }
+.log-success { color: #00ff88; }
 
- @keyframes blink { 50% { opacity: 0.3; } }
-
-/* --- ШТОРКИ И ПРОЧЕЕ --- */
+/* --- ШТОРКИ (DRAWER) --- */
 .overlay { 
     position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 99; 
-    opacity: 0; pointer-events: none; transition: opacity 0.3s; backdrop-filter: blur(3px);
+    opacity: 0; pointer-events: none; transition: opacity 0.3s; backdrop-filter: blur(5px);
 }
 .overlay.active { opacity: 1; pointer-events: all; }
 
 .drawer {
-    position: fixed; bottom: 0; left: 0; right: 0; height: 75vh;
-    background: #12121e; border-radius: 20px 20px 0 0;
+    position: fixed; bottom: 0; left: 0; right: 0; height: 80vh;
+    background: #101018; border-radius: 20px 20px 0 0;
     transform: translateY(105%); transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
-    z-index: 100; display: flex; flex-direction: column; padding: 20px;
-    box-shadow: 0 -10px 40px rgba(0,0,0,0.6);
+    z-index: 100; display: flex; flex-direction: column;
+    box-shadow: 0 -10px 50px rgba(0,0,0,0.8);
+    /* Запрет системного скролла */
+    touch-action: none;
 }
 .drawer.active { transform: translateY(0); }
+
+/* --- HEADER В ШТОРКЕ --- */
+.drawer-header {
+    flex-shrink: 0; display: flex; align-items: center; justify-content: space-between;
+    padding: 15px 15px; border-bottom: 1px solid rgba(255,255,255,0.05);
+    background: rgba(20, 20, 30, 0.5);
+}
+.drawer-title-text {
+    font-family: 'Orbitron'; font-size: 14px; color: var(--primary);
+    text-transform: uppercase; letter-spacing: 1px; flex: 1; text-align: center;
+}
+.nav-btn {
+    background: none; border: none; color: var(--text-dim); cursor: pointer;
+    width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;
+    border-radius: 50%;
+}
+.nav-btn:hover { background: rgba(255,255,255,0.05); color: #fff; }
+
+/* --- СПИСОК МЕНЮ --- */
+.scroll-area { 
+    overflow-y: auto; flex: 1; padding: 10px 0; 
+    /* Плавный скролл */
+    -webkit-overflow-scrolling: touch;
+}
+
+/* КАСТОМНЫЙ СКРОЛЛБАР */
+.scroll-area::-webkit-scrollbar { width: 5px; }
+.scroll-area::-webkit-scrollbar-track { background: transparent; }
+.scroll-area::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+
+/* Элемент меню (строка) */
+.menu-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 20px; border-bottom: 1px solid rgba(255,255,255,0.03);
+    cursor: pointer; transition: background 0.1s;
+}
+.menu-row:active, .menu-row.clicked { background: rgba(0, 242, 255, 0.05); }
+
+.row-left { display: flex; align-items: center; gap: 15px; }
+.row-icon { font-size: 24px; color: #666; width: 24px; text-align: center; }
+.row-icon.folder { color: var(--accent); }
+.row-icon.random { color: var(--primary); }
+.row-icon.music { color: #888; }
+.row-title { font-size: 15px; color: #eee; font-weight: 500; }
+.row-arrow { font-size: 18px; color: #444; }
+
+/* --- ПЛЕЙЛИСТ (QUEUE) --- */
+.playlist-row {
+    display: flex; align-items: center; padding: 10px 15px;
+    border-bottom: 1px solid rgba(255,255,255,0.02);
+    cursor: pointer; transition: background 0.2s;
+}
+.playlist-row:hover { background: rgba(255,255,255,0.03); }
+.playlist-row.active { background: rgba(0, 242, 255, 0.08); border-left: 3px solid var(--primary); }
+
+/* Квадрат с иконкой */
+.p-icon-box {
+    width: 36px; height: 36px; border-radius: 8px;
+    background: rgba(255,255,255,0.05); color: #666;
+    display: flex; align-items: center; justify-content: center;
+    margin-right: 15px; flex-shrink: 0;
+}
+.playlist-row.active .p-icon-box { background: rgba(0, 242, 255, 0.15); color: var(--primary); }
+
+.p-info { flex: 1; overflow: hidden; display: flex; flex-direction: column; justify-content: center; }
+.p-title { font-size: 14px; color: #eee; margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.playlist-row.active .p-title { color: var(--primary); font-weight: 600; }
+.p-artist { font-size: 12px; color: #777; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.empty-state { text-align: center; padding: 40px; color: #555; font-size: 14px; }
 
 /* Адаптив ПК */
  @media (min-width: 768px) {
     .drawer {
-        left: 50%; bottom: 50%; right: auto; width: 420px; height: 550px;
+        left: 50%; bottom: 50%; width: 400px; height: 600px;
         transform: translate(-50%, 60%) scale(0.9); opacity: 0; pointer-events: none;
         border-radius: 20px; border: 1px solid rgba(255,255,255,0.1);
     }
     .drawer.active { transform: translate(-50%, 50%) scale(1); opacity: 1; pointer-events: all; }
 }
 
-/* Списки */
-.scroll-area { overflow-y: auto; flex: 1; }
-.scroll-area::-webkit-scrollbar { width: 4px; }
-.scroll-area::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
-
-.genre-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.genre-btn {
-    background: rgba(255,255,255,0.05); padding: 14px; border-radius: 8px;
-    color: #ddd; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 8px;
-    border: 1px solid transparent; transition: all 0.2s;
-}
-.genre-btn:hover { background: rgba(255,255,255,0.1); }
-.genre-btn:active { border-color: var(--primary); color: #fff; }
-.genre-btn.folder { font-weight: 600; color: #fff; }
-.genre-btn.back-btn { grid-column: 1/-1; justify-content: center; border: 1px dashed rgba(255,255,255,0.2); background: transparent; }
-
-/* Старт Экран */
+/* Start Screen */
 .start-screen {
     position: fixed; inset: 0; z-index: 200; background: #050510;
     display: flex; justify-content: center; align-items: center; flex-direction: column;
 }
 .start-btn {
     background: transparent; border: 1px solid var(--primary); color: var(--primary);
-    padding: 14px 40px; font-family: 'Orbitron'; font-size: 16px; letter-spacing: 2px;
-    border-radius: 4px; cursor: pointer; transition: all 0.2s; text-transform: uppercase;
+    padding: 12px 30px; font-family: 'Orbitron'; font-size: 14px;
+    border-radius: 4px; cursor: pointer; transition: all 0.2s; letter-spacing: 2px;
 }
-.start-btn:hover { background: rgba(0,242,255,0.1); box-shadow: 0 0 20px rgba(0,242,255,0.3); }
+.start-btn:hover { background: rgba(0,242,255,0.1); box-shadow: 0 0 15px rgba(0,242,255,0.2); }
