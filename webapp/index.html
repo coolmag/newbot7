@@ -9,7 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
     
-    <link rel="stylesheet" href="style.css?v=6">
+    <link rel="stylesheet" href="style.css?v=7">
     <link rel="icon" href="favicon.svg" type="image/svg+xml">
     
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
@@ -18,16 +18,14 @@
     <canvas id="visualizer-canvas"></canvas>
 
     <div id="app-container">
-        
+        <!-- Плеер -->
         <div class="player-card">
-            <!-- Верхняя панель -->
-            <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                 <button class="btn" id="btn-open-genres"><span class="material-icons-round">grid_view</span></button>
-                <span class="title-bar">AURORA OS v4.0</span>
+                <span class="title-bar">AURORA V5</span>
                 <button class="btn" id="btn-open-playlist"><span class="material-icons-round">playlist_play</span></button>
             </div>
 
-            <!-- Реактор -->
             <div class="reactor-container">
                 <div class="reactor-ring"></div>
                 <div class="reactor-ring"></div>
@@ -37,8 +35,8 @@
             </div>
 
             <div class="track-info">
-                <h1 id="track-title">System Ready</h1>
-                <p id="track-artist">Waiting for command</p>
+                <h1 id="track-title">System Online</h1>
+                <p id="track-artist">Select frequency</p>
             </div>
 
             <div class="progress-container">
@@ -52,45 +50,33 @@
             </div>
 
             <div class="controls">
-                <!-- Shuffle кнопка добавлена слева -->
-                <button class="btn small" id="btn-shuffle" style="color: #666;">
-                    <span class="material-icons-round">shuffle</span>
-                </button>
-                
+                <button class="btn" id="btn-shuffle" title="Shuffle"><span class="material-icons-round" style="font-size: 20px; color: #666;">shuffle</span></button>
                 <button class="btn" id="btn-prev"><span class="material-icons-round">skip_previous</span></button>
-                
-                <button class="btn btn-main" id="btn-play-pause">
-                    <span class="material-icons-round">play_arrow</span>
-                </button>
-                
+                <button class="btn btn-main" id="btn-play-pause"><span class="material-icons-round">play_arrow</span></button>
                 <button class="btn" id="btn-next"><span class="material-icons-round">skip_next</span></button>
-                
-                <!-- Repeat кнопка добавлена справа (для симметрии) -->
-                <button class="btn small" style="opacity: 0.3; cursor: default;">
-                    <span class="material-icons-round">repeat</span>
-                </button>
+                <button class="btn" title="Info"><span class="material-icons-round" style="font-size: 20px; color: #666;">info</span></button>
             </div>
             
-            <!-- Консоль отладки -->
-            <div id="system-log" class="system-log">
-                [SYSTEM] Online
-            </div>
+            <div id="system-log" class="system-log">[WAITING FOR INPUT]</div>
         </div>
 
-        <!-- Оверлей инициализации -->
+        <!-- Start Screen -->
         <div id="start-overlay" class="start-screen">
-            <div class="start-title">AURORA OS</div>
-            <div class="start-subtitle">SECURE CONNECTION ESTABLISHED</div>
-            <button id="btn-start-system" class="start-btn">INITIALIZE SYSTEM</button>
+            <div style="font-family: 'Orbitron'; font-size: 32px; color: #00f2ff; margin-bottom: 10px; text-shadow: 0 0 20px #00f2ff;">AURORA</div>
+            <div style="font-family: monospace; font-size: 12px; color: #888; margin-bottom: 30px;">WEB AUDIO INTERFACE</div>
+            <button id="btn-start-system" class="start-btn">INITIALIZE</button>
         </div>
 
+        <!-- Drawers -->
         <div class="overlay" id="overlay"></div>
+        
         <div class="drawer" id="drawer-genres">
-            <h2 class="drawer-title">Frequency Select</h2>
+            <h2>Select Frequency</h2>
             <div class="scroll-area genre-grid" id="genre-grid"></div>
         </div>
+        
         <div class="drawer" id="drawer-playlist">
-            <h2 class="drawer-title">Active Queue</h2>
+            <h2>Current Queue</h2>
             <div class="scroll-area" id="playlist-container"></div>
         </div>
     </div>
@@ -98,6 +84,7 @@
     <audio id="audio-player" crossorigin="anonymous"></audio>
 
     <script>
+        // Force update SW
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('service-worker.js').then(r => r.update());
         }
