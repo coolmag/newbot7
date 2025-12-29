@@ -4,6 +4,18 @@ import { Player } from './player.js';
 import { Visualizer } from './visualizer.js';
 import { UI } from './ui.js';
 
+// Хелпер для логов
+function log(msg) {
+    const el = document.getElementById('system-log');
+    if(el) {
+        el.textContent = `> ${msg}`;
+        // Мигание при обновлении
+        el.style.opacity = '1';
+        setTimeout(() => el.style.opacity = '0.7', 100);
+    }
+    console.log(`[SYS] ${msg}`);
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     // 1. Инициализация Telegram
     try {
@@ -15,55 +27,72 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     } catch (e) {}
 
-    // 2. Логика "Tap to Start" (Решает проблему автоплея)
+    // 2. Старт Системы
     const startBtn = document.getElementById('btn-start-system');
     const startOverlay = document.getElementById('start-overlay');
 
-    const initializeSystem = async () => {
-        // Убираем оверлей
+    startBtn.onclick = async () => {
+        log('INITIALIZING AUDIO CORE...');
         startOverlay.style.opacity = '0';
         setTimeout(() => startOverlay.remove(), 500);
 
-        // Разблокируем аудио
         const audio = Player.getAudioElement();
         try {
-            // Тихий старт аудио контекста
             await audio.play().then(() => audio.pause()).catch(() => {});
             Visualizer.initialize(audio);
+            log('AUDIO CORE ONLINE');
         } catch (e) {
-            console.log('Audio init warning:', e);
+            log('AUDIO WARNING: ' + e.message);
         }
-
-        // Загружаем первый плейлист
+        
         window.loadGenreHandler('lofi hip hop radio');
     };
 
-    startBtn.onclick = initializeSystem;
-
-    // 3. UI Логика
+    // 3. Логика загрузки
     window.loadGenreHandler = async (query) => {
         UI.toggleDrawer('genres', false);
+        log(`SEARCHING: ${query.toUpperCase()}`);
         
         const tTitle = document.getElementById('track-title');
         const tArtist = document.getElementById('track-artist');
-        
         tTitle.textContent = "Scanning...";
-        tArtist.textContent = "Connecting to frequency...";
+        tArtist.textContent = "Please wait";
 
         try {
             const playlist = await fetchPlaylist(query);
             store.playlist = playlist;
             
             if (playlist.length > 0) {
+                log(`FOUND ${playlist.length} TRACKS`);
                 Player.playTrack(0);
             } else {
+                log('NO SIGNAL FOUND');
                 tTitle.textContent = "No Signal";
                 tArtist.textContent = "Try another frequency";
             }
         } catch (err) {
-            tTitle.textContent = "Connection Error";
+            log('CONNECTION ERROR');
+            tTitle.textContent = "Error";
         }
+    };
+    
+    // Кнопка Shuffle
+    document.getElementById('btn-shuffle').onclick = () => {
+        if (store.playlist.length < 2) return;
+        log('SHUFFLING PLAYLIST...');
+        // Алгоритм Фишера-Йетса
+        for (let i = store.playlist.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [store.playlist[i], store.playlist[j]] = [store.playlist[j], store.playlist[i]];
+        }
+        // Сброс индекса и старт первого трека
+        store.currentTrackIndex = -1;
+        Player.playTrack(0);
+        // Обновить список в UI
+        // UI сам обновится через подписку на store, но можно форсировать
+        log('PLAYLIST SHUFFLED');
     };
 
     UI.initialize(Player);
+    log('SYSTEM STANDBY');
 });
