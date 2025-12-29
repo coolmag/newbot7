@@ -1,4 +1,4 @@
-const CACHE_NAME = 'aurora-player-v14';
+const CACHE_NAME = 'aurora-player-v20';
 const ASSETS = [
     './', './index.html', './style.css',
     './js/main.js', './js/api.js', './js/player.js',
@@ -12,9 +12,16 @@ self.addEventListener('install', e => {
 });
 
 self.addEventListener('activate', e => {
-    e.waitUntil(caches.keys().then(k => Promise.all(
-        k.map(n => n !== CACHE_NAME ? caches.delete(n) : null)
-    )).then(() => self.clients.claim()));
+    e.waitUntil(caches.keys().then(cacheNames => {
+        return Promise.all(
+            cacheNames.map(cacheName => {
+                if (cacheName !== CACHE_NAME) {
+                    console.log('[SW] Deleting old cache:', cacheName);
+                    return caches.delete(cacheName);
+                }
+            })
+        );
+    }).then(() => self.clients.claim()));
 });
 
 self.addEventListener('fetch', e => {
@@ -23,5 +30,13 @@ self.addEventListener('fetch', e => {
         e.respondWith(fetch(e.request));
         return;
     }
-    e.respondWith(caches.match(e.request).then(r => r || fetch(e.request)));
+    e.respondWith(caches.match(e.request).then(r => {
+        // Fallback to network and cache the new resource.
+        return r || fetch(e.request).then(response => {
+            return caches.open(CACHE_NAME).then(cache => {
+                cache.put(e.request, response.clone());
+                return response;
+            });
+        });
+    }));
 });
