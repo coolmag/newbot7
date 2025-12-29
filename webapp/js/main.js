@@ -1,85 +1,67 @@
 import { store } from './store.js';
-import * as api from './api.js'; // <--- ИСПРАВЛЕНО: Теперь импорт работает корректно
+import { fetchPlaylist } from './api.js'; // <--- ИСПРАВЛЕНО
 import { Player } from './player.js';
+import { Visualizer } from './visualizer.js';
 import { UI } from './ui.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log('[Main] System booting...');
+    // Оптимизация для мобильных
+    document.body.style.touchAction = 'manipulation';
 
-    // 1. Инициализация Telegram
+    // 1. Telegram Init
     try {
         const tg = window.Telegram?.WebApp;
         if (tg) {
             tg.expand();
             tg.setHeaderColor('#050510');
             tg.setBackgroundColor('#050510');
+            tg.enableClosingConfirmation();
         }
-    } catch (e) {
-        console.warn('Telegram init error:', e);
-    }
+    } catch (e) {}
 
-    // 2. Инициализация UI
-    try {
-        // Хендлер загрузки
-        window.loadGenreHandler = async (query) => {
-            console.log('[Main] Loading genre:', query);
-            UI.toggleDrawer('genres', false);
-            
-            const titleEl = document.getElementById('track-title');
-            const artistEl = document.getElementById('track-artist');
-            
-            if(titleEl) titleEl.textContent = "Loading...";
-            if(artistEl) artistEl.textContent = "Connecting to server...";
-
-            try {
-                const playlist = await api.fetchPlaylist(query);
-                store.playlist = playlist;
-                if (playlist.length > 0) {
-                    Player.playTrack(0);
-                } else {
-                    if(titleEl) titleEl.textContent = "No signals found";
-                    if(artistEl) artistEl.textContent = "Try another frequency";
-                }
-            } catch (err) {
-                console.error('[Main] Playlist error:', err);
-                if(titleEl) titleEl.textContent = "Connection Error";
-                if(artistEl) artistEl.textContent = "Check network";
-            }
-        };
-
-        UI.initialize(Player);
-        console.log('[Main] UI Active');
+    // 2. UI Logic
+    window.loadGenreHandler = async (query) => {
+        UI.toggleDrawer('genres', false);
         
-    } catch (e) {
-        console.error('[Main] UI CRASH:', e);
-    }
+        // Сброс UI
+        const tTitle = document.getElementById('track-title');
+        const tArtist = document.getElementById('track-artist');
+        if(tTitle) tTitle.textContent = "Loading...";
+        if(tArtist) tArtist.textContent = "Searching cosmos...";
 
-    // 3. Запуск 3D (Безопасный режим)
-    const start3D = async () => {
         try {
-            // Динамический импорт, чтобы не блокировать основной поток
-            const { Visualizer } = await import('./visualizer.js');
-            const audio = Player.getAudioElement();
-            Visualizer.initialize(audio);
-            console.log('[Main] Visualizer engaged');
-        } catch (e) {
-            console.warn('[Main] Visualizer skipped:', e);
+            // Используем исправленный импорт
+            const playlist = await fetchPlaylist(query);
+            store.playlist = playlist;
+            
+            if (playlist.length > 0) {
+                Player.playTrack(0);
+            } else {
+                if(tTitle) tTitle.textContent = "Empty Sector";
+                if(tArtist) tArtist.textContent = "Try another signal";
+            }
+        } catch (err) {
+            console.error(err);
+            if(tTitle) tTitle.textContent = "Signal Lost";
         }
     };
 
-    const onUserInteract = () => {
-        start3D();
-        document.removeEventListener('click', onUserInteract);
-        document.removeEventListener('touchstart', onUserInteract);
-    };
-    document.addEventListener('click', onUserInteract);
-    document.addEventListener('touchstart', onUserInteract);
+    UI.initialize(Player);
 
-    // 4. Авто-старт
+    // 3. Запуск Визуализатора (теперь он легкий и не упадет)
+    const initAudio = () => {
+        const audio = Player.getAudioElement();
+        Visualizer.initialize(audio);
+        // Снимаем слушатели после первого клика
+        document.removeEventListener('click', initAudio);
+        document.removeEventListener('touchstart', initAudio);
+    };
+    
+    document.addEventListener('click', initAudio);
+    document.addEventListener('touchstart', initAudio);
+
+    // Авто-старт (если сеть есть)
     setTimeout(() => {
-        // Пробуем загрузить, если есть подключение
-        if (navigator.onLine) {
-            window.loadGenreHandler('lofi hip hop radio');
-        }
-    }, 1000);
+        if(navigator.onLine) window.loadGenreHandler('lofi hip hop radio');
+    }, 800);
 });
