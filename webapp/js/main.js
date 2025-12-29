@@ -1,8 +1,7 @@
 import { store } from './store.js';
-import { api } from './api.js';
+import * as api from './api.js'; // <--- ИСПРАВЛЕНО: Теперь импорт работает корректно
 import { Player } from './player.js';
 import { UI } from './ui.js';
-// Visualizer импортируем позже, внутри кода
 
 document.addEventListener('DOMContentLoaded', async () => {
     console.log('[Main] System booting...');
@@ -19,16 +18,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.warn('Telegram init error:', e);
     }
 
-    // 2. Инициализация UI (Кнопки заработают СРАЗУ)
+    // 2. Инициализация UI
     try {
-        // Создаем глобальный обработчик для жанров
+        // Хендлер загрузки
         window.loadGenreHandler = async (query) => {
             console.log('[Main] Loading genre:', query);
             UI.toggleDrawer('genres', false);
             
-            // Показываем статус
             const titleEl = document.getElementById('track-title');
+            const artistEl = document.getElementById('track-artist');
+            
             if(titleEl) titleEl.textContent = "Loading...";
+            if(artistEl) artistEl.textContent = "Connecting to server...";
 
             try {
                 const playlist = await api.fetchPlaylist(query);
@@ -36,43 +37,36 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (playlist.length > 0) {
                     Player.playTrack(0);
                 } else {
-                    if(titleEl) titleEl.textContent = "Playlist empty";
+                    if(titleEl) titleEl.textContent = "No signals found";
+                    if(artistEl) artistEl.textContent = "Try another frequency";
                 }
             } catch (err) {
-                console.error('[Main] Playlist load failed:', err);
-                if(titleEl) titleEl.textContent = "Network Error";
+                console.error('[Main] Playlist error:', err);
+                if(titleEl) titleEl.textContent = "Connection Error";
+                if(artistEl) artistEl.textContent = "Check network";
             }
         };
 
-        // Запускаем UI
         UI.initialize(Player);
-        console.log('[Main] UI Active. Buttons should work now.');
+        console.log('[Main] UI Active');
         
     } catch (e) {
-        console.error('[Main] CRITICAL UI ERROR:', e);
-        alert('UI Error: ' + e.message);
+        console.error('[Main] UI CRASH:', e);
     }
 
-    // 3. Попытка загрузить 3D Визуализатор (Изолировано)
-    // Если здесь будет ошибка, она НЕ сломает плеер
+    // 3. Запуск 3D (Безопасный режим)
     const start3D = async () => {
         try {
-            console.log('[Main] Loading 3D Engine...');
-            // Динамический импорт: если three.js не загрузится, ошибка упадет сюда
+            // Динамический импорт, чтобы не блокировать основной поток
             const { Visualizer } = await import('./visualizer.js');
-            
             const audio = Player.getAudioElement();
             Visualizer.initialize(audio);
-            console.log('[Main] 3D Engine Started');
+            console.log('[Main] Visualizer engaged');
         } catch (e) {
-            console.warn('[Main] 3D Visualizer disabled (module error):', e);
-            // Можно скрыть канвас, если 3D не работает
-            const canvas = document.getElementById('visualizer-canvas');
-            if (canvas) canvas.style.display = 'none';
+            console.warn('[Main] Visualizer skipped:', e);
         }
     };
 
-    // Запускаем 3D только по клику (требование браузеров)
     const onUserInteract = () => {
         start3D();
         document.removeEventListener('click', onUserInteract);
@@ -81,8 +75,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.addEventListener('click', onUserInteract);
     document.addEventListener('touchstart', onUserInteract);
 
-    // 4. Авто-старт музыки (Lo-Fi)
+    // 4. Авто-старт
     setTimeout(() => {
-        window.loadGenreHandler('lofi hip hop radio');
-    }, 500);
+        // Пробуем загрузить, если есть подключение
+        if (navigator.onLine) {
+            window.loadGenreHandler('lofi hip hop radio');
+        }
+    }, 1000);
 });
