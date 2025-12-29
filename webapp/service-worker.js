@@ -1,4 +1,4 @@
-const CACHE_NAME = 'aurora-player-v4'; // V4 - Сброс кэша
+const CACHE_NAME = 'aurora-player-v5'; // V5
 const ASSETS = [
     './', './index.html', './style.css',
     './js/main.js', './js/api.js', './js/player.js',
@@ -18,7 +18,6 @@ self.addEventListener('activate', e => {
 
 self.addEventListener('fetch', e => {
     if (e.request.method !== 'GET') return;
-    // Аудио и API всегда по сети
     if (e.request.url.includes('/api/') || e.request.url.includes('/audio/')) {
         e.respondWith(fetch(e.request));
         return;

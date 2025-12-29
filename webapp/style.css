@@ -1,28 +1,20 @@
 :root {
     --bg-color: #050510;
-    --primary-neon: #00f2ff;
-    --secondary-neon: #bc13fe;
-    --glass-bg: rgba(15, 15, 25, 0.85); /* Чуть менее прозрачный для скорости */
-    --text-primary: #ffffff;
-    --text-secondary: #a0a0b0;
-    --beat-intensity: 0; 
+    --primary: #00f2ff;
+    --accent: #7000ff;
+    --text: #ffffff;
+    --text-dim: #8899a6;
+    --beat: 0; /* JS меняет это значение от 0 до 1 */
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 
 body {
-    background-color: var(--bg-color);
-    color: var(--text-primary);
+    background: var(--bg-color);
+    color: var(--text);
     font-family: 'Inter', sans-serif;
     overflow: hidden;
     height: 100vh;
-    overscroll-behavior: none; /* Блокируем скролл страницы */
-}
-
-#app-container {
-    width: 100%; height: 100%;
-    display: flex; justify-content: center; align-items: center;
-    position: relative;
 }
 
 #visualizer-canvas {
@@ -30,98 +22,152 @@ body {
     z-index: 0;
 }
 
-.player-card {
-    position: relative; z-index: 2;
-    width: 92%; max-width: 380px;
-    padding: 25px;
-    background: var(--glass-bg);
-    border-radius: 25px;
-    border: 1px solid rgba(255,255,255,0.1);
-    box-shadow: 0 10px 40px rgba(0,0,0,0.6);
-    /* Анимация подсветки */
-    box-shadow: 
-        0 10px 40px rgba(0,0,0,0.6),
-        0 0 calc(var(--beat-intensity) * 20px) rgba(0, 242, 255, 0.3);
-}
-
-.card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-.title-bar { font-family: 'Orbitron', sans-serif; color: var(--primary-neon); letter-spacing: 2px; font-size: 14px; }
-
-.track-info-container { text-align: center; margin-bottom: 25px; }
-.track-artwork-placeholder {
-    width: 150px; height: 150px; margin: 0 auto 15px;
-    border-radius: 50%;
-    background: conic-gradient(from 0deg, #222, var(--primary-neon), #222);
-    box-shadow: 0 0 20px rgba(0,0,0,0.5);
-    animation: spin 8s linear infinite;
+#app-container {
+    width: 100%; height: 100%;
+    display: flex; justify-content: center; align-items: center;
     position: relative;
+    perspective: 1000px;
 }
-.track-artwork-placeholder::after {
-    content: ''; position: absolute; inset: 4px;
-    background: #111; border-radius: 50%;
+
+/* --- КАРТОЧКА ПЛЕЕРА --- */
+.player-card {
+    position: relative; z-index: 10;
+    width: 90%; max-width: 360px;
+    background: rgba(18, 18, 28, 0.95); /* Почти непрозрачный для скорости */
+    border-radius: 30px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 30px 20px;
+    text-align: center;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.8);
+    
+    /* Дыхание карточки под бит */
+    transform: scale(calc(1 + var(--beat) * 0.01));
+    transition: transform 0.1s linear;
 }
- @keyframes spin { 100% { transform: rotate(360deg); } }
 
-#track-title { font-size: 18px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 4px; }
-#track-artist { font-size: 13px; color: var(--text-secondary); }
-
-.progress-container { margin-bottom: 25px; }
-.progress-bar { height: 5px; background: rgba(255,255,255,0.1); border-radius: 3px; position: relative; }
-.progress-fill { height: 100%; width: 0%; background: var(--primary-neon); border-radius: 3px; }
-.time-labels { display: flex; justify-content: space-between; font-size: 10px; margin-top: 6px; color: #666; font-family: 'Orbitron', monospace; }
-
-.controls { display: flex; justify-content: space-around; align-items: center; }
-.btn { background: none; border: none; color: #fff; width: 50px; height: 50px; display: flex; justify-content: center; align-items: center; cursor: pointer; }
-.btn:active { transform: scale(0.95); }
-.btn-main { 
-    width: 65px; height: 65px; border-radius: 50%;
-    background: var(--primary-neon); color: #000;
-    box-shadow: 0 0 15px var(--primary-neon);
+/* --- РЕАКТОР (Обложка) --- */
+.reactor-container {
+    position: relative;
+    width: 180px; height: 180px;
+    margin: 0 auto 30px;
+    display: flex; justify-content: center; align-items: center;
 }
-.material-icons-round { font-size: 28px; }
-.btn-main .material-icons-round { font-size: 36px; }
 
-/* ОПТИМИЗИРОВАННЫЕ ШТОРКИ */
+/* Вращающиеся кольца */
+.reactor-ring {
+    position: absolute; inset: 0;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    border-top-color: var(--primary);
+    border-bottom-color: var(--accent);
+    animation: spin 4s linear infinite;
+    box-shadow: 0 0 15px rgba(0, 242, 255, 0.2);
+}
+
+.reactor-ring:nth-child(2) {
+    inset: 10px;
+    border: 2px solid transparent;
+    border-left-color: var(--primary);
+    border-right-color: var(--accent);
+    animation: spin-rev 6s linear infinite;
+    opacity: 0.7;
+}
+
+.reactor-core {
+    width: 130px; height: 130px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 30% 30%, #333, #000);
+    position: relative;
+    z-index: 2;
+    box-shadow: inset 0 0 30px rgba(0,0,0,1);
+    display: flex; justify-content: center; align-items: center;
+}
+
+/* Пульсирующая энергия внутри */
+.reactor-core::after {
+    content: '';
+    width: 100%; height: 100%;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(0,242,255,0.4) 0%, transparent 70%);
+    opacity: calc(0.3 + var(--beat));
+    transform: scale(calc(0.8 + var(--beat) * 0.2));
+}
+
+ @keyframes spin { to { transform: rotate(360deg); } }
+ @keyframes spin-rev { to { transform: rotate(-360deg); } }
+
+/* --- ТЕКСТ --- */
+.track-info h1 {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 18px; letter-spacing: 1px;
+    margin-bottom: 5px;
+    color: var(--primary);
+    text-shadow: 0 0 10px rgba(0,242,255,0.5);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.track-info p { font-size: 13px; color: var(--text-dim); }
+
+/* --- ПРОГРЕСС БАР --- */
+.progress-container { margin: 25px 0; }
+.progress-bg { 
+    height: 4px; background: rgba(255,255,255,0.1); 
+    border-radius: 2px; overflow: hidden; position: relative; 
+}
+.progress-fill { 
+    height: 100%; width: 0%; 
+    background: linear-gradient(90deg, var(--primary), var(--accent));
+    box-shadow: 0 0 10px var(--primary);
+    transition: width 0.1s linear;
+}
+.time-labels { display: flex; justify-content: space-between; font-size: 10px; color: #555; margin-top: 8px; font-family: monospace; }
+
+/* --- КНОПКИ --- */
+.controls { display: flex; justify-content: center; gap: 30px; align-items: center; }
+.btn {
+    background: none; border: none; color: var(--text);
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s;
+}
+.btn:active { transform: scale(0.9); }
+
+.btn-main {
+    width: 70px; height: 70px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.05));
+    border: 1px solid rgba(255,255,255,0.1);
+    box-shadow: 0 0 20px rgba(0, 242, 255, calc(var(--beat) * 0.5));
+}
+.btn-main .material-icons-round { font-size: 32px; color: var(--primary); }
+
+/* --- ШТОРКИ (С оптимизацией) --- */
+.drawer {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    height: 75vh;
+    background: #0f0f18;
+    border-radius: 25px 25px 0 0;
+    transform: translateY(105%);
+    transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+    z-index: 100;
+    display: flex; flex-direction: column;
+    padding: 20px;
+    border-top: 1px solid rgba(255,255,255,0.1);
+}
+.drawer.active { transform: translateY(0); }
 .overlay {
-    position: fixed; inset: 0; background: rgba(0,0,0,0.7);
-    z-index: 10; opacity: 0; pointer-events: none;
-    transition: opacity 0.25s ease;
-    backdrop-filter: blur(2px); /* Размытие легкое */
+    position: fixed; inset: 0; background: rgba(0,0,0,0.8);
+    z-index: 99; opacity: 0; pointer-events: none;
+    transition: opacity 0.3s;
 }
 .overlay.active { opacity: 1; pointer-events: all; }
 
-.drawer {
-    position: fixed; bottom: 0; left: 0; right: 0;
-    background: #12121e;
-    border-radius: 20px 20px 0 0;
-    z-index: 11;
-    height: 70vh;
-    padding: 20px;
-    display: flex; flex-direction: column;
-    
-    transform: translateY(100%);
-    will-change: transform; /* Включаем GPU */
-    transition: transform 0.3s cubic-bezier(0.1, 0.7, 0.1, 1);
-    box-shadow: 0 -5px 20px rgba(0,0,0,0.5);
-}
-.drawer.active { transform: translateY(0); }
-
-.drawer h2 { text-align: center; margin-bottom: 15px; font-family: 'Orbitron', sans-serif; font-size: 16px; color: var(--primary-neon); }
-
-.scroll-area { overflow-y: auto; flex: 1; -webkit-overflow-scrolling: touch; }
-
-.list-item {
-    padding: 12px; margin-bottom: 8px;
+/* Список жанров */
+.genre-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.genre-btn {
     background: rgba(255,255,255,0.05);
-    border-radius: 8px; display: flex; align-items: center;
+    padding: 15px; border-radius: 12px;
+    text-align: center; color: var(--text);
+    font-size: 14px; border: 1px solid transparent;
 }
-.list-item:active { background: rgba(255,255,255,0.1); }
-.list-item.active { border: 1px solid var(--primary-neon); }
+.genre-btn:active { background: var(--primary); color: #000; }
 
-.genre-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.genre-card {
-    background: #1a1a25; padding: 15px; border-radius: 10px;
-    text-align: center; border: 1px solid rgba(255,255,255,0.05);
-}
-.genre-card:active { border-color: var(--primary-neon); }
-.genre-icon { font-size: 24px; margin-bottom: 5px; }
+.scroll-area { overflow-y: auto; flex: 1; }

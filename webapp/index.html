@@ -3,39 +3,49 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Aurora Player</title>
+    <title>Aurora OS</title>
     
-    <!-- Предзагрузка шрифтов -->
+    <!-- Шрифты -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
     
-    <link rel="stylesheet" href="style.css?v=4">
-    <link rel="icon" href="favicon.svg" type="image/svg+xml">
-    
+    <link rel="stylesheet" href="style.css?v=5">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
+    <!-- Фон -->
+    <canvas id="visualizer-canvas"></canvas>
+
     <div id="app-container">
-        <!-- Легкий Canvas (2D) -->
-        <canvas id="visualizer-canvas"></canvas>
-
+        
+        <!-- Карточка -->
         <div class="player-card">
-            <div class="card-header">
-                <button class="btn" id="btn-open-genres"><span class="material-icons-round">category</span></button>
-                <div class="title-bar">AURORA</div>
-                <button class="btn" id="btn-open-playlist"><span class="material-icons-round">queue_music</span></button>
+            <!-- Верхняя панель -->
+            <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
+                <button class="btn" id="btn-open-genres"><span class="material-icons-round">grid_view</span></button>
+                <span style="font-family: 'Orbitron'; color: #00f2ff; font-size: 12px; letter-spacing: 2px; align-self: center;">AURORA OS</span>
+                <button class="btn" id="btn-open-playlist"><span class="material-icons-round">playlist_play</span></button>
             </div>
 
-            <div class="track-info-container">
-                <div class="track-artwork-placeholder"></div>
-                <h1 id="track-title">Ready</h1>
-                <p id="track-artist">Tap to start</p>
+            <!-- Реактор (Обложка) -->
+            <div class="reactor-container">
+                <div class="reactor-ring"></div>
+                <div class="reactor-ring"></div>
+                <div class="reactor-core">
+                    <span class="material-icons-round" style="font-size: 40px; color: rgba(255,255,255,0.2);">music_note</span>
+                </div>
             </div>
 
+            <!-- Инфо -->
+            <div class="track-info">
+                <h1 id="track-title">System Ready</h1>
+                <p id="track-artist">Select frequency</p>
+            </div>
+
+            <!-- Прогресс -->
             <div class="progress-container">
-                <div class="progress-bar">
+                <div class="progress-bg">
                     <div class="progress-fill" id="progress-fill"></div>
                 </div>
                 <div class="time-labels">
@@ -44,38 +54,41 @@
                 </div>
             </div>
 
+            <!-- Контролы -->
             <div class="controls">
                 <button class="btn" id="btn-prev"><span class="material-icons-round">skip_previous</span></button>
-                <button class="btn btn-main" id="btn-play-pause"><span class="material-icons-round">play_arrow</span></button>
+                <button class="btn btn-main" id="btn-play-pause">
+                    <span class="material-icons-round">play_arrow</span>
+                </button>
                 <button class="btn" id="btn-next"><span class="material-icons-round">skip_next</span></button>
             </div>
         </div>
 
+        <!-- Start Overlay (Фикс автоплея) -->
+        <div id="start-overlay" style="position: fixed; inset: 0; z-index: 200; background: #050510; display: flex; justify-content: center; align-items: center; flex-direction: column;">
+            <div style="font-family: 'Orbitron'; color: #00f2ff; font-size: 24px; margin-bottom: 20px; text-shadow: 0 0 20px #00f2ff;">AURORA OS</div>
+            <button id="btn-start-system" style="background: transparent; border: 1px solid #00f2ff; color: #00f2ff; padding: 15px 40px; font-family: 'Orbitron'; font-size: 16px; border-radius: 5px; cursor: pointer;">INITIALIZE</button>
+        </div>
+
+        <!-- Шторки -->
         <div class="overlay" id="overlay"></div>
         <div class="drawer" id="drawer-genres">
-            <h2>Select Frequency</h2>
+            <h2 style="text-align: center; color: #fff; margin-bottom: 20px; font-family: 'Orbitron';">Frequency</h2>
             <div class="scroll-area genre-grid" id="genre-grid"></div>
         </div>
         <div class="drawer" id="drawer-playlist">
-            <h2>Current Queue</h2>
+            <h2 style="text-align: center; color: #fff; margin-bottom: 20px; font-family: 'Orbitron';">Queue</h2>
             <div class="scroll-area" id="playlist-container"></div>
         </div>
     </div>
 
     <audio id="audio-player" crossorigin="anonymous"></audio>
 
+    <!-- Скрипт для SW -->
     <script>
-        // Force Reload при обновлении SW
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('service-worker.js').then(reg => {
-                reg.onupdatefound = () => {
-                    const i = reg.installing;
-                    i.onstatechange = () => {
-                        if (i.state === 'installed' && navigator.serviceWorker.controller) {
-                            window.location.reload();
-                        }
-                    }
-                }
+                reg.update(); // Всегда проверяем обновление
             });
         }
     </script>
