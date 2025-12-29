@@ -116,7 +116,7 @@ function renderPlaylist(playlist, currentIndex, player) {
     if (!container) return;
     container.innerHTML = '';
     if (!playlist || playlist.length === 0) {
-        container.innerHTML = '<div class="empty-state">Queue is empty</div>';
+        container.innerHTML = '<div class="empty-state">Очередь пуста</div>';
         return;
     }
     playlist.forEach((track, idx) => {
