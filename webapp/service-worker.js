@@ -1,4 +1,4 @@
-const CACHE_NAME = 'aurora-player-v10';
+const CACHE_NAME = 'aurora-player-v11';
 const ASSETS = [
     './', './index.html', './style.css',
     './js/main.js', './js/api.js', './js/player.js',
@@ -6,7 +6,7 @@ const ASSETS = [
 ];
 
 self.addEventListener('install', e => {
-    self.skipWaiting(); // Принудительно обновляем SW
+    self.skipWaiting(); 
     e.waitUntil(caches.open(CACHE_NAME).then(c => c.addAll(ASSETS)));
 });
 
