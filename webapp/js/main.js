@@ -4,52 +4,44 @@ import { Player } from './player.js';
 import { Visualizer } from './visualizer.js';
 import { UI } from './ui.js';
 
-// --- Genre Definitions ---
-const GENRES = {
-    'Lofi & Chill': 'lofi hip hop radio',
-    'Synthwave': 'synthwave retro wave',
-    'Classic Rock': 'classic rock hits',
-    'Deep House': 'deep house mix',
-    'Ambient': 'ambient music',
-    'Cyberpunk': 'darksynth industrial',
-};
-
-// --- Application Entry Point ---
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('[Main] Aurora Player Initializing...');
+    // 1. Инициализация Telegram
+    const tg = window.Telegram?.WebApp;
+    if (tg) {
+        tg.expand();
+        tg.enableClosingConfirmation();
+        // Установим цвет хедера под наш дизайн
+        tg.setHeaderColor('#050510');
+        tg.setBackgroundColor('#050510');
+    }
 
-    // 1. Initialize UI and get event handlers
+    // 2. Инициализация UI
     UI.initialize(Player);
 
-    // 2. Populate the genre list
-    UI.populateGenres(GENRES, async (query) => {
-        // Когда жанр выбран
-        UI.toggleGenresDrawer(false);
-        store.playlist = []; // Очищаем старый плейлист
-        store.currentGenre = Object.keys(GENRES).find(key => GENRES[key] === query);
-        
+    // 3. Хендлер загрузки жанра (глобальный, чтобы UI мог вызывать)
+    window.loadGenreHandler = async (query) => {
+        store.playlist = []; // Очистка
+        // Показать индикатор загрузки можно тут
         const playlist = await api.fetchPlaylist(query);
         store.playlist = playlist;
-        
-        // Автоматически запускаем первый трек
-        if (playlist.length > 0) {
-            Player.playTrack(0);
-        }
-    });
+        if (playlist.length > 0) Player.playTrack(0);
+    };
 
-    // 3. Initialize Visualizer on first user interaction
-    document.body.addEventListener('click', () => {
-        const audioEl = Player.getAudioElement();
-        Visualizer.initialize(audioEl);
-        console.log('[Main] Visualizer activated.');
-    }, { once: true });
-    
-    // 4. Load a default playlist to start
+    // 4. Запуск визуализатора при первом клике (политика браузеров)
+    const startAudioContext = () => {
+        const audio = Player.getAudioElement();
+        Visualizer.initialize(audio);
+        document.removeEventListener('click', startAudioContext);
+        document.removeEventListener('touchstart', startAudioContext);
+    };
+    document.addEventListener('click', startAudioContext);
+    document.addEventListener('touchstart', startAudioContext);
+
+    // 5. Загрузка стартового плейлиста
     (async () => {
-        store.currentGenre = 'Lofi & Chill';
-        const initialPlaylist = await api.fetchPlaylist(GENRES['Lofi & Chill']);
-        store.playlist = initialPlaylist;
+        // Загружаем что-то нейтральное или популярное
+        await window.loadGenreHandler('lofi hip hop radio');
     })();
 
-    console.log('[Main] Aurora Player is ready.');
+    console.log('[Aurora] Ready for Space 2025');
 });

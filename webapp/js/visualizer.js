@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 
 let scene, camera, renderer, analyzer, dataArray;
-let particles, particleMaterial;
+let sphere, geometry, originalPositions;
 let isInitialized = false;
 
 function initialize(audioElement) {
@@ -12,56 +12,52 @@ function initialize(audioElement) {
 
     // Сцена
     scene = new THREE.Scene();
-    
-    // Камера
-    camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-    camera.position.z = 25;
+    // Легкий туман для глубины
+    scene.fog = new THREE.FogExp2(0x050510, 0.035);
 
-    // Рендерер
+    camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.z = 15;
+
     renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setPixelRatio(window.devicePixelRatio);
 
-    // Частицы
-    const particleCount = 2000;
-    const geometry = new THREE.BufferGeometry();
-    const positions = new Float32Array(particleCount * 3);
-
-    for (let i = 0; i < particleCount; i++) {
-        positions[i * 3] = (Math.random() - 0.5) * 50;
-        positions[i * 3 + 1] = (Math.random() - 0.5) * 50;
-        positions[i * 3 + 2] = (Math.random() - 0.5) * 50;
-    }
-    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    // Создаем сферу (Icosahedron)
+    const geo = new THREE.IcosahedronGeometry(6, 4); // Детализированная сфера
+    geometry = new THREE.WireframeGeometry(geo);
     
-    particleMaterial = new THREE.PointsMaterial({
+    // Материал с неоновым свечением
+    const material = new THREE.LineBasicMaterial({ 
         color: 0x00f2ff,
-        size: 0.1,
         transparent: true,
-        blending: THREE.AdditiveBlending,
-        depthWrite: false,
+        opacity: 0.3
     });
 
-    particles = new THREE.Points(geometry, particleMaterial);
-    scene.add(particles);
-    
-    // Audio Link
+    sphere = new THREE.LineSegments(geometry, material);
+    scene.add(sphere);
+
+    // Аудио контекст
     try {
-        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        const ctx = new AudioContext();
+        
+        // Фикс для автозапуска
+        if (ctx.state === 'suspended') {
+            document.body.addEventListener('touchstart', () => ctx.resume(), { once: true });
+            document.body.addEventListener('click', () => ctx.resume(), { once: true });
+        }
+
         const source = ctx.createMediaElementSource(audioElement);
         analyzer = ctx.createAnalyser();
-        analyzer.fftSize = 256;
+        analyzer.fftSize = 512; // Больше деталей
         source.connect(analyzer);
         analyzer.connect(ctx.destination);
         dataArray = new Uint8Array(analyzer.frequencyBinCount);
     } catch (e) {
-        console.error('[Visualizer] AudioContext failed:', e);
-        return;
+        console.error('[Visualizer] AudioContext Error:', e);
     }
-    
-    // Handlers
+
     window.addEventListener('resize', onWindowResize);
-    
     isInitialized = true;
     animate();
 }
@@ -75,31 +71,39 @@ function onWindowResize() {
 function animate() {
     requestAnimationFrame(animate);
 
-    if (analyzer) {
+    if (analyzer && sphere) {
         analyzer.getByteFrequencyData(dataArray);
-        
-        const lowerHalf = dataArray.slice(0, (dataArray.length/2) - 1);
-        const upperHalf = dataArray.slice((dataArray.length/2) - 1, dataArray.length - 1);
 
-        const lowerAvg = lowerHalf.reduce((a, b) => a + b) / lowerHalf.length;
-        const upperAvg = upperHalf.reduce((a, b) => a + b) / upperHalf.length;
+        // Расчет средней громкости (Bass)
+        let sum = 0;
+        const bassRange = 40; // Берем первые 40 бинов (басы)
+        for(let i = 0; i < bassRange; i++) sum += dataArray[i];
+        const bassLevel = sum / bassRange; // 0..255
         
-        const bass = lowerAvg / 255;
-        const treble = upperAvg / 255;
+        // Нормализуем (0.0 - 1.0)
+        const beat = bassLevel / 255;
 
-        if (particles) {
-            particles.rotation.x += 0.001 + (bass * 0.001);
-            particles.rotation.y += 0.002 + (treble * 0.002);
-        }
-        
-        if (particleMaterial) {
-            particleMaterial.size = 0.1 + bass * 0.2;
-        }
+        // 1. Вращение
+        sphere.rotation.x += 0.002;
+        sphere.rotation.y += 0.003 + (beat * 0.02);
+
+        // 2. Пульсация (Scale)
+        const scale = 1 + (beat * 0.3);
+        sphere.scale.set(scale, scale, scale);
+
+        // 3. Цвет (меняется от интенсивности)
+        // От синего (спокойно) к фиолетовому/розовому (громко)
+        const r = beat; 
+        const g = 1 - beat;
+        const b = 1;
+        sphere.material.color.setRGB(r, g * 0.5, b);
+        sphere.material.opacity = 0.3 + (beat * 0.5);
+
+        // 4. Передаем "бит" в CSS для подсветки интерфейса
+        document.documentElement.style.setProperty('--beat-intensity', beat.toFixed(2));
     }
-    
+
     renderer.render(scene, camera);
 }
 
-export const Visualizer = {
-    initialize
-};
+export const Visualizer = { initialize };

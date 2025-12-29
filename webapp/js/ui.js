@@ -1,114 +1,183 @@
 import { store, subscribe } from './store.js';
+import { GENRES, MOODS } from './genres.js';
 
-// --- DOM Elements Cache ---
 const elements = {
-    trackTitle: document.getElementById('track-title'),
-    trackArtist: document.getElementById('track-artist'),
-    playPauseBtn: document.getElementById('btn-play-pause'),
-    playPauseIcon: document.querySelector('#btn-play-pause .material-icons-round'),
+    title: document.getElementById('track-title'),
+    artist: document.getElementById('track-artist'),
+    progressFill: document.getElementById('progress-fill'),
     timeCurrent: document.getElementById('time-current'),
     timeDuration: document.getElementById('time-duration'),
-    progressBarFill: document.getElementById('progress-bar-fill'),
-    currentGenre: document.getElementById('current-genre'),
-    genreList: document.getElementById('genre-list'),
-    genresDrawer: document.getElementById('genres-drawer'),
+    playIcon: document.querySelector('#btn-play-pause .material-icons-round'),
     overlay: document.getElementById('overlay'),
+    drawerGenres: document.getElementById('drawer-genres'),
+    drawerPlaylist: document.getElementById('drawer-playlist'),
+    genreGrid: document.getElementById('genre-grid'),
+    playlistContainer: document.getElementById('playlist-container'),
 };
 
-// --- Utility Functions ---
-function formatTime(seconds) {
-    if (isNaN(seconds)) return '0:00';
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60).toString().padStart(2, '0');
-    return `${mins}:${secs}`;
-}
+// Форматирование времени
+const fmt = (s) => {
+    if (isNaN(s)) return '0:00';
+    return Math.floor(s/60) + ':' + Math.floor(s%60).toString().padStart(2,'0');
+};
 
-// --- UI Update Functions ---
-function updateTrackInfo(index) {
-    if (index === -1 || !store.playlist[index]) {
-        elements.trackTitle.textContent = 'Трек не выбран';
-        elements.trackArtist.textContent = 'Откройте меню жанров';
-    } else {
-        const track = store.playlist[index];
-        elements.trackTitle.textContent = track.title;
-        elements.trackArtist.textContent = track.artist;
-    }
-}
+function renderGenreMenu(onSelect) {
+    elements.genreGrid.innerHTML = '';
+    
+    // 1. Moods (Сверху, как чипсы)
+    const moodSection = document.createElement('div');
+    moodSection.style.gridColumn = '1 / -1';
+    moodSection.style.display = 'flex';
+    moodSection.style.gap = '10px';
+    moodSection.style.overflowX = 'auto';
+    moodSection.style.paddingBottom = '10px';
+    
+    MOODS.forEach(mood => {
+        const chip = document.createElement('div');
+        chip.className = 'list-item';
+        chip.style.whiteSpace = 'nowrap';
+        chip.textContent = mood.name;
+        chip.onclick = () => onSelect(mood.query);
+        moodSection.appendChild(chip);
+    });
+    elements.genreGrid.appendChild(moodSection);
 
-function updatePlayButton(isPlaying) {
-    elements.playPauseIcon.textContent = isPlaying ? 'pause' : 'play_arrow';
-}
-
-function updateProgress(audioElement) {
-    const { currentTime, duration } = audioElement;
-    if (duration) {
-        const progressPercent = (currentTime / duration) * 100;
-        elements.progressBarFill.style.width = `${progressPercent}%`;
-        elements.timeCurrent.textContent = formatTime(currentTime);
-        elements.timeDuration.textContent = formatTime(duration);
-    }
-}
-
-function updateGenreDisplay(genre) {
-    elements.currentGenre.textContent = genre;
-}
-
-function populateGenres(genres, onSelect) {
-    elements.genreList.innerHTML = '';
-    for (const genre in genres) {
+    // 2. Main Genres
+    Object.values(GENRES).forEach(g => {
         const card = document.createElement('div');
         card.className = 'genre-card';
-        card.textContent = genre;
-        card.onclick = () => onSelect(genres[genre]);
-        elements.genreList.appendChild(card);
+        card.innerHTML = `<div class="genre-icon">${g.icon}</div><div>${g.name}</div>`;
+        card.onclick = () => {
+            // Показать поджанры
+            showSubgenres(g, onSelect);
+        };
+        elements.genreGrid.appendChild(card);
+    });
+}
+
+function showSubgenres(genreObj, onSelect) {
+    elements.genreGrid.innerHTML = `
+        <div style="grid-column: 1/-1; margin-bottom: 10px; color: var(--primary-neon);" onclick="UI.resetGenres()">
+            <span class="material-icons-round" style="vertical-align: middle;">arrow_back</span> Назад
+        </div>
+        <h3 style="grid-column: 1/-1;">${genreObj.name}</h3>
+    `;
+    
+    genreObj.subgenres.forEach(sub => {
+        const item = document.createElement('div');
+        item.className = 'list-item';
+        item.innerHTML = `<span>${sub.name}</span>`;
+        item.onclick = () => onSelect(sub.query);
+        elements.genreGrid.appendChild(item);
+    });
+}
+
+function renderPlaylist(playlist, currentIndex, player) {
+    elements.playlistContainer.innerHTML = '';
+    if (playlist.length === 0) {
+        elements.playlistContainer.innerHTML = '<div style="text-align:center; padding:20px; color:#666;">Пусто</div>';
+        return;
+    }
+
+    playlist.forEach((track, idx) => {
+        const item = document.createElement('div');
+        item.className = `list-item ${idx === currentIndex ? 'active' : ''}`;
+        item.innerHTML = `
+            <span class="material-icons-round" style="margin-right: 10px; font-size: 20px;">
+                ${idx === currentIndex ? 'equalizer' : 'music_note'}
+            </span>
+            <div style="overflow: hidden;">
+                <div style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${track.title}</div>
+                <div style="font-size: 12px; color: #888;">${track.artist}</div>
+            </div>
+        `;
+        item.onclick = () => {
+            player.playTrack(idx);
+            toggleDrawer('playlist', false);
+        };
+        elements.playlistContainer.appendChild(item);
+    });
+}
+
+function toggleDrawer(name, show) {
+    elements.overlay.classList.toggle('active', show);
+    if (name === 'genres') elements.drawerGenres.classList.toggle('active', show);
+    if (name === 'playlist') elements.drawerPlaylist.classList.toggle('active', show);
+    
+    // Haptic feedback if in Telegram
+    if (window.Telegram?.WebApp?.HapticFeedback) {
+        window.Telegram.WebApp.HapticFeedback.impactOccurred('light');
     }
 }
 
-function toggleGenresDrawer(force) {
-    elements.genresDrawer.classList.toggle('active', force);
-    elements.overlay.classList.toggle('active', force);
-}
+function initialize(player) {
+    // Подписки
+    subscribe('isPlaying', (playing) => {
+        elements.playIcon.textContent = playing ? 'pause' : 'play_arrow';
+    });
+    
+    subscribe('currentTrackIndex', (idx) => {
+        const track = store.playlist[idx];
+        if (track) {
+            elements.title.textContent = track.title;
+            elements.artist.textContent = track.artist;
+            // Обновить документ title
+            document.title = `${track.title} - Aurora`;
+        }
+        renderPlaylist(store.playlist, idx, player);
+    });
 
-/**
- * Initializes all UI subscriptions and event listeners.
- */
-function initializeUI(player) {
-    // --- Subscriptions to Store ---
-    subscribe('isPlaying', updatePlayButton);
-    subscribe('currentTrackIndex', updateTrackInfo);
-    subscribe('currentGenre', updateGenreDisplay);
-    subscribe('playlist', (playlist) => {
-        // Automatically select first track if none is selected
-        if (store.currentTrackIndex === -1 && playlist.length > 0) {
-            updateTrackInfo(0);
+    subscribe('playlist', (list) => {
+        renderPlaylist(list, store.currentTrackIndex, player);
+    });
+
+    // Аудио события
+    const audio = player.getAudioElement();
+    audio.addEventListener('timeupdate', () => {
+        if (audio.duration) {
+            const pct = (audio.currentTime / audio.duration) * 100;
+            elements.progressFill.style.width = pct + '%';
+            elements.timeCurrent.textContent = fmt(audio.currentTime);
+            elements.timeDuration.textContent = fmt(audio.duration);
         }
     });
 
-    // --- Audio Player Events ---
-    const audio = player.getAudioElement();
-    audio.addEventListener('timeupdate', () => updateProgress(audio));
-    audio.addEventListener('loadedmetadata', () => updateProgress(audio));
-    audio.addEventListener('ended', () => player.nextTrack());
-
-    // --- DOM Event Listeners ---
-    elements.playPauseBtn.onclick = () => player.togglePlay();
+    // Кнопки
+    document.getElementById('btn-play-pause').onclick = () => player.togglePlay();
     document.getElementById('btn-next').onclick = () => player.nextTrack();
     document.getElementById('btn-prev').onclick = () => player.prevTrack();
-
-    document.getElementById('progress-bar-clickable').onclick = (e) => {
-        const rect = e.currentTarget.getBoundingClientRect();
-        const percent = (e.clientX - rect.left) / rect.width;
-        player.seek(percent);
+    
+    // Открытие шторок
+    document.getElementById('btn-open-genres').onclick = () => {
+        // Сброс и рендер жанров
+        renderGenreMenu(async (query) => {
+            toggleDrawer('genres', false);
+            // Тут вызов загрузки через main.js callback (реализуем ниже)
+            window.loadGenreHandler(query);
+        });
+        toggleDrawer('genres', true);
     };
 
-    // Genres Drawer
-    document.getElementById('btn-genres').onclick = () => toggleGenresDrawer(true);
-    elements.overlay.onclick = () => toggleGenresDrawer(false);
+    document.getElementById('btn-open-playlist').onclick = () => toggleDrawer('playlist', true);
+    elements.overlay.onclick = () => {
+        toggleDrawer('genres', false);
+        toggleDrawer('playlist', false);
+    };
+
+    // Seekbar click
+    document.querySelector('.progress-bar').onclick = (e) => {
+        const rect = e.currentTarget.getBoundingClientRect();
+        const p = (e.clientX - rect.left) / rect.width;
+        player.seek(p);
+    };
+
+    // Экспорт для кнопки "Назад" в жанрах
+    window.UI = { 
+        resetGenres: () => renderGenreMenu(window.loadGenreHandler) 
+    };
+    
+    // Первичный рендер
+    renderGenreMenu(() => {});
 }
 
-
-export const UI = {
-    initialize: initializeUI,
-    populateGenres,
-    toggleGenresDrawer,
-};
+export const UI = { initialize, toggleDrawer };
