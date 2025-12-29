@@ -17,7 +17,7 @@
         <div class="player-card">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                 <button class="btn" id="btn-open-genres"><span class="material-icons-round">grid_view</span></button>
-                <span class="title-bar">AURORA V6</span>
+                <span class="title-bar">АВРОРА V6</span>
                 <button class="btn" id="btn-open-playlist"><span class="material-icons-round">playlist_play</span></button>
             </div>
             <div class="reactor-container">
@@ -28,8 +28,8 @@
                 </div>
             </div>
             <div class="track-info">
-                <h1 id="track-title">System Online</h1>
-                <p id="track-artist">Select frequency</p>
+                <h1 id="track-title">СИСТЕМА ОНЛАЙН</h1>
+                <p id="track-artist">Выберите частоту</p>
             </div>
             <div class="progress-container">
                 <div class="progress-bg">
@@ -39,25 +39,25 @@
                 <div class="time-labels"><span id="time-current">0:00</span><span id="time-duration">0:00</span></div>
             </div>
             <div class="controls">
-                <button class="btn" id="btn-shuffle" title="Shuffle"><span class="material-icons-round" style="font-size: 20px; color: #666;">shuffle</span></button>
+                <button class="btn" id="btn-shuffle" title="Перемешать"><span class="material-icons-round" style="font-size: 20px; color: #666;">shuffle</span></button>
                 <button class="btn" id="btn-prev"><span class="material-icons-round">skip_previous</span></button>
                 <button class="btn btn-main" id="btn-play-pause"><span class="material-icons-round">play_arrow</span></button>
                 <button class="btn" id="btn-next"><span class="material-icons-round">skip_next</span></button>
                 <!-- КНОПКА FX ВМЕСТО ПОВТОРА -->
-                <button class="btn" id="btn-fx" title="Bass Boost"><span class="material-icons-round" style="font-size: 16px; font-weight: bold; color: #666;">FX</span></button>
+                <button class="btn" id="btn-fx" title="Усиление Баса"><span class="material-icons-round" style="font-size: 16px; font-weight: bold; color: #666;">FX</span></button>
             </div>
-            <div id="system-log" class="system-log">[WAITING FOR INPUT]</div>
+            <div id="system-log" class="system-log">[ОЖИДАНИЕ]</div>
         </div>
         
         <div id="start-overlay" class="start-screen">
-            <div style="font-family: 'Orbitron'; font-size: 32px; color: #00f2ff; margin-bottom: 10px; text-shadow: 0 0 20px #00f2ff;">AURORA</div>
-            <div style="font-family: monospace; font-size: 12px; color: #888; margin-bottom: 30px;">WEB AUDIO INTERFACE</div>
-            <button id="btn-start-system" class="start-btn">INITIALIZE</button>
+            <div style="font-family: 'Orbitron'; font-size: 32px; color: #00f2ff; margin-bottom: 10px; text-shadow: 0 0 20px #00f2ff;">АВРОРА</div>
+            <div style="font-family: monospace; font-size: 12px; color: #888; margin-bottom: 30px;">АУДИО-ИНТЕРФЕЙС</div>
+            <button id="btn-start-system" class="start-btn">ЗАПУСК</button>
         </div>
         
         <div class="overlay" id="overlay"></div>
-        <div class="drawer" id="drawer-genres"><h2>Frequency</h2><div class="scroll-area genre-grid" id="genre-grid"></div></div>
-        <div class="drawer" id="drawer-playlist"><h2>Queue</h2><div class="scroll-area" id="playlist-container"></div></div>
+        <div class="drawer" id="drawer-genres"><h2>Выбор частоты</h2><div class="scroll-area genre-grid" id="genre-grid"></div></div>
+        <div class="drawer" id="drawer-playlist"><h2>Очередь</h2><div class="scroll-area" id="playlist-container"></div></div>
     </div>
     <audio id="audio-player" crossorigin="anonymous"></audio>
     <script>
