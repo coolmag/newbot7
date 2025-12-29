@@ -39,8 +39,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const tg = window.Telegram?.WebApp;
         if (tg) {
             tg.expand();
-            tg.setHeaderColor('#050510');
-            tg.setBackgroundColor('#050510');
+            if (tg.isVersionAtLeast('6.1')) {
+                tg.setHeaderColor('#050510');
+                tg.setBackgroundColor('#050510');
+            }
         }
     } catch (e) {
         console.warn(e);

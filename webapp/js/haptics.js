@@ -3,16 +3,15 @@
  * в Telegram WebApp.
  */
 
-// Проверяем, доступен ли объект HapticFeedback
-const HapticFeedback = window.Telegram?.WebApp?.HapticFeedback;
+const WebApp = window.Telegram?.WebApp;
 
 /**
  * Вызывает короткую вибрацию.
  * @param {('light'|'medium'|'heavy'|'rigid'|'soft')} style - Стиль вибрации.
  */
 export function impact(style = 'light') {
-    if (HapticFeedback) {
-        HapticFeedback.impactOccurred(style);
+    if (WebApp && WebApp.isVersionAtLeast('6.1') && WebApp.HapticFeedback) {
+        WebApp.HapticFeedback.impactOccurred(style);
     }
 }
 
@@ -21,7 +20,7 @@ export function impact(style = 'light') {
  * @param {('success'|'warning'|'error')} type - Тип уведомления.
  */
 export function notification(type = 'success') {
-    if (HapticFeedback) {
-        HapticFeedback.notificationOccurred(type);
+    if (WebApp && WebApp.isVersionAtLeast('6.1') && WebApp.HapticFeedback) {
+        WebApp.HapticFeedback.notificationOccurred(type);
     }
 }
