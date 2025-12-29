@@ -1,19 +1,8 @@
 import { store, subscribe } from './store.js';
 import { GENRES, MOODS } from './genres.js';
 
-const elements = {
-    title: document.getElementById('track-title'),
-    artist: document.getElementById('track-artist'),
-    progressFill: document.getElementById('progress-fill'),
-    timeCurrent: document.getElementById('time-current'),
-    timeDuration: document.getElementById('time-duration'),
-    playIcon: document.querySelector('#btn-play-pause .material-icons-round'),
-    overlay: document.getElementById('overlay'),
-    drawerGenres: document.getElementById('drawer-genres'),
-    drawerPlaylist: document.getElementById('drawer-playlist'),
-    genreGrid: document.getElementById('genre-grid'),
-    playlistContainer: document.getElementById('playlist-container'),
-};
+// Кешируем элементы безопасным способом
+const getEl = (id) => document.getElementById(id);
 
 // Форматирование времени
 const fmt = (s) => {
@@ -22,9 +11,12 @@ const fmt = (s) => {
 };
 
 function renderGenreMenu(onSelect) {
-    elements.genreGrid.innerHTML = '';
+    const grid = getEl('genre-grid');
+    if (!grid) return;
     
-    // 1. Moods (Сверху, как чипсы)
+    grid.innerHTML = '';
+    
+    // Moods
     const moodSection = document.createElement('div');
     moodSection.style.gridColumn = '1 / -1';
     moodSection.style.display = 'flex';
@@ -40,27 +32,27 @@ function renderGenreMenu(onSelect) {
         chip.onclick = () => onSelect(mood.query);
         moodSection.appendChild(chip);
     });
-    elements.genreGrid.appendChild(moodSection);
+    grid.appendChild(moodSection);
 
-    // 2. Main Genres
+    // Genres
     Object.values(GENRES).forEach(g => {
         const card = document.createElement('div');
         card.className = 'genre-card';
         card.innerHTML = `<div class="genre-icon">${g.icon}</div><div>${g.name}</div>`;
-        card.onclick = () => {
-            // Показать поджанры
-            showSubgenres(g, onSelect);
-        };
-        elements.genreGrid.appendChild(card);
+        card.onclick = () => showSubgenres(g, onSelect);
+        grid.appendChild(card);
     });
 }
 
 function showSubgenres(genreObj, onSelect) {
-    elements.genreGrid.innerHTML = `
-        <div style="grid-column: 1/-1; margin-bottom: 10px; color: var(--primary-neon);" onclick="UI.resetGenres()">
-            <span class="material-icons-round" style="vertical-align: middle;">arrow_back</span> Назад
+    const grid = getEl('genre-grid');
+    if (!grid) return;
+
+    grid.innerHTML = `
+        <div style="grid-column: 1/-1; margin-bottom: 15px; color: var(--primary-neon); cursor:pointer; display:flex; align-items:center; gap:5px;" onclick="UI.resetGenres()">
+            <span class="material-icons-round">arrow_back</span> Назад
         </div>
-        <h3 style="grid-column: 1/-1;">${genreObj.name}</h3>
+        <h3 style="grid-column: 1/-1; margin-bottom: 10px;">${genreObj.name}</h3>
     `;
     
     genreObj.subgenres.forEach(sub => {
@@ -68,14 +60,17 @@ function showSubgenres(genreObj, onSelect) {
         item.className = 'list-item';
         item.innerHTML = `<span>${sub.name}</span>`;
         item.onclick = () => onSelect(sub.query);
-        elements.genreGrid.appendChild(item);
+        grid.appendChild(item);
     });
 }
 
 function renderPlaylist(playlist, currentIndex, player) {
-    elements.playlistContainer.innerHTML = '';
+    const container = getEl('playlist-container');
+    if (!container) return;
+
+    container.innerHTML = '';
     if (playlist.length === 0) {
-        elements.playlistContainer.innerHTML = '<div style="text-align:center; padding:20px; color:#666;">Пусто</div>';
+        container.innerHTML = '<div style="text-align:center; padding:20px; color:#666;">Пустой плейлист</div>';
         return;
     }
 
@@ -87,7 +82,7 @@ function renderPlaylist(playlist, currentIndex, player) {
                 ${idx === currentIndex ? 'equalizer' : 'music_note'}
             </span>
             <div style="overflow: hidden;">
-                <div style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${track.title}</div>
+                <div style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500;">${track.title}</div>
                 <div style="font-size: 12px; color: #888;">${track.artist}</div>
             </div>
         `;
@@ -95,34 +90,78 @@ function renderPlaylist(playlist, currentIndex, player) {
             player.playTrack(idx);
             toggleDrawer('playlist', false);
         };
-        elements.playlistContainer.appendChild(item);
+        container.appendChild(item);
     });
 }
 
 function toggleDrawer(name, show) {
-    elements.overlay.classList.toggle('active', show);
-    if (name === 'genres') elements.drawerGenres.classList.toggle('active', show);
-    if (name === 'playlist') elements.drawerPlaylist.classList.toggle('active', show);
+    const overlay = getEl('overlay');
+    const dGenres = getEl('drawer-genres');
+    const dPlaylist = getEl('drawer-playlist');
+
+    if (overlay) overlay.classList.toggle('active', show);
     
-    // Haptic feedback if in Telegram
+    if (name === 'genres' && dGenres) {
+        dGenres.classList.toggle('active', show);
+        if (dPlaylist) dPlaylist.classList.remove('active');
+    }
+    if (name === 'playlist' && dPlaylist) {
+        dPlaylist.classList.toggle('active', show);
+        if (dGenres) dGenres.classList.remove('active');
+    }
+
+    // Haptic
     if (window.Telegram?.WebApp?.HapticFeedback) {
         window.Telegram.WebApp.HapticFeedback.impactOccurred('light');
     }
 }
 
 function initialize(player) {
-    // Подписки
+    console.log('[UI] Initializing...');
+
+    // Биндинг кнопок с проверкой
+    const bindClick = (id, fn) => {
+        const el = getEl(id);
+        if (el) el.onclick = fn;
+        else console.warn(`[UI] Button #${id} not found`);
+    };
+
+    bindClick('btn-play-pause', () => player.togglePlay());
+    bindClick('btn-next', () => player.nextTrack());
+    bindClick('btn-prev', () => player.prevTrack());
+    
+    // Drawers
+    bindClick('btn-open-genres', () => {
+        renderGenreMenu(window.loadGenreHandler); // Сброс меню при открытии
+        toggleDrawer('genres', true);
+    });
+    bindClick('btn-open-playlist', () => toggleDrawer('playlist', true));
+    bindClick('overlay', () => toggleDrawer(null, false));
+
+    // Прогресс бар
+    const bar = document.querySelector('.progress-bar');
+    if (bar) {
+        bar.onclick = (e) => {
+            const rect = e.currentTarget.getBoundingClientRect();
+            const p = (e.clientX - rect.left) / rect.width;
+            player.seek(p);
+        };
+    }
+
+    // Подписки Store
     subscribe('isPlaying', (playing) => {
-        elements.playIcon.textContent = playing ? 'pause' : 'play_arrow';
+        const icon = document.querySelector('#btn-play-pause .material-icons-round');
+        if (icon) icon.textContent = playing ? 'pause' : 'play_arrow';
     });
     
     subscribe('currentTrackIndex', (idx) => {
         const track = store.playlist[idx];
+        const tTitle = getEl('track-title');
+        const tArtist = getEl('track-artist');
+        
         if (track) {
-            elements.title.textContent = track.title;
-            elements.artist.textContent = track.artist;
-            // Обновить документ title
-            document.title = `${track.title} - Aurora`;
+            if (tTitle) tTitle.textContent = track.title;
+            if (tArtist) tArtist.textContent = track.artist;
         }
         renderPlaylist(store.playlist, idx, player);
     });
@@ -131,53 +170,29 @@ function initialize(player) {
         renderPlaylist(list, store.currentTrackIndex, player);
     });
 
-    // Аудио события
+    // Аудио обновления
     const audio = player.getAudioElement();
+    const pFill = getEl('progress-fill');
+    const tCurr = getEl('time-current');
+    const tDur = getEl('time-duration');
+
     audio.addEventListener('timeupdate', () => {
         if (audio.duration) {
             const pct = (audio.currentTime / audio.duration) * 100;
-            elements.progressFill.style.width = pct + '%';
-            elements.timeCurrent.textContent = fmt(audio.currentTime);
-            elements.timeDuration.textContent = fmt(audio.duration);
+            if (pFill) pFill.style.width = pct + '%';
+            if (tCurr) tCurr.textContent = fmt(audio.currentTime);
+            if (tDur) tDur.textContent = fmt(audio.duration);
         }
     });
 
-    // Кнопки
-    document.getElementById('btn-play-pause').onclick = () => player.togglePlay();
-    document.getElementById('btn-next').onclick = () => player.nextTrack();
-    document.getElementById('btn-prev').onclick = () => player.prevTrack();
-    
-    // Открытие шторок
-    document.getElementById('btn-open-genres').onclick = () => {
-        // Сброс и рендер жанров
-        renderGenreMenu(async (query) => {
-            toggleDrawer('genres', false);
-            // Тут вызов загрузки через main.js callback (реализуем ниже)
-            window.loadGenreHandler(query);
-        });
-        toggleDrawer('genres', true);
-    };
-
-    document.getElementById('btn-open-playlist').onclick = () => toggleDrawer('playlist', true);
-    elements.overlay.onclick = () => {
-        toggleDrawer('genres', false);
-        toggleDrawer('playlist', false);
-    };
-
-    // Seekbar click
-    document.querySelector('.progress-bar').onclick = (e) => {
-        const rect = e.currentTarget.getBoundingClientRect();
-        const p = (e.clientX - rect.left) / rect.width;
-        player.seek(p);
-    };
-
-    // Экспорт для кнопки "Назад" в жанрах
+    // Экспорт для кнопки "Назад"
     window.UI = { 
         resetGenres: () => renderGenreMenu(window.loadGenreHandler) 
     };
     
-    // Первичный рендер
+    // Первый рендер
     renderGenreMenu(() => {});
+    console.log('[UI] Ready');
 }
 
 export const UI = { initialize, toggleDrawer };
