@@ -1,98 +1,131 @@
 import { store } from './store.js';
 
 const audio = document.getElementById('audio-player');
-let playPromise = null;
+let onStatusChange = null; // Функция для отправки логов в UI
 
-/**
- * Безопасно запускает воспроизведение нового трека.
- * @param {number} index - Индекс трека в плейлисте.
- */
+// Настройка слушателей событий аудио
+function setupAudioListeners() {
+    // 1. Начало загрузки
+    audio.addEventListener('loadstart', () => {
+        reportStatus('loading', 'ESTABLISHING CONNECTION...');
+    });
+
+    // 2. Ожидание данных (буферизация)
+    audio.addEventListener('waiting', () => {
+        reportStatus('loading', 'BUFFERING DATA STREAM...');
+    });
+
+    // 3. Готов к воспроизведению
+    audio.addEventListener('canplay', () => {
+        reportStatus('ready', 'STREAM READY');
+        // Если стоял флаг isPlaying, запускаем
+        if (store.isPlaying) audio.play().catch(e => console.warn(e));
+    });
+
+    // 4. Воспроизведение началось
+    audio.addEventListener('play', () => {
+        store.isPlaying = true;
+        reportStatus('playing', 'PLAYBACK INITIATED');
+        // Сообщаем в UI, чтобы включил визуализатор
+        document.documentElement.style.setProperty('--reactor-color', '#00f2ff'); // Blue
+    });
+
+    // 5. Пауза
+    audio.addEventListener('pause', () => {
+        store.isPlaying = false;
+        reportStatus('paused', 'SYSTEM PAUSED');
+        document.documentElement.style.setProperty('--reactor-color', '#ff0055'); // Red/Dim
+    });
+
+    // 6. Ошибка
+    audio.addEventListener('error', (e) => {
+        console.error("Audio Error:", e);
+        reportStatus('error', 'STREAM CORRUPTED. REROUTING...');
+        document.documentElement.style.setProperty('--reactor-color', '#ff0000');
+        
+        // Авто-скип через 2 секунды
+        setTimeout(() => nextTrack(), 2000);
+    });
+
+    // 7. Трек закончился
+    audio.addEventListener('ended', () => {
+        nextTrack();
+    });
+}
+
+// Функция отправки статуса
+function reportStatus(state, message) {
+    if (onStatusChange) onStatusChange(state, message);
+}
+
+// Установка коллбека для логов
+function setStatusCallback(fn) {
+    onStatusChange = fn;
+}
+
 async function playTrack(index) {
-    if (index < 0 || !store.playlist[index]) {
-        console.warn(`[Player] Неверный индекс трека: ${index}`);
-        return;
-    }
-
-    // Прерываем предыдущее обещание play, если оно есть
-    if (playPromise) {
-        try {
-            await playPromise;
-        } catch(e) {
-            // Игнорируем AbortError, это ожидаемо
-        }
-    }
-    audio.pause();
-
+    if (index < 0 || index >= store.playlist.length) return;
+    
+    // Обновляем индекс
     store.currentTrackIndex = index;
     const track = store.playlist[index];
-    
-    audio.src = `/audio/${track.identifier}.mp3`;
-    audio.load();
 
+    // Сброс
+    audio.pause();
+    store.isPlaying = true; // Сразу ставим флаг, что хотим играть
+    
+    // Сообщаем UI, что начали процесс
+    reportStatus('loading', `LOADING: ${track.title.toUpperCase().substring(0, 20)}...`);
+    document.documentElement.style.setProperty('--reactor-color', '#ffe600'); // Yellow (Loading)
+
+    // Загрузка
+    audio.src = `/audio/${track.identifier}.mp3`;
+    audio.load(); // Принудительный старт загрузки
+    
+    // Попытка воспроизведения
     try {
-        playPromise = audio.play();
-        if (playPromise !== undefined) {
-            await playPromise;
-            store.isPlaying = true;
-        }
+        await audio.play();
     } catch (e) {
+        // Ошибка AbortError нормальна при быстром переключении
         if (e.name !== 'AbortError') {
-            console.error('[Player] Ошибка воспроизведения:', e);
-            store.isPlaying = false;
+            console.warn("Play request interrupted or waiting for user interaction");
         }
-    } finally {
-        playPromise = null;
     }
 }
 
-/**
- * Переключает состояние play/pause.
- */
 function togglePlay() {
     if (audio.paused) {
-        // Если трек не выбран, запускаем первый
         if (store.currentTrackIndex === -1 && store.playlist.length > 0) {
             playTrack(0);
         } else {
-            playTrack(store.currentTrackIndex);
+            audio.play().catch(() => playTrack(store.currentTrackIndex));
         }
     } else {
         audio.pause();
-        store.isPlaying = false;
     }
 }
 
-/**
- * Переход к следующему треку.
- */
 function nextTrack() {
-    let nextIndex = store.currentTrackIndex + 1;
-    if (nextIndex >= store.playlist.length) {
-        nextIndex = 0; // Зацикливаем плейлист
-    }
-    playTrack(nextIndex);
+    let next = store.currentTrackIndex + 1;
+    if (next >= store.playlist.length) next = 0;
+    playTrack(next);
 }
 
-/**
- * Переход к предыдущему треку.
- */
 function prevTrack() {
-    let prevIndex = store.currentTrackIndex - 1;
-    if (prevIndex < 0) {
-        prevIndex = store.playlist.length - 1; // Зацикливаем плейлист
-    }
-    playTrack(prevIndex);
+    let prev = store.currentTrackIndex - 1;
+    if (prev < 0) prev = store.playlist.length - 1;
+    playTrack(prev);
 }
 
-/**
- * Перемотка трека.
- * @param {number} percentage - Процент перемотки (0 to 1).
- */
-function seek(percentage) {
+function seek(pct) {
     if (audio.duration) {
-        audio.currentTime = audio.duration * percentage;
+        audio.currentTime = audio.duration * pct;
+        reportStatus('seeking', `SEEKING TO ${Math.floor(pct*100)}%`);
     }
 }
+
+// Инициализируем слушатели при загрузке модуля
+setupAudioListeners();
 
 export const Player = {
     playTrack,
@@ -101,4 +134,5 @@ export const Player = {
     prevTrack,
     seek,
     getAudioElement: () => audio,
+    setStatusCallback
 };

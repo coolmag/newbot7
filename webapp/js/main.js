@@ -4,20 +4,26 @@ import { Player } from './player.js';
 import { Visualizer } from './visualizer.js';
 import { UI } from './ui.js';
 
-// Хелпер для логов
-function log(msg) {
-    const el = document.getElementById('system-log');
-    if(el) {
-        el.textContent = `> ${msg}`;
-        // Мигание при обновлении
-        el.style.opacity = '1';
-        setTimeout(() => el.style.opacity = '0.7', 100);
+// --- SYSTEM LOGGER ---
+const logger = {
+    el: null,
+    init() {
+        this.el = document.getElementById('system-log');
+    },
+    print(msg, type = 'info') {
+        if (!this.el) return;
+        this.el.textContent = `> ${msg}`;
+        this.el.className = 'system-log'; // Reset class
+        if (type === 'error') this.el.classList.add('log-error');
+        if (type === 'success') this.el.classList.add('log-success');
+        if (type === 'loading') this.el.classList.add('log-loading');
     }
-    console.log(`[SYS] ${msg}`);
-}
+};
 
 document.addEventListener('DOMContentLoaded', () => {
-    // 1. Инициализация Telegram
+    logger.init();
+    
+    // 1. Telegram
     try {
         const tg = window.Telegram?.WebApp;
         if (tg) {
@@ -27,12 +33,38 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     } catch (e) {}
 
-    // 2. Старт Системы
+    // 2. Подключаем "Уши" к плееру (слушаем события)
+    Player.setStatusCallback((state, message) => {
+        let logType = 'info';
+        if (state === 'error') logType = 'error';
+        if (state === 'playing') logType = 'success';
+        if (state === 'loading') logType = 'loading';
+        
+        logger.print(message, logType);
+
+        // Обновляем статус текста в плеере, если грузится
+        const tArtist = document.getElementById('track-artist');
+        if (state === 'loading' && tArtist) {
+            tArtist.textContent = "Processing stream...";
+            tArtist.style.color = '#ffe600';
+        } else if (state === 'playing' && tArtist) {
+            // Возвращаем имя артиста (берем из store)
+            const track = store.playlist[store.currentTrackIndex];
+            if (track) {
+                tArtist.textContent = track.artist;
+                tArtist.style.color = '#8899a6';
+            }
+        }
+    });
+
+    // 3. Обработчик "INITIALIZE"
     const startBtn = document.getElementById('btn-start-system');
     const startOverlay = document.getElementById('start-overlay');
 
     startBtn.onclick = async () => {
-        log('INITIALIZING AUDIO CORE...');
+        logger.print('INITIALIZING CORE SYSTEMS...', 'loading');
+        
+        // Анимация исчезновения
         startOverlay.style.opacity = '0';
         setTimeout(() => startOverlay.remove(), 500);
 
@@ -40,59 +72,56 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             await audio.play().then(() => audio.pause()).catch(() => {});
             Visualizer.initialize(audio);
-            log('AUDIO CORE ONLINE');
+            logger.print('AUDIO CORE ONLINE', 'success');
         } catch (e) {
-            log('AUDIO WARNING: ' + e.message);
+            logger.print('CORE WARNING: BYPASSING AUDIO CHECK', 'error');
         }
         
+        // Грузим первый жанр
         window.loadGenreHandler('lofi hip hop radio');
     };
 
-    // 3. Логика загрузки
+    // 4. Логика загрузки плейлиста
     window.loadGenreHandler = async (query) => {
         UI.toggleDrawer('genres', false);
-        log(`SEARCHING: ${query.toUpperCase()}`);
+        logger.print(`SEARCHING: ${query.toUpperCase()}`, 'loading');
         
         const tTitle = document.getElementById('track-title');
         const tArtist = document.getElementById('track-artist');
-        tTitle.textContent = "Scanning...";
-        tArtist.textContent = "Please wait";
+        tTitle.textContent = "Scanning Network";
+        tArtist.textContent = "Please wait...";
 
         try {
             const playlist = await fetchPlaylist(query);
             store.playlist = playlist;
             
             if (playlist.length > 0) {
-                log(`FOUND ${playlist.length} TRACKS`);
+                logger.print(`TARGET ACQUIRED: ${playlist.length} TRACKS`, 'success');
                 Player.playTrack(0);
             } else {
-                log('NO SIGNAL FOUND');
+                logger.print('SCAN COMPLETE: NO SIGNALS', 'error');
                 tTitle.textContent = "No Signal";
-                tArtist.textContent = "Try another frequency";
+                tArtist.textContent = "Select another frequency";
             }
         } catch (err) {
-            log('CONNECTION ERROR');
-            tTitle.textContent = "Error";
+            logger.print('NETWORK ERROR: CONNECTION LOST', 'error');
+            tTitle.textContent = "Connection Fail";
         }
     };
-    
-    // Кнопка Shuffle
+
+    // 5. Shuffle
     document.getElementById('btn-shuffle').onclick = () => {
         if (store.playlist.length < 2) return;
-        log('SHUFFLING PLAYLIST...');
-        // Алгоритм Фишера-Йетса
+        logger.print('RANDOMIZING SEQUENCE...', 'loading');
+        
         for (let i = store.playlist.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
             [store.playlist[i], store.playlist[j]] = [store.playlist[j], store.playlist[i]];
         }
-        // Сброс индекса и старт первого трека
+        
         store.currentTrackIndex = -1;
         Player.playTrack(0);
-        // Обновить список в UI
-        // UI сам обновится через подписку на store, но можно форсировать
-        log('PLAYLIST SHUFFLED');
     };
 
     UI.initialize(Player);
-    log('SYSTEM STANDBY');
 });
