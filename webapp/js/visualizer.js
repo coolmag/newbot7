@@ -3,49 +3,44 @@ let stars = [];
 let isRunning = false;
 let animationId;
 
-// Настройки космоса
-const STAR_COUNT = 150;
-const BASE_SPEED = 2;
+// Настройки: Меньше звезд, но красивее
+const STAR_COUNT = 100; // Оптимизация для мобил
+const BASE_SPEED = 0.5; // Медленный, величественный полет
 
 class Star {
     constructor() {
-        this.reset();
+        this.reset(true);
     }
     
-    reset() {
+    reset(randomZ = false) {
         this.x = (Math.random() - 0.5) * canvas.width * 2;
         this.y = (Math.random() - 0.5) * canvas.height * 2;
-        this.z = Math.random() * canvas.width;
-        this.pz = this.z; // Прошлая позиция для "хвостов"
+        this.z = randomZ ? Math.random() * canvas.width : canvas.width;
+        this.size = Math.random();
     }
 
     update(speed) {
         this.z -= speed;
         if (this.z < 1) {
             this.reset();
-            this.z = canvas.width;
-            this.pz = this.z;
         }
     }
 
-    draw(ctx, centerX, centerY) {
-        const sx = (this.x / this.z) * centerX + centerX;
-        const sy = (this.y / this.z) * centerY + centerY;
+    draw(ctx, centerX, centerY, bassIntensity) {
+        // Проекция 3D на 2D
+        const x = (this.x / this.z) * centerX + centerX;
+        const y = (this.y / this.z) * centerY + centerY;
         
-        const r = (1 - this.z / canvas.width) * 4;
+        // Размер зависит от приближения
+        const r = (1 - this.z / canvas.width) * (3 * this.size + bassIntensity * 2);
         
-        // Рисуем "хвост" звезды при ускорении
-        const px = (this.x / this.pz) * centerX + centerX;
-        const py = (this.y / this.pz) * centerY + centerY;
-        
+        // Прозрачность
+        const alpha = (1 - this.z / canvas.width);
+
         ctx.beginPath();
-        ctx.moveTo(px, py);
-        ctx.lineTo(sx, sy);
-        ctx.strokeStyle = `rgba(0, 242, 255, ${1 - this.z / canvas.width})`;
-        ctx.lineWidth = r;
-        ctx.stroke();
-        
-        this.pz = this.z; // Обновляем прошлую Z
+        ctx.fillStyle = `rgba(180, 220, 255, ${alpha})`;
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.fill();
     }
 }
 
@@ -54,33 +49,38 @@ function initialize(audioElement) {
     
     canvas = document.getElementById('visualizer-canvas');
     if (!canvas) return;
-    ctx = canvas.getContext('2d', { alpha: false }); // Оптимизация
+    
+    // Оптимизация: отключаем альфа-канал холста, если не нужен
+    ctx = canvas.getContext('2d', { alpha: false }); 
     
     resize();
     window.addEventListener('resize', resize);
 
-    // Создаем звезды
     stars = Array(STAR_COUNT).fill().map(() => new Star());
 
-    // Аудио
+    // Audio Context (безопасный старт)
     try {
         const AudioContext = window.AudioContext || window.webkitAudioContext;
         if (!audioCtx) audioCtx = new AudioContext();
         
-        // Соединяем только если еще не соединено
         if (!analyser) {
             analyser = audioCtx.createAnalyser();
-            analyser.fftSize = 256;
-            const source = audioCtx.createMediaElementSource(audioElement);
-            source.connect(analyser);
-            analyser.connect(audioCtx.destination);
-            dataArray = new Uint8Array(analyser.frequencyBinCount);
+            analyser.fftSize = 128; // Меньше нагрузка на CPU
+            analyser.smoothingTimeConstant = 0.85; // Плавнее реакция
+            
+            // Подключаем, если еще не подключено (защита от дублей)
+            if (audioElement) {
+                const source = audioCtx.createMediaElementSource(audioElement);
+                source.connect(analyser);
+                analyser.connect(audioCtx.destination);
+            }
         }
+        dataArray = new Uint8Array(analyser.frequencyBinCount);
         
         isRunning = true;
         animate();
     } catch (e) {
-        console.warn('AudioContext restricted:', e);
+        console.warn('Audio visualization restricted:', e);
     }
 }
 
@@ -91,44 +91,36 @@ function resize() {
 
 function animate() {
     if (!isRunning) return;
-    animationId = requestAnimationFrame(animate);
+    requestAnimationFrame(animate);
 
-    // Получаем данные звука
-    analyser.getByteFrequencyData(dataArray);
-    
-    // Считаем среднюю громкость (басы)
+    // Анализ звука
     let bass = 0;
-    for(let i = 0; i < 20; i++) bass += dataArray[i];
-    bass = bass / 20; // 0..255
-    
-    const beat = bass / 255; // 0.0 .. 1.0
+    if (analyser) {
+        analyser.getByteFrequencyData(dataArray);
+        // Берем басы (первые 10 частот)
+        for(let i = 0; i < 10; i++) bass += dataArray[i];
+        bass = bass / 10 / 255; // 0.0 ... 1.0
+    }
 
-    // Очистка экрана (с легким шлейфом)
-    ctx.fillStyle = 'rgba(5, 5, 16, 0.4)'; 
+    // Чистим экран (черный космос)
+    ctx.fillStyle = '#050510'; 
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     const cx = canvas.width / 2;
     const cy = canvas.height / 2;
-
-    // 1. Рисуем звезды
-    // Скорость зависит от баса
-    const speed = BASE_SPEED + (bass * 0.5);
     
+    // Скорость зависит от баса (рывок при ударе)
+    const currentSpeed = BASE_SPEED + (bass * 8); 
+
+    // Рисуем звезды
     stars.forEach(star => {
-        star.update(speed);
-        star.draw(ctx, cx, cy);
+        star.update(currentSpeed);
+        star.draw(ctx, cx, cy, bass);
     });
 
-    // 2. Рисуем пульсирующий круг в центре
-    ctx.beginPath();
-    ctx.arc(cx, cy, 50 + (bass * 0.5), 0, Math.PI * 2);
-    ctx.strokeStyle = `rgba(188, 19, 254, ${0.3 + beat})`;
-    ctx.lineWidth = 2;
-    ctx.stroke();
-
-    // 3. Отдаем бит в CSS для подсветки интерфейса
-    if (beat > 0.1) {
-        document.documentElement.style.setProperty('--beat-intensity', beat.toFixed(2));
+    // Передаем CSS переменную для пульсации интерфейса
+    if (bass > 0.05) {
+        document.documentElement.style.setProperty('--beat', bass.toFixed(3));
     }
 }
 
